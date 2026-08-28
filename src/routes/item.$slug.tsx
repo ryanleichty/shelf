@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { ItemAdminActions } from "@/components/item-admin-actions"
 import { getItemBySlug } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -41,6 +42,7 @@ function ItemDetail() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><span>{item.type} · {item.year}</span>{item.status !== "owned" && <Badge variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>}</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{item.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
+          <ItemAdminActions id={item.id} title={item.title} type={item.type} />
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">{item.format && <p>{formatLabel(item.format)}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
         </div>
       </article>
