@@ -33,6 +33,9 @@ export function ensureDatabase() {
         cover_image_url TEXT,
         open_library_key TEXT,
         tmdb_id TEXT,
+        borrower TEXT,
+        loaned_at TEXT,
+        format TEXT,
         notes TEXT NOT NULL DEFAULT '',
         acquired_at TEXT,
         created_at TEXT NOT NULL,
@@ -48,6 +51,15 @@ export function ensureDatabase() {
     }
     if (!columns.rows.some((column) => column.name === "tmdb_id")) {
       await client.execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
+    }
+    if (!columns.rows.some((column) => column.name === "borrower")) {
+      await client.execute("ALTER TABLE items ADD COLUMN borrower TEXT")
+    }
+    if (!columns.rows.some((column) => column.name === "loaned_at")) {
+      await client.execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
+    }
+    if (!columns.rows.some((column) => column.name === "format")) {
+      await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
     }
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")

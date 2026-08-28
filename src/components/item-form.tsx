@@ -29,6 +29,7 @@ export function ItemForm({ item }: { item?: Item }) {
     year: item?.year ? String(item.year) : "", coverImageUrl: item?.coverImageUrl ?? "",
     notes: item?.notes ?? "", acquiredAt: item?.acquiredAt ?? "",
     openLibraryKey: item?.openLibraryKey ?? "", tmdbId: item?.tmdbId ?? "",
+    borrower: item?.borrower ?? "", loanedAt: item?.loanedAt ?? "", format: item?.format ?? "",
   })
 
   useEffect(() => {
@@ -93,6 +94,8 @@ export function ItemForm({ item }: { item?: Item }) {
           year: Number(values.year), coverImageUrl: values.coverImageUrl,
           notes: values.notes, acquiredAt: values.acquiredAt,
           openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId,
+          borrower: values.borrower, loanedAt: values.loanedAt,
+          format: values.format as ItemInput["format"],
         } satisfies ItemInput,
       })
       await router.navigate({ to: "/item/$slug", params: { slug: result.slug } })
@@ -121,12 +124,14 @@ export function ItemForm({ item }: { item?: Item }) {
         <Field label="Title" name="title" onChange={(event) => updateValue("title", event.target.value)} required value={values.title} />
         <Field label={type === "movie" ? "Director" : "Author / creator"} name="creator" onChange={(event) => updateValue("creator", event.target.value)} required value={values.creator} />
         <Field hint="Lowercase words separated by hyphens." label="Slug" name="slug" onChange={(event) => updateValue("slug", event.target.value)} required value={values.slug} />
-        <label className="field"><span>Type</span><select name="type" onChange={(event) => { const nextType = event.target.value as "book" | "movie"; setType(nextType); if (nextType === "movie" && status === "reading") setStatus("owned") }} value={type}><option value="book">Book</option><option value="movie">Movie</option></select></label>
-        <label className="field"><span>Status</span><select name="status" onChange={(event) => setStatus(event.target.value as "owned" | "borrowed" | "reading")} value={status}><option value="owned">Owned</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
+        <label className="field"><span>Type</span><select name="type" onChange={(event) => { const nextType = event.target.value as "book" | "movie"; setType(nextType); if (nextType === "movie" && status === "reading") setStatus("owned"); updateValue("format", "") }} value={type}><option value="book">Book</option><option value="movie">Movie</option></select></label>
+        <label className="field"><span>Status</span><select name="status" onChange={(event) => { const nextStatus = event.target.value as "owned" | "borrowed" | "reading"; setStatus(nextStatus); if (nextStatus !== "borrowed") setValues((current) => ({ ...current, borrower: "", loanedAt: "" })) }} value={status}><option value="owned">Owned</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
+        <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
         <Field label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
         {type === "book" ? <Field hint="Stored for future refreshes." label="Open Library work key" name="openLibraryKey" onChange={(event) => updateValue("openLibraryKey", event.target.value)} value={values.openLibraryKey} /> : <Field hint="Stored for future refreshes." label="TMDB ID" name="tmdbId" onChange={(event) => updateValue("tmdbId", event.target.value)} value={values.tmdbId} />}
         <Field label="Acquired date" name="acquiredAt" onChange={(event) => updateValue("acquiredAt", event.target.value)} type="date" value={values.acquiredAt} />
+        {status === "borrowed" && <><Field label="With whom" name="borrower" onChange={(event) => updateValue("borrower", event.target.value)} required value={values.borrower} /><Field label="Loaned out" name="loanedAt" onChange={(event) => updateValue("loanedAt", event.target.value)} type="date" value={values.loanedAt} /></>}
       </div>
       <label className="field"><span>Notes</span><Textarea name="notes" onChange={(event) => updateValue("notes", event.target.value)} placeholder="A thought, a memory, a reason to keep it." rows={6} value={values.notes} /></label>
       {error && <p className="form-error" role="alert">{error}</p>}

@@ -64,6 +64,7 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
               <div className="item-copy">
                 <h2>{item.title}</h2>
                 <p>{item.creator}</p>
+                {item.status === "borrowed" && item.borrower && <p className="loan-note">With {item.borrower}{item.loanedAt ? ` · out ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}</p>}
               </div>
             </Link>
           ))}

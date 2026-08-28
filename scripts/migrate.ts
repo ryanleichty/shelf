@@ -17,6 +17,9 @@ await client.execute(`
     cover_image_url TEXT,
     open_library_key TEXT,
     tmdb_id TEXT,
+    borrower TEXT,
+    loaned_at TEXT,
+    format TEXT,
     notes TEXT NOT NULL DEFAULT '',
     acquired_at TEXT,
     created_at TEXT NOT NULL,
@@ -32,6 +35,15 @@ if (!columns.rows.some((column) => column.name === "open_library_key")) {
 }
 if (!columns.rows.some((column) => column.name === "tmdb_id")) {
   await client.execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
+}
+if (!columns.rows.some((column) => column.name === "borrower")) {
+  await client.execute("ALTER TABLE items ADD COLUMN borrower TEXT")
+}
+if (!columns.rows.some((column) => column.name === "loaned_at")) {
+  await client.execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
+}
+if (!columns.rows.some((column) => column.name === "format")) {
+  await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
 }
 
 console.log("Database is ready.")

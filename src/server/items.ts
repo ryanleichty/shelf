@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { db, ensureDatabase } from "./db"
 import { requireAdmin } from "./auth"
+import { storeCover } from "./covers"
 import { items, itemStatuses, itemTypes } from "./schema"
 
 const itemInput = z.object({
@@ -16,11 +17,26 @@ const itemInput = z.object({
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   openLibraryKey: z.string().max(120).optional().or(z.literal("")),
   tmdbId: z.string().max(40).optional().or(z.literal("")),
+  borrower: z.string().max(120).optional().or(z.literal("")),
+  loanedAt: z.string().date().optional().or(z.literal("")),
+  format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
   notes: z.string().max(10000).default(""),
   acquiredAt: z.string().date().optional().or(z.literal("")),
 }).superRefine((item, context) => {
   if (item.type === "movie" && item.status === "reading") {
     context.addIssue({ code: "custom", message: "Movies cannot have Reading status.", path: ["status"] })
+  }
+  if (item.status === "borrowed" && !item.borrower?.trim()) {
+    context.addIssue({ code: "custom", message: "Borrowed items need a borrower.", path: ["borrower"] })
+  }
+  if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
+    context.addIssue({ code: "custom", message: "Loan details only apply to borrowed items.", path: ["status"] })
+  }
+  if (item.type === "book" && ["blu-ray", "dvd"].includes(item.format ?? "")) {
+    context.addIssue({ code: "custom", message: "Choose a book format.", path: ["format"] })
+  }
+  if (item.type === "movie" && ["hardcover", "paperback"].includes(item.format ?? "")) {
+    context.addIssue({ code: "custom", message: "Choose a movie format.", path: ["format"] })
   }
 })
 
@@ -199,11 +215,15 @@ export const saveItem = createServerFn({ method: "POST" })
     requireAdmin()
     await ensureDatabase()
     const now = new Date().toISOString()
+    const coverImageUrl = await storeCover(data.coverImageUrl ?? "", data.slug)
     const values = {
       ...data,
-      coverImageUrl: data.coverImageUrl || null,
+      coverImageUrl: coverImageUrl || null,
       openLibraryKey: data.openLibraryKey || null,
       tmdbId: data.tmdbId || null,
+      borrower: data.borrower?.trim() || null,
+      loanedAt: data.loanedAt || null,
+      format: data.format?.trim() || null,
       acquiredAt: data.acquiredAt || null,
       updatedAt: now,
     }
