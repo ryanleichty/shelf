@@ -84,4 +84,4 @@
 .lookup-results button { @apply flex w-full items-center gap-3 p-2 text-left hover:bg-accent; }
 .lookup-results img, .tiny-cover { @apply h-10 w-7 rounded-sm bg-muted object-cover; }
 .lookup-results strong, .lookup-results small { @apply block text-sm; }.lookup-results small { @apply text-xs text-muted-foreground; }
-.form-footer { @apply flex justify-between; }.form-error { @apply text-sm text-destructive; }
+.form-footer { @apply flex justify-end gap-2; }.form-error { @apply text-sm text-destructive; }

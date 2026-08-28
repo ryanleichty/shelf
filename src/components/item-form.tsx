@@ -172,7 +172,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
         {status === "borrowed" && <><Field label="With whom" name="borrower" onChange={(event) => updateValue("borrower", event.target.value)} required value={values.borrower} /><Field label="Loaned out" name="loanedAt" onChange={(event) => updateValue("loanedAt", event.target.value)} type="date" value={values.loanedAt} /></>}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="form-footer"><Link className="cancel-link" to="/admin">Cancel</Link><Button disabled={saving} type="submit">{saving ? "Saving…" : item ? "Save changes" : "Add to shelf"}</Button></div>
+      <div className="form-footer"><Button render={<Link to="/admin" />} variant="outline">Cancel</Button><Button disabled={saving} type="submit">{saving ? "Saving…" : item ? "Save changes" : "Add to shelf"}</Button></div>
     </form>
   )
 }
