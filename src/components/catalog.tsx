@@ -3,24 +3,16 @@ import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Item } from "@/server/schema"
 
-const filters = [
-  { label: "All", value: "all" },
-  { label: "Books", value: "book" },
-  { label: "Movies", value: "movie" },
-] as const
-
-export function Catalog({ items, initialType = "all" }: { items: Item[]; initialType?: "all" | Item["type"] }) {
-  const [type, setType] = useState<"all" | Item["type"]>(initialType)
+export function Catalog({ items, type }: { items: Item[]; type: Item["type"] }) {
   const [query, setQuery] = useState("")
   const visibleItems = useMemo(
     () =>
       items.filter(
         (item) =>
-          (type === "all" || item.type === type) &&
+          item.type === type &&
           `${item.title} ${item.creator}`.toLowerCase().includes(query.toLowerCase()),
       ),
     [items, query, type],
@@ -28,10 +20,7 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1" aria-label="Collection filters">
-          {filters.map((filter) => <Button key={filter.value} onClick={() => setType(filter.value)} size="sm" type="button" variant={type === filter.value ? "secondary" : "ghost"}>{filter.label}</Button>)}
-        </div>
+      <div className="mb-6 flex justify-end">
         <label className="relative w-full sm:w-64">
           <Search aria-hidden="true" className="absolute top-2.5 left-2.5 text-muted-foreground" size={15} />
           <span className="sr-only">Search the collection</span>

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Catalog } from "@/components/catalog"
+import { OutNow } from "@/components/out-now"
 import { getItems } from "@/server/items"
 
 export const Route = createFileRoute("/movies")({
@@ -14,7 +15,8 @@ function Movies() {
         <p className="text-sm text-muted-foreground">The film shelf</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Movies</h1>
       </section>
-      <Catalog initialType="movie" items={Route.useLoaderData()} />
+      <OutNow items={Route.useLoaderData()} />
+      <Catalog items={Route.useLoaderData()} type="movie" />
     </main>
   )
 }

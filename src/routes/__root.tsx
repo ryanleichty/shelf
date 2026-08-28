@@ -36,7 +36,7 @@ export const Route = createRootRoute({
     <main className="container mx-auto max-w-6xl px-4 py-20">
       <p className="text-sm text-muted-foreground">404</p>
       <h1 className="mt-2 text-3xl font-semibold">That shelf is empty.</h1>
-      <Link className="mt-6 inline-block text-sm underline underline-offset-4" to="/">Return to the collection</Link>
+      <Link className="mt-6 inline-block text-sm underline underline-offset-4" to="/books">Return to the collection</Link>
     </main>
   ),
   shellComponent: RootDocument,
@@ -69,11 +69,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
 function ShelfShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const label = pathname === "/" ? "All items" : pathname.startsWith("/books") ? "Books" : pathname.startsWith("/movies") ? "Movies" : pathname.startsWith("/admin/new") ? "Add item" : pathname.startsWith("/admin/login") ? "Log in" : pathname.startsWith("/admin") ? "Admin" : "Item"
+  const label = pathname.startsWith("/movies") ? "Movies" : pathname.startsWith("/admin/new") ? "Add item" : pathname.startsWith("/admin/login") ? "Log in" : pathname.startsWith("/admin") ? "Admin" : pathname.startsWith("/item") ? "Item" : "Books"
   return <SidebarProvider><AppSidebar /><SidebarInset>
     <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" /><Separator className="mr-2 h-4" orientation="vertical" />
-      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>Shelf</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink render={<Link to="/books" />}>Shelf</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
     </header>
     {children}
   </SidebarInset></SidebarProvider>
