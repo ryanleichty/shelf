@@ -19,7 +19,6 @@ export const db = drizzle({ client, schema })
 let setupPromise: Promise<void> | undefined
 
 export function ensureDatabase() {
-  if (!isEphemeral) return Promise.resolve()
   setupPromise ??= (async () => {
     await client.execute(`
       CREATE TABLE IF NOT EXISTS items (
@@ -61,6 +60,7 @@ export function ensureDatabase() {
     if (!columns.rows.some((column) => column.name === "format")) {
       await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
     }
+    if (!isEphemeral) return
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")
     if (Number(count.rows[0]?.count ?? 0) === 0) {
