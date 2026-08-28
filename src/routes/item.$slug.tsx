@@ -11,7 +11,7 @@ export const Route = createFileRoute("/item/$slug")({
   },
   head: ({ loaderData }) => {
     const item = loaderData
-    const description = item ? `${item.creator}, ${item.year}. ${item.notes}`.slice(0, 200) : "A title from Shelf."
+    const description = item ? `${item.creator}, ${item.year}. A title from Shelf.` : "A title from Shelf."
     return {
       meta: [
         { title: item ? `${item.title} — Shelf` : "Shelf" },
@@ -42,8 +42,6 @@ function ItemDetail() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{item.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">{item.format && <p>{formatLabel(item.format)}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
-          {item.notes && <p className="mt-8 max-w-prose whitespace-pre-line leading-7">{item.notes}</p>}
-          {item.acquiredAt && <p className="mt-8 text-sm text-muted-foreground">On the shelf since {new Date(`${item.acquiredAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>}
         </div>
       </article>
     </main>

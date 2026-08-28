@@ -20,8 +20,6 @@ const itemInput = z.object({
   borrower: z.string().max(120).optional().or(z.literal("")),
   loanedAt: z.string().date().optional().or(z.literal("")),
   format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
-  notes: z.string().max(10000).default(""),
-  acquiredAt: z.string().date().optional().or(z.literal("")),
 }).superRefine((item, context) => {
   if (item.type === "movie" && item.status === "reading") {
     context.addIssue({ code: "custom", message: "Movies cannot have Reading status.", path: ["status"] })
@@ -224,7 +222,8 @@ export const saveItem = createServerFn({ method: "POST" })
       borrower: data.borrower?.trim() || null,
       loanedAt: data.loanedAt || null,
       format: data.format?.trim() || null,
-      acquiredAt: data.acquiredAt || null,
+      notes: "",
+      acquiredAt: null,
       updatedAt: now,
     }
     if (data.id) {

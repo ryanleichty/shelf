@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   getCollectionResult,
@@ -28,7 +27,6 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
   const [values, setValues] = useState({
     title: item?.title ?? "", creator: item?.creator ?? "", slug: item?.slug ?? "",
     year: item?.year ? String(item.year) : "", coverImageUrl: item?.coverImageUrl ?? "",
-    notes: item?.notes ?? "", acquiredAt: item?.acquiredAt ?? "",
     openLibraryKey: item?.openLibraryKey ?? "", tmdbId: item?.tmdbId ?? "",
     borrower: item?.borrower ?? "", loanedAt: item?.loanedAt ?? "", format: item?.format ?? "",
   })
@@ -102,7 +100,6 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
           id: item?.id,
           title: values.title, slug: values.slug, type, status, creator: values.creator,
           year: Number(values.year), coverImageUrl: values.coverImageUrl,
-          notes: values.notes, acquiredAt: values.acquiredAt,
           openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId,
           borrower: values.borrower, loanedAt: values.loanedAt,
           format: values.format as ItemInput["format"],
@@ -142,10 +139,8 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
         <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
         <Field label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
         {type === "book" ? <Field hint="Stored for future refreshes." label="Open Library work key" name="openLibraryKey" onChange={(event) => updateValue("openLibraryKey", event.target.value)} value={values.openLibraryKey} /> : <Field hint="Stored for future refreshes." label="TMDB ID" name="tmdbId" onChange={(event) => updateValue("tmdbId", event.target.value)} value={values.tmdbId} />}
-        <Field label="Acquired date" name="acquiredAt" onChange={(event) => updateValue("acquiredAt", event.target.value)} type="date" value={values.acquiredAt} />
         {status === "borrowed" && <><Field label="With whom" name="borrower" onChange={(event) => updateValue("borrower", event.target.value)} required value={values.borrower} /><Field label="Loaned out" name="loanedAt" onChange={(event) => updateValue("loanedAt", event.target.value)} type="date" value={values.loanedAt} /></>}
       </div>
-      <label className="field"><span>Notes</span><Textarea name="notes" onChange={(event) => updateValue("notes", event.target.value)} placeholder="A thought, a memory, a reason to keep it." rows={6} value={values.notes} /></label>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-footer"><Link className="cancel-link" to="/admin">Cancel</Link><Button disabled={saving} type="submit">{saving ? "Saving…" : item ? "Save changes" : "Add to shelf"}</Button></div>
     </form>
