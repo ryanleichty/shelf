@@ -25,7 +25,7 @@ Or remove the individual examples from `/admin` and add the real collection.
 
 ## Data and database
 
-Shelf uses Drizzle ORM with libSQL. Development defaults to the untracked local database at `data/shelf.db`. Production uses Turso-compatible libSQL when both variables below are present:
+Shelf uses Drizzle ORM with libSQL. When `TURSO_DATABASE_URL` is present, Shelf uses Turso-compatible libSQL. Without it, Shelf boots from an ephemeral local database at `/tmp/shelf.db` and seeds its sample content automatically on the first request.
 
 | Variable | Purpose |
 | --- | --- |
@@ -43,7 +43,7 @@ The admin’s book search uses Open Library and requires no key. Movie search us
 
 1. Create a Turso database and apply the schema using `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` with `pnpm db:migrate`.
 2. Import this GitHub repository into Vercel.
-3. Set the required environment variables above in Vercel’s project settings (include `TMDB_API_KEY` to enable movie lookup).
+3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Vercel’s project settings for durable collection data. Without them, Vercel uses an ephemeral `/tmp` database: the catalog still boots with sample content, but additions disappear when the serverless instance is replaced. Also set `ADMIN_PASSWORD`, `SESSION_SECRET`, and optionally `TMDB_API_KEY`.
 4. Deploy. The included Nitro Vite plugin supplies TanStack Start SSR and server functions to Vercel; no custom output directory is needed.
 
 ## Checks

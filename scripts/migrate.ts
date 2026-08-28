@@ -1,10 +1,7 @@
-import { mkdir } from "node:fs/promises"
 import { createClient } from "@libsql/client"
 
-await mkdir("data", { recursive: true })
-
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL ?? "file:data/shelf.db",
+  url: process.env.TURSO_DATABASE_URL ?? "file:/tmp/shelf.db",
   authToken: process.env.TURSO_AUTH_TOKEN,
 })
 

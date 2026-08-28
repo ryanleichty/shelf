@@ -17,7 +17,7 @@ function Login() {
     const password = new FormData(event.currentTarget).get("password")
     const result = await login({ data: { password: String(password) } })
     if (!result.ok) {
-      setError("That password doesn’t open this shelf.")
+      setError(result.error)
       setBusy(false)
       return
     }

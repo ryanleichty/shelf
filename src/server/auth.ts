@@ -12,7 +12,7 @@ function sessionToken() {
 
 export function isAdmin() {
   const cookie = getCookie(COOKIE_NAME)
-  if (!cookie) return false
+  if (!cookie || !sessionSecret()) return false
   const expected = sessionToken()
   return (
     cookie.length === expected.length &&
@@ -26,7 +26,7 @@ export function requireAdmin() {
 
 export function verifyPassword(password: string) {
   const expected = process.env.ADMIN_PASSWORD
-  if (!expected) throw new Error("ADMIN_PASSWORD is required.")
+  if (!expected) return false
   return (
     password.length === expected.length &&
     timingSafeEqual(Buffer.from(password), Buffer.from(expected))

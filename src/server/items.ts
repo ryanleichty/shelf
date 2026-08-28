@@ -1,7 +1,7 @@
 import { and, asc, eq, like, or } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { db } from "./db"
+import { db, ensureDatabase } from "./db"
 import { requireAdmin } from "./auth"
 import { items, itemTypes } from "./schema"
 
@@ -150,6 +150,7 @@ export const getItems = createServerFn({ method: "GET" })
       .optional(),
   )
   .handler(async ({ data }) => {
+    await ensureDatabase()
     const filters = []
     if (data?.type) filters.push(eq(items.type, data.type))
     if (data?.query?.trim()) {
@@ -166,6 +167,7 @@ export const getItems = createServerFn({ method: "GET" })
 export const getItemBySlug = createServerFn({ method: "GET" })
   .validator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
+    await ensureDatabase()
     const [item] = await db.select().from(items).where(eq(items.slug, data.slug))
     return item ?? null
   })
@@ -174,6 +176,7 @@ export const getItemById = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     requireAdmin()
+    await ensureDatabase()
     const [item] = await db.select().from(items).where(eq(items.id, data.id))
     return item ?? null
   })
@@ -187,6 +190,7 @@ export const saveItem = createServerFn({ method: "POST" })
   .validator(itemInput)
   .handler(async ({ data }) => {
     requireAdmin()
+    await ensureDatabase()
     const now = new Date().toISOString()
     const values = {
       ...data,
@@ -209,6 +213,7 @@ export const deleteItem = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     requireAdmin()
+    await ensureDatabase()
     await db.delete(items).where(eq(items.id, data.id))
     return { ok: true }
   })
@@ -217,9 +222,12 @@ export const login = createServerFn({ method: "POST" })
   .validator(z.object({ password: z.string() }))
   .handler(async ({ data }) => {
     const { startAdminSession, verifyPassword } = await import("./auth")
-    if (!verifyPassword(data.password)) return { ok: false }
+    if (!process.env.ADMIN_PASSWORD) {
+      return { ok: false, error: "Admin access is not configured. Set ADMIN_PASSWORD to enable it." }
+    }
+    if (!verifyPassword(data.password)) return { ok: false, error: "That password doesn’t open this shelf." }
     startAdminSession()
-    return { ok: true }
+    return { ok: true, error: "" }
   })
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
