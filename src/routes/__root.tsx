@@ -1,8 +1,15 @@
-import { HeadContent, Link, Scripts, createRootRoute } from "@tanstack/react-router"
+import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
 import appCss from "../styles.css?url"
+import { AppSidebar } from "@/components/app-sidebar"
+import {
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -42,16 +49,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <header className="border-b">
-          <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link className="text-lg font-semibold tracking-tight" to="/">Shelf</Link>
-          <nav className="flex items-center gap-1" aria-label="Primary navigation">
-            <Link activeProps={{ className: "bg-accent text-accent-foreground" }} className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground" to="/books">Books</Link>
-            <Link activeProps={{ className: "bg-accent text-accent-foreground" }} className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground" to="/movies">Movies</Link>
-          </nav>
-          </div>
-        </header>
-        {children}
+        <TooltipProvider><ShelfShell>{children}</ShelfShell></TooltipProvider>
         <TanStackDevtools
           config={{
             position: "bottom-right",
@@ -67,4 +65,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   )
+}
+
+function ShelfShell({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const label = pathname === "/" ? "All items" : pathname.startsWith("/books") ? "Books" : pathname.startsWith("/movies") ? "Movies" : pathname.startsWith("/admin/new") ? "Add item" : pathname.startsWith("/admin/login") ? "Log in" : pathname.startsWith("/admin") ? "Admin" : "Item"
+  return <SidebarProvider><AppSidebar /><SidebarInset>
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <SidebarTrigger className="-ml-1" /><Separator className="mr-2 h-4" orientation="vertical" />
+      <Breadcrumb><BreadcrumbList><BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>Shelf</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>{label}</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+    </header>
+    {children}
+  </SidebarInset></SidebarProvider>
 }
