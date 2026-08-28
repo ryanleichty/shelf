@@ -1,4 +1,4 @@
-import { isNull, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { db } from "../src/server/db"
 import { sampleItems } from "../src/server/sample-items"
 import { items } from "../src/server/schema"
@@ -10,8 +10,11 @@ await db
   .values(sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now })))
   .onConflictDoUpdate({
     target: items.slug,
-    set: { coverImageUrl: sql`excluded.cover_image_url`, updatedAt: now },
-    where: isNull(items.coverImageUrl),
+    set: {
+      status: sql`excluded.status`,
+      coverImageUrl: sql`coalesce(items.cover_image_url, excluded.cover_image_url)`,
+      updatedAt: now,
+    },
   })
 
 console.log("Sample shelf content added.")

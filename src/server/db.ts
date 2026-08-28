@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs"
 import { createClient } from "@libsql/client"
-import { and, eq, isNull } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
@@ -51,8 +51,12 @@ export function ensureDatabase() {
     }
     await Promise.all(sampleItems.map((item) =>
       db.update(schema.items)
-        .set({ coverImageUrl: item.coverImageUrl, updatedAt: now })
-        .where(and(eq(schema.items.slug, item.slug), isNull(schema.items.coverImageUrl))),
+        .set({
+          status: item.status,
+          coverImageUrl: item.coverImageUrl,
+          updatedAt: now,
+        })
+        .where(eq(schema.items.slug, item.slug)),
     ))
   })()
   return setupPromise
