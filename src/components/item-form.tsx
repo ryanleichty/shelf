@@ -13,11 +13,11 @@ import {
 } from "@/server/items"
 import type { Item } from "@/server/schema"
 
-export function ItemForm({ item }: { item?: Item }) {
+export function ItemForm({ item, initialType }: { item?: Item; initialType?: "book" | "movie" }) {
   const router = useRouter()
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
-  const [type, setType] = useState<"book" | "movie">(item?.type ?? "book")
+  const [type, setType] = useState<"book" | "movie">(item?.type ?? initialType ?? "book")
   const [status, setStatus] = useState<"owned" | "borrowed" | "reading">(item?.status ?? "owned")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
