@@ -3,6 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   getCollectionResult,
   saveItem,
@@ -57,6 +58,15 @@ export function ItemForm({ item }: { item?: Item }) {
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "slug") setSlugWasAutoFilled(false)
   }
+  function changeType(nextType: "book" | "movie") {
+    setType(nextType)
+    setQuery("")
+    setResults([])
+    setSearchError("")
+    setSelected(false)
+    updateValue("format", "")
+    if (nextType === "movie" && status === "reading") setStatus("owned")
+  }
 
   async function choose(result: LookupResult) {
     setSearchError("")
@@ -107,6 +117,9 @@ export function ItemForm({ item }: { item?: Item }) {
   }
   return (
     <form className="item-form" onSubmit={submit}>
+      <Tabs onValueChange={(value) => changeType(value as "book" | "movie")} value={type}>
+        <TabsList aria-label="Item type"><TabsTrigger value="book">Book</TabsTrigger><TabsTrigger value="movie">Movie</TabsTrigger></TabsList>
+      </Tabs>
       <section className="collection-search">
         <div className="lookup-heading"><span>Find a {type}</span><small>Search fills the form; review before saving.</small></div>
         <Input onChange={(event) => { setQuery(event.target.value); setSelected(false) }} placeholder={type === "book" ? "Search Open Library" : "Search TMDB"} value={query} />
@@ -124,7 +137,6 @@ export function ItemForm({ item }: { item?: Item }) {
         <Field label="Title" name="title" onChange={(event) => updateValue("title", event.target.value)} required value={values.title} />
         <Field label={type === "movie" ? "Director" : "Author / creator"} name="creator" onChange={(event) => updateValue("creator", event.target.value)} required value={values.creator} />
         <Field hint="Lowercase words separated by hyphens." label="Slug" name="slug" onChange={(event) => updateValue("slug", event.target.value)} required value={values.slug} />
-        <label className="field"><span>Type</span><select name="type" onChange={(event) => { const nextType = event.target.value as "book" | "movie"; setType(nextType); if (nextType === "movie" && status === "reading") setStatus("owned"); updateValue("format", "") }} value={type}><option value="book">Book</option><option value="movie">Movie</option></select></label>
         <label className="field"><span>Status</span><select name="status" onChange={(event) => { const nextStatus = event.target.value as "owned" | "borrowed" | "reading"; setStatus(nextStatus); if (nextStatus !== "borrowed") setValues((current) => ({ ...current, borrower: "", loanedAt: "" })) }} value={status}><option value="owned">Owned</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
