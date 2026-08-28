@@ -29,21 +29,21 @@ export const Route = createFileRoute("/item/$slug")({
 function ItemDetail() {
   const item = Route.useLoaderData()
   return (
-    <main className="page detail-page">
-      <Link className="back-link" to={item.type === "book" ? "/books" : "/movies"}>
+    <main className="container mx-auto max-w-5xl px-4 py-10">
+      <Link className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to={item.type === "book" ? "/books" : "/movies"}>
         <ArrowLeft aria-hidden="true" size={15} /> Back to {item.type === "book" ? "books" : "movies"}
       </Link>
-      <article className="item-detail">
-        <div className={`detail-cover cover ${item.type}`}>
-          {item.coverImageUrl ? <img alt={item.title} referrerPolicy="no-referrer" src={item.coverImageUrl} /> : <span>{item.type}</span>}
+      <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
+        <div className="aspect-[2/3] overflow-hidden rounded-lg border bg-muted">
+          {item.coverImageUrl ? <img alt={item.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" src={item.coverImageUrl} /> : <span className="flex h-full items-center justify-center text-sm text-muted-foreground">{item.type}</span>}
         </div>
-        <div className="detail-copy">
-          <div className="detail-meta"><p className="eyebrow">{item.type} · {item.year}</p>{item.status !== "owned" && <Badge className={`status-badge status-${item.status}`} variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>}</div>
-          <h1>{item.title}</h1>
-          <p className="creator">{item.creator}</p>
-          <p className="item-facts">{item.format && <span>{formatLabel(item.format)}</span>}{item.status === "borrowed" && item.borrower && <span>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</span>}</p>
-          {item.notes && <p className="notes">{item.notes}</p>}
-          {item.acquiredAt && <p className="acquired">On the shelf since {new Date(`${item.acquiredAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>}
+        <div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><span>{item.type} · {item.year}</span>{item.status !== "owned" && <Badge variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>}</div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{item.title}</h1>
+          <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground">{item.format && <p>{formatLabel(item.format)}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
+          {item.notes && <p className="mt-8 max-w-prose whitespace-pre-line leading-7">{item.notes}</p>}
+          {item.acquiredAt && <p className="mt-8 text-sm text-muted-foreground">On the shelf since {new Date(`${item.acquiredAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>}
         </div>
       </article>
     </main>

@@ -21,11 +21,11 @@ export const Route = createFileRoute("/")({
 function App() {
   const items = Route.useLoaderData()
   return (
-    <main className="page">
-      <section className="catalog-intro">
-        <p className="eyebrow">Ryan Leichty’s collection</p>
-        <h1>Movies and books,<br />kept close.</h1>
-        <p className="lede">A small, personal library of stories worth returning to.</p>
+    <main className="container mx-auto max-w-6xl px-4 py-10">
+      <section className="mb-10">
+        <p className="text-sm text-muted-foreground">Ryan Leichty’s collection</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Movies and books</h1>
+        <p className="mt-3 text-muted-foreground">A small, personal library of stories worth returning to.</p>
       </section>
       <OutNow items={items} />
       <Catalog items={items} />

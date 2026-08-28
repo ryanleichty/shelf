@@ -24,20 +24,20 @@ function Admin() {
     await router.navigate({ to: "/admin/login" })
   }
   return (
-    <main className="page admin-page">
-      <div className="admin-header">
-        <div><p className="eyebrow">Private index</p><h1>On the shelf</h1></div>
-        <div className="admin-actions">
-          <Link className="add-link" to="/admin/new"><Plus size={16} /> Add an item</Link>
+    <main className="container mx-auto max-w-4xl px-4 py-10">
+      <div className="mb-8 flex items-end justify-between">
+        <div><p className="text-sm text-muted-foreground">Private index</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">On the shelf</h1></div>
+        <div className="flex items-center gap-2">
+          <Button render={<Link to="/admin/new" />}><Plus /> Add an item</Button>
           <Button onClick={signOut} size="icon" title="Log out" variant="ghost"><LogOut /></Button>
         </div>
       </div>
-      <div className="admin-list">
+      <div className="divide-y rounded-lg border">
         {items.map((item) => (
-          <div className="admin-row" key={item.id}>
-            <div><span className="admin-type">{item.type}</span><h2>{item.title}</h2><p>{item.creator} · {item.year}</p></div>
-            <div className="row-actions">
-              <Link className="icon-link" params={{ id: String(item.id) }} title={`Edit ${item.title}`} to="/admin/$id"><Pencil size={16} /></Link>
+          <div className="flex items-center justify-between gap-4 p-4" key={item.id}>
+            <div><span className="text-xs text-muted-foreground">{item.type}</span><h2 className="font-medium">{item.title}</h2><p className="text-sm text-muted-foreground">{item.creator} · {item.year}</p></div>
+            <div className="flex gap-1">
+              <Button render={<Link params={{ id: String(item.id) }} to="/admin/$id" />} size="icon" title={`Edit ${item.title}`} variant="ghost"><Pencil size={16} /></Button>
               <Button onClick={() => remove(item.id, item.title)} size="icon" title={`Remove ${item.title}`} variant="ghost"><Trash2 /></Button>
             </div>
           </div>

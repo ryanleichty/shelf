@@ -3,6 +3,8 @@ import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import type { Item } from "@/server/schema"
 
 const filters = [
@@ -26,53 +28,40 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
 
   return (
     <>
-      <div className="catalog-controls">
-        <div className="filter-list" aria-label="Collection filters">
-          {filters.map((filter) => (
-            <button
-              className={type === filter.value ? "filter-active" : ""}
-              key={filter.value}
-              onClick={() => setType(filter.value)}
-              type="button"
-            >
-              {filter.label}
-            </button>
-          ))}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-1" aria-label="Collection filters">
+          {filters.map((filter) => <Button key={filter.value} onClick={() => setType(filter.value)} size="sm" type="button" variant={type === filter.value ? "secondary" : "ghost"}>{filter.label}</Button>)}
         </div>
-        <label className="search-field">
-          <Search aria-hidden="true" size={15} />
+        <label className="relative w-full sm:w-64">
+          <Search aria-hidden="true" className="absolute top-2.5 left-2.5 text-muted-foreground" size={15} />
           <span className="sr-only">Search the collection</span>
-          <Input onChange={(event) => setQuery(event.target.value)} placeholder="Search the shelf" value={query} />
+          <Input className="pl-8" onChange={(event) => setQuery(event.target.value)} placeholder="Search the shelf" value={query} />
         </label>
       </div>
 
       {visibleItems.length ? (
-        <div className="shelf-grid">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {visibleItems.map((item) => (
-            <Link className="shelf-item" key={item.id} params={{ slug: item.slug }} to="/item/$slug">
-              <div className={`cover ${item.type}`}>
+            <Link className="group" key={item.id} params={{ slug: item.slug }} to="/item/$slug">
+              <Card className="overflow-hidden py-0 transition-colors group-hover:border-foreground/30">
+              <div className="relative aspect-[2/3] bg-muted">
                 {item.coverImageUrl ? (
-                  <img alt={item.title} referrerPolicy="no-referrer" src={item.coverImageUrl} />
+                  <img alt={item.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" src={item.coverImageUrl} />
                 ) : (
-                  <div className="cover-type">
-                    <span>{item.type}</span>
-                    <span>{item.year}</span>
+                  <div className="flex h-full flex-col justify-between p-4 text-sm text-muted-foreground">
+                    <span>{item.type}</span><span>{item.year}</span>
                   </div>
                 )}
-                {item.status !== "owned" && <Badge className={`status-badge status-${item.status}`} variant="outline">{statusLabel(item.status)}</Badge>}
+                {item.status !== "owned" && <Badge className="absolute right-2 bottom-2 bg-background/90" variant="outline">{statusLabel(item.status)}</Badge>}
               </div>
-              <div className="item-copy">
-                <h2>{item.title}</h2>
-                <p>{item.creator}</p>
-                {item.status === "borrowed" && item.borrower && <p className="loan-note">With {item.borrower}{item.loanedAt ? ` · out ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}</p>}
-              </div>
+              <CardContent className="p-3"><h2 className="line-clamp-2 text-sm font-medium">{item.title}</h2><p className="mt-1 text-xs text-muted-foreground">{item.creator}</p>{item.status === "borrowed" && item.borrower && <p className="mt-2 text-xs text-muted-foreground">With {item.borrower}</p>}</CardContent>
+              </Card>
             </Link>
           ))}
         </div>
       ) : (
-        <div className="empty-shelf">
-          <p>Nothing found here.</p>
-          <span>Try a different title, creator, or shelf.</span>
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="font-medium">Nothing found.</p><span className="mt-1 block text-sm text-muted-foreground">Try a different title, creator, or filter.</span>
         </div>
       )}
     </>

@@ -1,20 +1,24 @@
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Item } from "@/server/schema"
 
 export function OutNow({ items }: { items: Item[] }) {
   const out = items.filter((item) => item.status !== "owned")
   if (!out.length) return null
   return (
-    <section className="out-now" aria-labelledby="out-now-heading">
-      <div><p className="eyebrow">In motion</p><h2 id="out-now-heading">Currently out</h2></div>
-      <div className="out-list">
+    <section className="mb-8" aria-labelledby="out-now-heading">
+      <Card>
+      <CardHeader className="pb-2"><p className="text-sm text-muted-foreground">In motion</p><CardTitle id="out-now-heading">Currently out</CardTitle></CardHeader>
+      <CardContent className="grid gap-2">
         {out.map((item) => <Link key={item.id} params={{ slug: item.slug }} to="/item/$slug">
-          <span>{item.title}</span>
-          <small>{item.status === "borrowed" && item.borrower ? `With ${item.borrower}` : "Reading"}</small>
-          <Badge className={`out-badge status-${item.status}`} variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>
+          <div className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-accent">
+            <span className="text-sm font-medium">{item.title}</span>
+            <span className="flex items-center gap-2"><small className="text-xs text-muted-foreground">{item.status === "borrowed" && item.borrower ? `With ${item.borrower}` : "Reading"}</small><Badge variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge></span>
+          </div>
         </Link>)}
-      </div>
+      </CardContent>
+      </Card>
     </section>
   )
 }
