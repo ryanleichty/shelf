@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs"
 import { createClient } from "@libsql/client"
+import { and, eq, isNull } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
@@ -35,12 +36,19 @@ export function ensureDatabase() {
         updated_at TEXT NOT NULL
       )
     `)
-    const count = await client.execute("SELECT COUNT(*) AS count FROM items")
-    if (Number(count.rows[0]?.count ?? 0) > 0) return
     const now = new Date().toISOString()
-    await db.insert(schema.items).values(
-      sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now })),
-    )
+    const count = await client.execute("SELECT COUNT(*) AS count FROM items")
+    if (Number(count.rows[0]?.count ?? 0) === 0) {
+      await db.insert(schema.items).values(
+        sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now })),
+      )
+      return
+    }
+    await Promise.all(sampleItems.map((item) =>
+      db.update(schema.items)
+        .set({ coverImageUrl: item.coverImageUrl, updatedAt: now })
+        .where(and(eq(schema.items.slug, item.slug), isNull(schema.items.coverImageUrl))),
+    ))
   })()
   return setupPromise
 }

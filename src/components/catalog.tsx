@@ -51,7 +51,7 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
             <Link className="shelf-item" key={item.id} params={{ slug: item.slug }} to="/item/$slug">
               <div className={`cover ${item.type}`}>
                 {item.coverImageUrl ? (
-                  <img alt={`Cover for ${item.title}`} src={item.coverImageUrl} />
+                  <img alt={item.title} referrerPolicy="no-referrer" src={item.coverImageUrl} />
                 ) : (
                   <div className="cover-type">
                     <span>{item.type}</span>

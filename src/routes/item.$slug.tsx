@@ -20,7 +20,7 @@ function ItemDetail() {
       </Link>
       <article className="item-detail">
         <div className={`detail-cover cover ${item.type}`}>
-          {item.coverImageUrl ? <img alt={`Cover for ${item.title}`} src={item.coverImageUrl} /> : <span>{item.type}</span>}
+          {item.coverImageUrl ? <img alt={item.title} referrerPolicy="no-referrer" src={item.coverImageUrl} /> : <span>{item.type}</span>}
         </div>
         <div className="detail-copy">
           <p className="eyebrow">{item.type} · {item.year}</p>
