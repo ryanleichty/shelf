@@ -54,6 +54,37 @@ export type LookupResult = {
   coverImageUrl: string
 }
 
+export const getCoverOptions = createServerFn({ method: "GET" })
+  .validator(z.object({
+    type: z.enum(itemTypes),
+    openLibraryKey: z.string().optional(),
+    tmdbId: z.string().optional(),
+  }))
+  .handler(async ({ data }): Promise<string[]> => {
+    requireAdmin()
+    if (data.type === "book" && data.openLibraryKey) {
+      const workId = data.openLibraryKey.replace(/^\/?works\//, "")
+      const response = await fetch(`https://openlibrary.org/works/${workId}/editions.json?limit=50`, {
+        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+      })
+      if (!response.ok) throw new Error("Open Library could not load edition covers.")
+      const body = (await response.json()) as { entries?: Array<{ covers?: number[] }> }
+      const covers = [...new Set((body.entries ?? []).flatMap((edition) => edition.covers ?? []))].slice(0, 18)
+      return covers.map((id) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`)
+    }
+    if (data.type === "movie" && data.tmdbId) {
+      const apiKey = process.env.TMDB_API_KEY
+      if (!apiKey) throw new Error("Movie covers need TMDB_API_KEY.")
+      const url = new URL(`https://api.themoviedb.org/3/movie/${data.tmdbId}/images`)
+      url.searchParams.set("api_key", apiKey)
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("TMDB could not load poster options.")
+      const body = (await response.json()) as { posters?: Array<{ file_path?: string }> }
+      return [...new Set((body.posters ?? []).flatMap((poster) => poster.file_path ? [`https://image.tmdb.org/t/p/w500${poster.file_path}`] : []))].slice(0, 18)
+    }
+    return []
+  })
+
 const slugify = (title: string) =>
   title
     .toLowerCase()

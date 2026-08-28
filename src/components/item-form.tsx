@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   getCollectionResult,
+  getCoverOptions,
   saveItem,
   searchCollection,
   type ItemInput,
@@ -23,6 +24,8 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
   const [selected, setSelected] = useState(false)
+  const [coverOptions, setCoverOptions] = useState<string[]>([])
+  const [coverError, setCoverError] = useState("")
   const [slugWasAutoFilled, setSlugWasAutoFilled] = useState(false)
   const [values, setValues] = useState({
     title: item?.title ?? "", creator: item?.creator ?? "", slug: item?.slug ?? "",
@@ -51,6 +54,20 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     }, 300)
     return () => window.clearTimeout(timer)
   }, [query, type])
+
+  useEffect(() => {
+    const providerId = type === "book" ? values.openLibraryKey : values.tmdbId
+    if (!providerId) {
+      setCoverOptions([])
+      return
+    }
+    getCoverOptions({ data: { type, openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId } })
+      .then(setCoverOptions)
+      .catch((cause) => {
+        setCoverOptions([])
+        setCoverError(cause instanceof Error ? cause.message : "Could not load cover options.")
+      })
+  }, [type, values.openLibraryKey, values.tmdbId])
 
   function updateValue(field: keyof typeof values, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -138,6 +155,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
         <Field label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
+        {coverOptions.length > 0 && <div className="sm:col-span-2"><p className="mb-2 text-sm font-medium">Choose a cover</p><div className="grid grid-cols-6 gap-2 sm:grid-cols-9">{coverOptions.map((url) => <button aria-label="Use this cover" className={`aspect-[2/3] overflow-hidden rounded-md border ${values.coverImageUrl === url ? "ring-2 ring-ring ring-offset-2" : "hover:border-foreground/40"}`} key={url} onClick={() => updateValue("coverImageUrl", url)} type="button"><img alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" src={url} /></button>)}</div>{coverError && <p className="mt-2 text-sm text-destructive">{coverError}</p>}</div>}
         {type === "book" ? <Field hint="Stored for future refreshes." label="Open Library work key" name="openLibraryKey" onChange={(event) => updateValue("openLibraryKey", event.target.value)} value={values.openLibraryKey} /> : <Field hint="Stored for future refreshes." label="TMDB ID" name="tmdbId" onChange={(event) => updateValue("tmdbId", event.target.value)} value={values.tmdbId} />}
         {status === "borrowed" && <><Field label="With whom" name="borrower" onChange={(event) => updateValue("borrower", event.target.value)} required value={values.borrower} /><Field label="Loaned out" name="loanedAt" onChange={(event) => updateValue("loanedAt", event.target.value)} type="date" value={values.loanedAt} /></>}
       </div>
