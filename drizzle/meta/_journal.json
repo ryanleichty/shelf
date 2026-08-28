@@ -15,6 +15,13 @@
       "when": 1787889499025,
       "tag": "0001_windy_gressill",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787891583225,
+      "tag": "0002_fancy_roland_deschain",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,8 @@ export const items = sqliteTable("items", {
   creator: text("creator").notNull(),
   year: integer("year").notNull(),
   coverImageUrl: text("cover_image_url"),
+  openLibraryKey: text("open_library_key"),
+  tmdbId: text("tmdb_id"),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),

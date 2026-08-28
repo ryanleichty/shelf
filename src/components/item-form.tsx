@@ -28,6 +28,7 @@ export function ItemForm({ item }: { item?: Item }) {
     title: item?.title ?? "", creator: item?.creator ?? "", slug: item?.slug ?? "",
     year: item?.year ? String(item.year) : "", coverImageUrl: item?.coverImageUrl ?? "",
     notes: item?.notes ?? "", acquiredAt: item?.acquiredAt ?? "",
+    openLibraryKey: item?.openLibraryKey ?? "", tmdbId: item?.tmdbId ?? "",
   })
 
   useEffect(() => {
@@ -69,6 +70,8 @@ export function ItemForm({ item }: { item?: Item }) {
         year: resolved.year ? String(resolved.year) : "",
         coverImageUrl: resolved.coverImageUrl,
         slug: !current.slug || slugWasAutoFilled ? resolved.slug : current.slug,
+        openLibraryKey: result.type === "book" ? result.id : "",
+        tmdbId: result.type === "movie" ? result.id : "",
       }))
       if (!values.slug || slugWasAutoFilled) setSlugWasAutoFilled(true)
       setSelected(true)
@@ -89,6 +92,7 @@ export function ItemForm({ item }: { item?: Item }) {
           title: values.title, slug: values.slug, type, status, creator: values.creator,
           year: Number(values.year), coverImageUrl: values.coverImageUrl,
           notes: values.notes, acquiredAt: values.acquiredAt,
+          openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId,
         } satisfies ItemInput,
       })
       await router.navigate({ to: "/item/$slug", params: { slug: result.slug } })
@@ -121,6 +125,7 @@ export function ItemForm({ item }: { item?: Item }) {
         <label className="field"><span>Status</span><select name="status" onChange={(event) => setStatus(event.target.value as "owned" | "borrowed" | "reading")} value={status}><option value="owned">Owned</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <Field label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
+        {type === "book" ? <Field hint="Stored for future refreshes." label="Open Library work key" name="openLibraryKey" onChange={(event) => updateValue("openLibraryKey", event.target.value)} value={values.openLibraryKey} /> : <Field hint="Stored for future refreshes." label="TMDB ID" name="tmdbId" onChange={(event) => updateValue("tmdbId", event.target.value)} value={values.tmdbId} />}
         <Field label="Acquired date" name="acquiredAt" onChange={(event) => updateValue("acquiredAt", event.target.value)} type="date" value={values.acquiredAt} />
       </div>
       <label className="field"><span>Notes</span><Textarea name="notes" onChange={(event) => updateValue("notes", event.target.value)} placeholder="A thought, a memory, a reason to keep it." rows={6} value={values.notes} /></label>

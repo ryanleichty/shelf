@@ -14,6 +14,8 @@ const itemInput = z.object({
   creator: z.string().min(1).max(240),
   year: z.number().int().min(0).max(3000),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
+  openLibraryKey: z.string().max(120).optional().or(z.literal("")),
+  tmdbId: z.string().max(40).optional().or(z.literal("")),
   notes: z.string().max(10000).default(""),
   acquiredAt: z.string().date().optional().or(z.literal("")),
 }).superRefine((item, context) => {
@@ -200,6 +202,8 @@ export const saveItem = createServerFn({ method: "POST" })
     const values = {
       ...data,
       coverImageUrl: data.coverImageUrl || null,
+      openLibraryKey: data.openLibraryKey || null,
+      tmdbId: data.tmdbId || null,
       acquiredAt: data.acquiredAt || null,
       updatedAt: now,
     }

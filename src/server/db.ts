@@ -31,6 +31,8 @@ export function ensureDatabase() {
         creator TEXT NOT NULL,
         year INTEGER NOT NULL,
         cover_image_url TEXT,
+        open_library_key TEXT,
+        tmdb_id TEXT,
         notes TEXT NOT NULL DEFAULT '',
         acquired_at TEXT,
         created_at TEXT NOT NULL,
@@ -40,6 +42,12 @@ export function ensureDatabase() {
     const columns = await client.execute("PRAGMA table_info(items)")
     if (!columns.rows.some((column) => column.name === "status")) {
       await client.execute("ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
+    }
+    if (!columns.rows.some((column) => column.name === "open_library_key")) {
+      await client.execute("ALTER TABLE items ADD COLUMN open_library_key TEXT")
+    }
+    if (!columns.rows.some((column) => column.name === "tmdb_id")) {
+      await client.execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
     }
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")
