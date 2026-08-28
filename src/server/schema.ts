@@ -1,0 +1,20 @@
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
+
+export const itemTypes = ["book", "movie"] as const
+export type ItemType = (typeof itemTypes)[number]
+
+export const items = sqliteTable("items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  type: text("type", { enum: itemTypes }).notNull(),
+  title: text("title").notNull(),
+  creator: text("creator").notNull(),
+  year: integer("year").notNull(),
+  coverImageUrl: text("cover_image_url"),
+  notes: text("notes").notNull().default(""),
+  acquiredAt: text("acquired_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+})
+
+export type Item = typeof items.$inferSelect
