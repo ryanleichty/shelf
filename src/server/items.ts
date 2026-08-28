@@ -19,6 +19,127 @@ const itemInput = z.object({
 
 export type ItemInput = z.infer<typeof itemInput>
 
+const lookupInput = z.object({
+  query: z.string().trim().min(2).max(160),
+  type: z.enum(itemTypes),
+})
+
+export type LookupResult = {
+  id: string
+  type: "book" | "movie"
+  title: string
+  creator: string
+  year: number | null
+  coverImageUrl: string
+}
+
+const slugify = (title: string) =>
+  title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+
+export const searchCollection = createServerFn({ method: "GET" })
+  .validator(lookupInput)
+  .handler(async ({ data }): Promise<LookupResult[]> => {
+    requireAdmin()
+    if (data.type === "book") {
+      const url = new URL("https://openlibrary.org/search.json")
+      url.searchParams.set("q", data.query)
+      url.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i")
+      url.searchParams.set("limit", "6")
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+      })
+      if (!response.ok) throw new Error("Open Library could not complete that search.")
+      const body = (await response.json()) as {
+        docs?: Array<{
+          key?: string
+          title?: string
+          author_name?: string[]
+          first_publish_year?: number
+          cover_i?: number
+        }>
+      }
+      return (body.docs ?? []).flatMap((book) =>
+        book.key && book.title
+          ? [{
+              id: book.key,
+              type: "book" as const,
+              title: book.title,
+              creator: book.author_name?.[0] ?? "Unknown author",
+              year: book.first_publish_year ?? null,
+              coverImageUrl: book.cover_i
+                ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
+                : "",
+            }]
+          : [],
+      )
+    }
+
+    const apiKey = process.env.TMDB_API_KEY
+    if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
+    const url = new URL("https://api.themoviedb.org/3/search/movie")
+    url.searchParams.set("query", data.query)
+    url.searchParams.set("include_adult", "false")
+    url.searchParams.set("language", "en-US")
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
+    const body = (await response.json()) as {
+      results?: Array<{ id: number; title?: string; release_date?: string; poster_path?: string | null }>
+    }
+    return (body.results ?? []).flatMap((movie) =>
+      movie.title
+        ? [{
+            id: String(movie.id),
+            type: "movie" as const,
+            title: movie.title,
+            creator: "Director unavailable",
+            year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : null,
+            coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",
+          }]
+        : [],
+    )
+  })
+
+export const getCollectionResult = createServerFn({ method: "GET" })
+  .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
+  .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
+    requireAdmin()
+    if (data.type === "book") {
+      const response = await fetch(`https://openlibrary.org${data.id}.json`, {
+        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+      })
+      if (!response.ok) throw new Error("Open Library could not load that book.")
+      const book = (await response.json()) as { title?: string; first_publish_date?: string }
+      const title = book.title ?? "Untitled"
+      return { id: data.id, type: "book", title, creator: "Unknown author", year: book.first_publish_date ? Number(book.first_publish_date.slice(-4)) || null : null, coverImageUrl: "", slug: slugify(title) }
+    }
+
+    const apiKey = process.env.TMDB_API_KEY
+    if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
+    const url = new URL(`https://api.themoviedb.org/3/movie/${data.id}`)
+    url.searchParams.set("append_to_response", "credits")
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } })
+    if (!response.ok) throw new Error("TMDB could not load that movie. Check TMDB_API_KEY.")
+    const movie = (await response.json()) as {
+      title?: string; release_date?: string; poster_path?: string | null
+      credits?: { crew?: Array<{ job?: string; name?: string }> }
+    }
+    const title = movie.title ?? "Untitled"
+    return {
+      id: data.id, type: "movie", title,
+      creator: movie.credits?.crew?.find((person) => person.job === "Director")?.name ?? "Director unavailable",
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) || null : null,
+      coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",
+      slug: slugify(title),
+    }
+  })
+
 export const getItems = createServerFn({ method: "GET" })
   .validator(
     z
