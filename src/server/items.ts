@@ -85,9 +85,8 @@ export const searchCollection = createServerFn({ method: "GET" })
     url.searchParams.set("query", data.query)
     url.searchParams.set("include_adult", "false")
     url.searchParams.set("language", "en-US")
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    })
+    url.searchParams.set("api_key", apiKey)
+    const response = await fetch(url)
     if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
     const body = (await response.json()) as {
       results?: Array<{ id: number; title?: string; release_date?: string; poster_path?: string | null }>
@@ -124,7 +123,8 @@ export const getCollectionResult = createServerFn({ method: "GET" })
     if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
     const url = new URL(`https://api.themoviedb.org/3/movie/${data.id}`)
     url.searchParams.set("append_to_response", "credits")
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } })
+    url.searchParams.set("api_key", apiKey)
+    const response = await fetch(url)
     if (!response.ok) throw new Error("TMDB could not load that movie. Check TMDB_API_KEY.")
     const movie = (await response.json()) as {
       title?: string; release_date?: string; poster_path?: string | null
