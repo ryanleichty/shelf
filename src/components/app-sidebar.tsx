@@ -5,7 +5,7 @@ import { BookOpenIcon, LogInIcon, LogOutIcon, PlusIcon, FilmIcon } from "lucide-
 import { useEffect, useState } from "react"
 import { getAdminStatus, logout } from "@/server/items"
 import {
-  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail,
 } from "@/components/ui/sidebar"
 
@@ -36,16 +36,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Browse</SidebarGroupLabel>
-          <SidebarMenu>{navigation.map((item) => <SidebarMenuItem key={item.to}>
+          <SidebarGroupContent><SidebarMenu>{navigation.map((item) => <SidebarMenuItem key={item.to}>
             <SidebarMenuButton render={<Link to={item.to} />} tooltip={item.title}><item.icon /><span>{item.title}</span></SidebarMenuButton>
-          </SidebarMenuItem>)}</SidebarMenu>
+          </SidebarMenuItem>)}</SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
         {admin && <SidebarGroup>
           <SidebarGroupLabel>Manage</SidebarGroupLabel>
-          <SidebarMenu>
+          <SidebarGroupContent><SidebarMenu>
             <SidebarMenuItem><SidebarMenuButton render={<Link to="/admin" />} tooltip="Admin"><BookOpenIcon /><span>Admin</span></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton render={<Link to="/admin/new" />} tooltip="Add item"><PlusIcon /><span>Add item</span></SidebarMenuButton></SidebarMenuItem>
-          </SidebarMenu>
+          </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>}
       </SidebarContent>
       <SidebarFooter><SidebarMenu><SidebarMenuItem>
