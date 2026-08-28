@@ -26,6 +26,7 @@ export function ensureDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
         type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'owned',
         title TEXT NOT NULL,
         creator TEXT NOT NULL,
         year INTEGER NOT NULL,
@@ -36,6 +37,10 @@ export function ensureDatabase() {
         updated_at TEXT NOT NULL
       )
     `)
+    const columns = await client.execute("PRAGMA table_info(items)")
+    if (!columns.rows.some((column) => column.name === "status")) {
+      await client.execute("ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
+    }
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")
     if (Number(count.rows[0]?.count ?? 0) === 0) {

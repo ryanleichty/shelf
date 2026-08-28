@@ -17,6 +17,7 @@ export function ItemForm({ item }: { item?: Item }) {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [type, setType] = useState<"book" | "movie">(item?.type ?? "book")
+  const [status, setStatus] = useState<"owned" | "borrowed" | "reading">(item?.status ?? "owned")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -85,7 +86,7 @@ export function ItemForm({ item }: { item?: Item }) {
       const result = await saveItem({
         data: {
           id: item?.id,
-          title: values.title, slug: values.slug, type, creator: values.creator,
+          title: values.title, slug: values.slug, type, status, creator: values.creator,
           year: Number(values.year), coverImageUrl: values.coverImageUrl,
           notes: values.notes, acquiredAt: values.acquiredAt,
         } satisfies ItemInput,
@@ -116,7 +117,8 @@ export function ItemForm({ item }: { item?: Item }) {
         <Field label="Title" name="title" onChange={(event) => updateValue("title", event.target.value)} required value={values.title} />
         <Field label={type === "movie" ? "Director" : "Author / creator"} name="creator" onChange={(event) => updateValue("creator", event.target.value)} required value={values.creator} />
         <Field hint="Lowercase words separated by hyphens." label="Slug" name="slug" onChange={(event) => updateValue("slug", event.target.value)} required value={values.slug} />
-        <label className="field"><span>Type</span><select name="type" onChange={(event) => setType(event.target.value as "book" | "movie")} value={type}><option value="book">Book</option><option value="movie">Movie</option></select></label>
+        <label className="field"><span>Type</span><select name="type" onChange={(event) => { const nextType = event.target.value as "book" | "movie"; setType(nextType); if (nextType === "movie" && status === "reading") setStatus("owned") }} value={type}><option value="book">Book</option><option value="movie">Movie</option></select></label>
+        <label className="field"><span>Status</span><select name="status" onChange={(event) => setStatus(event.target.value as "owned" | "borrowed" | "reading")} value={status}><option value="owned">Owned</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <Field label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
         <Field label="Acquired date" name="acquiredAt" onChange={(event) => updateValue("acquiredAt", event.target.value)} type="date" value={values.acquiredAt} />

@@ -3,18 +3,23 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { db, ensureDatabase } from "./db"
 import { requireAdmin } from "./auth"
-import { items, itemTypes } from "./schema"
+import { items, itemStatuses, itemTypes } from "./schema"
 
 const itemInput = z.object({
   id: z.number().int().optional(),
   slug: z.string().min(1).max(120),
   type: z.enum(itemTypes),
+  status: z.enum(itemStatuses).default("owned"),
   title: z.string().min(1).max(240),
   creator: z.string().min(1).max(240),
   year: z.number().int().min(0).max(3000),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
   notes: z.string().max(10000).default(""),
   acquiredAt: z.string().date().optional().or(z.literal("")),
+}).superRefine((item, context) => {
+  if (item.type === "movie" && item.status === "reading") {
+    context.addIssue({ code: "custom", message: "Movies cannot have Reading status.", path: ["status"] })
+  }
 })
 
 export type ItemInput = z.infer<typeof itemInput>

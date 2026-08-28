@@ -1,0 +1,1 @@
+ALTER TABLE `items` ADD `status` text DEFAULT 'owned' NOT NULL;

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import type { Item } from "@/server/schema"
 
 const filters = [
@@ -58,6 +59,7 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
                     <span>{item.year}</span>
                   </div>
                 )}
+                {item.status !== "owned" && <Badge className={`status-badge status-${item.status}`} variant="outline">{statusLabel(item.status)}</Badge>}
               </div>
               <div className="item-copy">
                 <h2>{item.title}</h2>
@@ -74,4 +76,8 @@ export function Catalog({ items, initialType = "all" }: { items: Item[]; initial
       )}
     </>
   )
+}
+
+function statusLabel(status: Exclude<Item["status"], "owned">) {
+  return status === "reading" ? "Reading" : "Borrowed"
 }

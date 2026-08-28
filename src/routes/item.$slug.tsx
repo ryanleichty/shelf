@@ -1,5 +1,6 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { getItemBySlug } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -23,7 +24,7 @@ function ItemDetail() {
           {item.coverImageUrl ? <img alt={item.title} referrerPolicy="no-referrer" src={item.coverImageUrl} /> : <span>{item.type}</span>}
         </div>
         <div className="detail-copy">
-          <p className="eyebrow">{item.type} · {item.year}</p>
+          <div className="detail-meta"><p className="eyebrow">{item.type} · {item.year}</p>{item.status !== "owned" && <Badge className={`status-badge status-${item.status}`} variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>}</div>
           <h1>{item.title}</h1>
           <p className="creator">{item.creator}</p>
           {item.notes && <p className="notes">{item.notes}</p>}

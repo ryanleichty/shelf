@@ -2,11 +2,14 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 export const itemTypes = ["book", "movie"] as const
 export type ItemType = (typeof itemTypes)[number]
+export const itemStatuses = ["owned", "borrowed", "reading"] as const
+export type ItemStatus = (typeof itemStatuses)[number]
 
 export const items = sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   type: text("type", { enum: itemTypes }).notNull(),
+  status: text("status", { enum: itemStatuses }).notNull().default("owned"),
   title: text("title").notNull(),
   creator: text("creator").notNull(),
   year: integer("year").notNull(),
