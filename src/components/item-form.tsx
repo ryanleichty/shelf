@@ -418,7 +418,9 @@ export function ItemForm({
           >
             <ComboboxChips>
               <ComboboxValue>
-                {(genre) => <ComboboxChip key={genre}>{genre}</ComboboxChip>}
+                {values.genres.map((genre) => (
+                  <ComboboxChip key={genre}>{genre}</ComboboxChip>
+                ))}
               </ComboboxValue>
               <ComboboxChipsInput id="genres" placeholder="Select genres…" />
             </ComboboxChips>
