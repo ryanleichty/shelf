@@ -1,5 +1,6 @@
 import { Search } from "lucide-react"
 import { useEffect, useState } from "react"
+import { rememberCatalogQuery } from "@/components/catalog-search"
 import { Input } from "@/components/ui/input"
 import { CoverTile } from "@/components/cover-tile"
 import type { Item } from "@/server/schema"
@@ -21,6 +22,10 @@ export function Catalog({
   useEffect(() => {
     setDraftQuery(query ?? "")
   }, [query])
+
+  useEffect(() => {
+    rememberCatalogQuery(type, query)
+  }, [query, type])
 
   useEffect(() => {
     if (draftQuery === (query ?? "")) return

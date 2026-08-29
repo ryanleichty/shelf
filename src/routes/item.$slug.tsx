@@ -1,5 +1,7 @@
-import { Link, createFileRoute, notFound, useCanGoBack, useRouter } from "@tanstack/react-router"
+import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft, BookOpenIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { getLastCatalogQuery } from "@/components/catalog-search"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
@@ -41,19 +43,18 @@ export const Route = createFileRoute("/item/$slug")({
 
 function ItemDetail() {
   const item = Route.useLoaderData()
-  const canGoBack = useCanGoBack()
-  const router = useRouter()
+  const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
+
+  useEffect(() => {
+    setLastCatalogQuery(getLastCatalogQuery(item.type))
+  }, [item.type])
+
   return (
     <main className="container mx-auto max-w-5xl px-4 py-10">
       <div className="flex items-start justify-between gap-4">
         <Link
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          onClick={(event) => {
-            if (canGoBack) {
-              event.preventDefault()
-              router.history.back()
-            }
-          }}
+          search={{ query: lastCatalogQuery }}
           to={
             item.type === "book"
               ? "/books"
