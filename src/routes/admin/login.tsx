@@ -2,6 +2,7 @@ import { useState } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Field, FieldLabel } from "@/components/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
@@ -48,13 +49,14 @@ function Login() {
           Enter your password to edit the catalog.
         </p>
         <div className="mt-6 grid gap-6">
-          <label className="grid gap-2 text-sm font-medium">
-            <span>Password</span>
+          <Field>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
             <InputGroup>
               <InputGroupInput
                 autoFocus
                 aria-invalid={Boolean(error)}
                 autoComplete="current-password"
+                id="password"
                 name="password"
                 required
                 type={isPasswordVisible ? "text" : "password"}
@@ -73,7 +75,7 @@ function Login() {
                 </InputGroupButton>
               </InputGroupAddon>
             </InputGroup>
-          </label>
+          </Field>
           <Button className="w-full" disabled={busy} type="submit">
             {busy ? "Logging in…" : "Login"}
           </Button>

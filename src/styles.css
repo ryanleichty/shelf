@@ -74,9 +74,7 @@
 }
 
 .item-form { @apply mt-8 grid gap-6; }
-.form-grid { @apply grid gap-4 sm:grid-cols-2; }
-.field { @apply grid gap-2 text-sm font-medium; }
-.field select { @apply h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50; }
+.form-grid { @apply grid items-start gap-4 sm:grid-cols-2; }
 .collection-search { @apply rounded-lg border p-4; }
 .lookup-heading { @apply mb-3 flex items-center justify-between text-sm font-medium; }
 .lookup-heading small, .lookup-status { @apply text-xs text-muted-foreground; }
