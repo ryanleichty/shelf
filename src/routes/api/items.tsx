@@ -37,15 +37,15 @@ export const Route = createFileRoute("/api/items")({
           if (!top) {
             needsReview.push({ query: input.query, candidates: ranked.slice(0, 5) }); continue
           }
-          const providerId = input.type === "movie" ? (input.tmdbId ?? top.id) : (input.openLibraryKey ?? top.id)
-          const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, slugify(top.title)), input.type === "movie" ? eq(items.tmdbId, providerId) : eq(items.openLibraryKey, providerId))).limit(1)
+          const providerId = input.type === "book" ? (input.openLibraryKey ?? top.id) : (input.tmdbId ?? top.id)
+          const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, slugify(top.title)), input.type === "book" ? eq(items.openLibraryKey, providerId) : eq(items.tmdbId, providerId))).limit(1)
           const sameTitle = await db.select({ title: items.title, year: items.year }).from(items).where(eq(items.type, input.type))
           const duplicate = sameTitle.some((item) => normalize(item.title) === normalize(top.title) && item.year === top.year)
           if (existing.length || duplicate) { skipped.push({ query: input.query, reason: "Already on Shelf" }); continue }
           const resolved = { ...top, slug: slugify(top.title) }
           if (body.data.dryRun) { added.push({ title: resolved.title, slug: resolved.slug }); continue }
           const now = new Date().toISOString()
-          const [created] = await db.insert(items).values({ slug: resolved.slug, type: input.type, status: input.status || "owned", title: resolved.title, creator: resolved.creator, year: resolved.year ?? 0, format: input.format || null, coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null, tmdbId: input.type === "movie" ? providerId : null, openLibraryKey: input.type === "book" ? providerId : null, notes: "", createdAt: now, updatedAt: now }).returning({ id: items.id, title: items.title, slug: items.slug })
+          const [created] = await db.insert(items).values({ slug: resolved.slug, type: input.type, status: input.status || "owned", title: resolved.title, creator: resolved.creator, year: resolved.year ?? 0, format: input.format || null, coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null, tmdbId: input.type === "book" ? null : providerId, openLibraryKey: input.type === "book" ? providerId : null, notes: "", createdAt: now, updatedAt: now }).returning({ id: items.id, title: items.title, slug: items.slug })
           added.push(created)
         } catch (error) { failed.push({ query: input.query, reason: error instanceof Error ? error.message : "Import failed" }) }
       }

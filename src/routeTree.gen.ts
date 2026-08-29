@@ -21,6 +21,7 @@ import { Route as AdminNewRouteImport } from './routes/admin/new'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
+import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -82,6 +83,11 @@ const ApiItemsIdRoute = ApiItemsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiItemsRoute,
 } as any)
+const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => ApiItemsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
+  '/api/items/sync': typeof ApiItemsSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/item/$slug': typeof ItemSlugRoute
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
+  '/api/items/sync': typeof ApiItemsSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
+  '/api/items/sync': typeof ApiItemsSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/item/$slug'
     | '/admin/'
     | '/api/items/$id'
+    | '/api/items/sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/item/$slug'
     | '/admin'
     | '/api/items/$id'
+    | '/api/items/sync'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/item/$slug'
     | '/admin/'
     | '/api/items/$id'
+    | '/api/items/sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -271,15 +283,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiItemsIdRouteImport
       parentRoute: typeof ApiItemsRoute
     }
+    '/api/items/sync': {
+      id: '/api/items/sync'
+      path: '/sync'
+      fullPath: '/api/items/sync'
+      preLoaderRoute: typeof ApiItemsSyncRouteImport
+      parentRoute: typeof ApiItemsRoute
+    }
   }
 }
 
 interface ApiItemsRouteChildren {
   ApiItemsIdRoute: typeof ApiItemsIdRoute
+  ApiItemsSyncRoute: typeof ApiItemsSyncRoute
 }
 
 const ApiItemsRouteChildren: ApiItemsRouteChildren = {
   ApiItemsIdRoute: ApiItemsIdRoute,
+  ApiItemsSyncRoute: ApiItemsSyncRoute,
 }
 
 const ApiItemsRouteWithChildren = ApiItemsRoute._addFileChildren(

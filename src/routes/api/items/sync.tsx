@@ -3,7 +3,7 @@ import { eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db, ensureDatabase } from "@/server/db"
-import { syncItemFromProvider } from "@/server/items"
+import { syncItemFromProvider, type ProviderSyncResult } from "@/server/items"
 import { items, itemTypes } from "@/server/schema"
 
 const input = z.object({
@@ -26,8 +26,8 @@ export const Route = createFileRoute("/api/items/sync")({
         : await db.select().from(items).where(body.data.type ? eq(items.type, body.data.type) : undefined).limit(40)
       const requested = body.data.ids ? new Set(body.data.ids) : undefined
       const selectedItems = requested ? selected.filter((item) => requested.has(item.id)) : selected
-      const updated: unknown[] = []
-      const skipped: unknown[] = []
+      const updated: ProviderSyncResult[] = []
+      const skipped: ProviderSyncResult[] = []
       const failed: Array<{ itemId: number; slug: string; reason: string }> = []
       for (const item of selectedItems) {
         try {

@@ -144,11 +144,11 @@ export const getCoverOptions = createServerFn({ method: "GET" })
       const covers = (englishCovers.length ? englishCovers : allCovers).slice(0, 18)
       return covers.map((id) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`)
     }
-    if (data.type === "movie" && data.tmdbId) {
+    if ((data.type === "movie" || data.type === "tv") && data.tmdbId) {
       const apiKey = process.env.TMDB_API_KEY
       if (!apiKey) throw new Error("Movie covers need TMDB_API_KEY.")
       const postersFor = async (includeImageLanguage?: string) => {
-        const url = new URL(`https://api.themoviedb.org/3/movie/${data.tmdbId}/images`)
+        const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/images`)
         url.searchParams.set("api_key", apiKey)
         if (includeImageLanguage) url.searchParams.set("include_image_language", includeImageLanguage)
         const response = await fetch(url)
