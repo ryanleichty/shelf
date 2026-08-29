@@ -7,12 +7,15 @@ export function rememberCatalogQuery(type: Item["type"], query?: string) {
 
   window.sessionStorage.setItem(
     `${catalogQueryStorageKey}:${type}`,
-    query ?? "",
+    query ?? ""
   )
 }
 
 export function getLastCatalogQuery(type: Item["type"]) {
   if (typeof window === "undefined") return undefined
 
-  return window.sessionStorage.getItem(`${catalogQueryStorageKey}:${type}`) || undefined
+  return (
+    window.sessionStorage.getItem(`${catalogQueryStorageKey}:${type}`) ||
+    undefined
+  )
 }
