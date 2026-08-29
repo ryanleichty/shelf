@@ -31,14 +31,17 @@ export const Route = createFileRoute("/api/items")({
           const title = input.query.replace(/(?:\(|\s)\d{4}\)?\s*$/, "").trim()
           const matches = await lookupCollection({ type: input.type, query: title })
           const ranked = [...matches].sort((a, b) => Number(b.year === year) - Number(a.year === year) || Number(normalize(a.title) === normalize(title)) - Number(normalize(b.title) === normalize(title)))
-          const top = ranked[0]
-          const exact = top && (normalize(top.title) === normalize(title) || (year !== undefined && top.year === year))
-          if (!top || !exact || (ranked[1] && ranked[1].year === top.year && normalize(ranked[1].title) !== normalize(title))) {
+          const exactTitles = ranked.filter((candidate) => normalize(candidate.title) === normalize(title))
+          const yearMatches = year === undefined ? exactTitles : exactTitles.filter((candidate) => candidate.year === year)
+          const top = yearMatches.length === 1 ? yearMatches[0] : year === undefined && exactTitles.length === 1 ? exactTitles[0] : undefined
+          if (!top) {
             needsReview.push({ query: input.query, candidates: ranked.slice(0, 5) }); continue
           }
           const providerId = input.type === "movie" ? (input.tmdbId ?? top.id) : (input.openLibraryKey ?? top.id)
           const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, slugify(top.title)), input.type === "movie" ? eq(items.tmdbId, providerId) : eq(items.openLibraryKey, providerId))).limit(1)
-          if (existing.length) { skipped.push({ query: input.query, reason: "Already on Shelf" }); continue }
+          const sameTitle = await db.select({ title: items.title, year: items.year }).from(items).where(eq(items.type, input.type))
+          const duplicate = sameTitle.some((item) => normalize(item.title) === normalize(top.title) && item.year === top.year)
+          if (existing.length || duplicate) { skipped.push({ query: input.query, reason: "Already on Shelf" }); continue }
           const resolved = { ...top, slug: slugify(top.title) }
           if (body.data.dryRun) { added.push({ title: resolved.title, slug: resolved.slug }); continue }
           const now = new Date().toISOString()
