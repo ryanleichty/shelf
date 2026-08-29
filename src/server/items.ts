@@ -853,10 +853,15 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
       .orderBy(asc(listItems.position))
 
     const rows: Array<{ title: string; items: Item[] }> = []
-    for (const [slug, title, allowedTypes] of [
-      ["watchlist", "Watchlist", ["movie", "tv"]],
-      ["reading-list", "Reading list", ["book"]],
-    ] as const) {
+    const namedLists: Array<{
+      slug: string
+      title: string
+      allowedTypes: Item["type"][]
+    }> = [
+      { slug: "watchlist", title: "Watchlist", allowedTypes: ["movie", "tv"] },
+      { slug: "reading-list", title: "Reading list", allowedTypes: ["book"] },
+    ]
+    for (const { slug, title, allowedTypes } of namedLists) {
       const itemIds = new Set(
         memberships
           .filter(
