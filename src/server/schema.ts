@@ -28,6 +28,7 @@ export const items = sqliteTable("items", {
   coverImageUrl: text("cover_image_url"),
   openLibraryKey: text("open_library_key"),
   tmdbId: text("tmdb_id"),
+  barcode: text("barcode").unique(),
   borrower: text("borrower"),
   loanedAt: text("loaned_at"),
   format: text("format"),

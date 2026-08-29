@@ -638,6 +638,121 @@ export async function uniqueSlug(
 export const normalizeTitle = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]/g, "")
 
+const barcodeInput = z
+  .string()
+  .max(80)
+  .transform((value) => value.replace(/\s/g, "").toUpperCase())
+  .refine(
+    (value) =>
+      /^\d{12,13}$/.test(value) || /^\d{9}[\dX]$/.test(value),
+    "Enter an EAN-13, UPC-A, ISBN-10, or ISBN-13 code."
+  )
+
+type CheckResult =
+  | { status: "owned"; item: ItemRecord }
+  | { status: "not-owned"; title?: string; year?: number; format?: string }
+
+export const checkBarcode = createServerFn({ method: "POST" })
+  .validator(z.object({ code: barcodeInput }))
+  .handler(async ({ data }): Promise<CheckResult> => {
+    requireAdmin()
+    await ensureDatabase()
+
+    const stored = await itemForBarcode(data.code)
+    if (stored) return { status: "owned", item: stored }
+
+    const book = await itemForIsbn(data.code)
+    if (book) {
+      await saveBarcode(book.id, data.code)
+      return { status: "owned", item: book }
+    }
+
+    const disc = await lookupDiscBarcode(data.code)
+    if (!disc) return { status: "not-owned" }
+
+    const catalogItem = await itemForDisc(disc.title, disc.year)
+    if (!catalogItem)
+      return {
+        status: "not-owned",
+        title: disc.title,
+        year: disc.year,
+        format: disc.format,
+      }
+
+    await saveBarcode(catalogItem.id, data.code)
+    return { status: "owned", item: catalogItem }
+  })
+
+async function itemForBarcode(barcode: string) {
+  const [item] = await db
+    .select()
+    .from(items)
+    .where(eq(items.barcode, barcode))
+    .limit(1)
+  return item
+}
+
+async function itemForIsbn(isbn: string) {
+  const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error("Open Library could not look up that ISBN.")
+  const edition = (await response.json()) as {
+    works?: Array<{ key?: string }>
+  }
+  const key = edition.works?.[0]?.key
+  if (!key) return null
+  const workKey = normalizeOpenLibraryWorkKey(key)
+  const [item] = await db
+    .select()
+    .from(items)
+    .where(and(eq(items.type, "book"), eq(items.openLibraryKey, workKey)))
+    .limit(1)
+  return item
+}
+
+async function lookupDiscBarcode(barcode: string) {
+  const apiKey = process.env.UPCMDB_API_KEY?.trim()
+  if (!apiKey) return null
+  const response = await fetch(`https://upcmdb.com/api/v1/lookup/${barcode}`, {
+    headers: { "x-api-key": apiKey },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error("UPCMDb could not look up that barcode.")
+  const body = (await response.json()) as {
+    status?: string
+    data?: { title?: string; year?: string | number; format?: string }
+  }
+  const title = body.data?.title?.trim()
+  const year =
+    typeof body.data?.year === "number"
+      ? body.data.year
+      : Number(body.data?.year)
+  if (body.status !== "success" || !title || !Number.isInteger(year)) return null
+  return { title, year, format: body.data?.format }
+}
+
+async function itemForDisc(title: string, year: number) {
+  const candidates = await db
+    .select()
+    .from(items)
+    .where(
+      and(
+        or(eq(items.type, "movie"), eq(items.type, "tv")),
+        eq(items.year, year)
+      )
+    )
+  return candidates.find((item) => normalizeTitle(item.title) === normalizeTitle(title))
+}
+
+async function saveBarcode(itemId: number, barcode: string) {
+  await db
+    .update(items)
+    .set({ barcode, updatedAt: new Date().toISOString() })
+    .where(eq(items.id, itemId))
+}
+
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {

@@ -8,6 +8,7 @@ import {
   HouseIcon,
   LogInIcon,
   LogOutIcon,
+  ScanLineIcon,
   SearchIcon,
   TvIcon,
 } from "lucide-react"
@@ -222,6 +223,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   >
                     <BookOpenIcon />
                     <span>Admin</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link to="/check" />}
+                    tooltip="Check barcode"
+                  >
+                    <ScanLineIcon />
+                    <span>Check barcode</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
