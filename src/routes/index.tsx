@@ -10,15 +10,17 @@ export const Route = createFileRoute("/")({
 function Home() {
   const rows = Route.useLoaderData()
   return (
-    <main className="py-10">
+    <main className="overflow-x-hidden py-10">
       <div className="container mx-auto mb-10 max-w-6xl px-4">
-        <p className="text-sm text-muted-foreground">Ryan Leichty&apos;s collection</p>
+        <p className="text-sm text-muted-foreground">
+          Ryan Leichty&apos;s collection
+        </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Shelf</h1>
       </div>
       {rows.length ? (
         <div className="space-y-10">
           {rows.map((row, index) => (
-            <section key={row.title}>
+            <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
                 <h2 className="text-xl font-semibold tracking-tight">
                   {row.slug ? (
@@ -34,12 +36,7 @@ function Home() {
                   )}
                 </h2>
               </div>
-              <div className="pl-4">
-                <HomeCarousel
-                  id={`home-row-${index}`}
-                  items={row.items}
-                />
-              </div>
+              <HomeCarousel id={`home-row-${index}`} items={row.items} />
             </section>
           ))}
         </div>
