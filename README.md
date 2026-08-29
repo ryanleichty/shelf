@@ -33,6 +33,7 @@ Shelf uses Drizzle ORM with libSQL. When `TURSO_DATABASE_URL` is present, Shelf 
 | `SESSION_SECRET` | Random 32+ character secret for the signed admin cookie |
 | `TMDB_API_KEY` | Free TMDB API key for admin-only movie lookup |
 | `BLOB_READ_WRITE_TOKEN` | Optional Vercel Blob token for storing uploaded cover images |
+| `SHELF_AGENT_TOKEN` | Bearer token required by the private agent JSON API |
 | `TURSO_DATABASE_URL` | Turso/libSQL database URL |
 | `TURSO_AUTH_TOKEN` | Token for the production database |
 
