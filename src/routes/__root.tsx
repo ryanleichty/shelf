@@ -109,7 +109,7 @@ function ShelfShell({ children }: { children: React.ReactNode }) {
                 ? "Item"
                 : "Home"
   return (
-    <SidebarProvider>
+    <SidebarProvider className="overflow-x-hidden">
       <AppSidebar />
       <SidebarInset className="min-w-0 overflow-x-hidden">
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">

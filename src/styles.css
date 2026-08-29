@@ -90,7 +90,9 @@
   overflow-y: hidden;
   padding-block: 1rem;
   padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+  padding-inline-end: 1rem;
   scroll-padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+  scroll-padding-inline-end: 1rem;
 }
 
 @media (pointer: coarse) {
