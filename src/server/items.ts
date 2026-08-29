@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm"
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
@@ -1043,6 +1043,40 @@ export const getItems = createServerFn({ method: "GET" })
       .where(filters.length ? and(...filters) : undefined)
       .orderBy(asc(items.title))
     return enrichItems(records)
+  })
+
+export const getItemsForYearBrowse = createServerFn({ method: "GET" })
+  .validator(
+    z.object({
+      type: z.enum(itemTypes),
+      startYear: z.number().int().min(0).max(9999),
+      endYear: z.number().int().min(0).max(9999),
+    })
+  )
+  .handler(async ({ data }) => {
+    await ensureDatabase()
+    const [catalogYears, records] = await Promise.all([
+      db
+        .select({ year: items.year })
+        .from(items)
+        .where(eq(items.type, data.type))
+        .orderBy(asc(items.year)),
+      db
+        .select()
+        .from(items)
+        .where(
+          and(
+            eq(items.type, data.type),
+            gte(items.year, data.startYear),
+            lte(items.year, data.endYear)
+          )
+        )
+        .orderBy(asc(items.title)),
+    ])
+    return {
+      years: [...new Set(catalogYears.map((item) => item.year))],
+      items: await enrichItems(records),
+    }
   })
 
 export const getItemsByTag = createServerFn({ method: "GET" })
