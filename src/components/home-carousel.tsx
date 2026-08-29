@@ -16,7 +16,7 @@ export function HomeCarousel({ id, items }: { id: string; items: Item[] }) {
       <BlossomCarousel className="home-carousel snap-x snap-mandatory" id={id}>
         {items.map((item) => (
           <div
-            className="relative z-0 mr-3 w-28 snap-start whitespace-normal hover:z-10 focus-within:z-10 sm:w-36"
+            className="relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56"
             data-blossom-slide
             key={item.id}
           >
