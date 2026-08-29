@@ -259,7 +259,7 @@ function SidebarTrigger({
   type = "button",
   ...props
 }: React.ComponentProps<"button">) {
-  const { openMobile, setOpenMobile, toggleSidebar } = useSidebar()
+  const { isMobile, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
 
   return (
     <button
@@ -267,12 +267,12 @@ function SidebarTrigger({
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       className={cn(
-        "inline-flex size-11 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-transparent bg-clip-padding text-sm font-medium outline-none transition-all select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px md:size-7 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+        "inline-flex size-11 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-transparent bg-clip-padding text-sm font-medium transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px md:size-7 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         className
       )}
       onClick={(event) => {
         onClick?.(event)
-        if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+        if (isMobile) {
           setOpenMobile(!openMobile)
         } else {
           toggleSidebar()
