@@ -40,9 +40,7 @@ export function ItemListToggle({
 
   if (!admin) return null
 
-  const actionLabel = inList
-    ? `Remove from ${listName}`
-    : `Add to ${listName}`
+  const actionLabel = inList ? `Remove from ${listName}` : `Add to ${listName}`
 
   async function toggle() {
     setSaving(true)
