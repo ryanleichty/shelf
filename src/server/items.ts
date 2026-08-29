@@ -853,6 +853,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
       .orderBy(asc(listItems.position))
 
     const rows: Array<{ title: string; items: Item[] }> = []
+    const itemsById = new Map(allItems.map((item) => [item.id, item]))
     const namedLists: Array<{
       slug: string
       title: string
@@ -862,19 +863,14 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
       { slug: "reading-list", title: "Reading list", allowedTypes: ["book"] },
     ]
     for (const { slug, title, allowedTypes } of namedLists) {
-      const itemIds = new Set(
-        memberships
-          .filter(
-            (membership) =>
-              membership.listSlug === slug &&
-              allowedTypes.includes(
-                allItems.find((item) => item.id === membership.itemId)?.type ??
-                  "book"
-              )
-          )
-          .map((membership) => membership.itemId)
-      )
-      const rowItems = allItems.filter((item) => itemIds.has(item.id))
+      const rowItems = memberships.flatMap((membership) => {
+        const item = itemsById.get(membership.itemId)
+        return membership.listSlug === slug &&
+          item &&
+          allowedTypes.includes(item.type)
+          ? [item]
+          : []
+      })
       if (rowItems.length) rows.push({ title, items: rowItems })
     }
 
