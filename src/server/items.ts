@@ -45,6 +45,46 @@ const lookupInput = z.object({
   type: z.enum(itemTypes),
 })
 
+export const importItems = createServerFn({ method: "POST" })
+  .validator(z.object({
+    type: z.enum(itemTypes),
+    format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
+    queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
+  }))
+  .handler(async ({ data }) => {
+    requireAdmin()
+    await ensureDatabase()
+    const added: Array<{ title: string; slug: string }> = []
+    const skipped: Array<{ query: string; reason: string }> = []
+    const failed: Array<{ query: string; reason: string }> = []
+    for (const query of data.queries) {
+      try {
+        const matches = await searchCollection({ data: { type: data.type, query } })
+        const match = matches[0]
+        if (!match) { skipped.push({ query, reason: "No match found" }); continue }
+        const resolved = data.type === "movie"
+          ? await getCollectionResult({ data: { type: "movie", id: match.id } })
+          : { ...match, slug: slugify(match.title) }
+        const providerWhere = data.type === "movie" ? eq(items.tmdbId, match.id) : eq(items.openLibraryKey, match.id)
+        const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, resolved.slug), providerWhere)).limit(1)
+        if (existing.length) { skipped.push({ query, reason: "Already on Shelf" }); continue }
+        const now = new Date().toISOString()
+        await db.insert(items).values({
+          slug: resolved.slug, type: data.type, status: "owned", title: resolved.title,
+          creator: resolved.creator, year: resolved.year ?? 0,
+          coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
+          openLibraryKey: data.type === "book" ? match.id : null,
+          tmdbId: data.type === "movie" ? match.id : null,
+          format: data.format || null, notes: "", acquiredAt: null, createdAt: now, updatedAt: now,
+        })
+        added.push({ title: resolved.title, slug: resolved.slug })
+      } catch (cause) {
+        failed.push({ query, reason: cause instanceof Error ? cause.message : "Import failed" })
+      }
+    }
+    return { added, skipped, failed }
+  })
+
 export type LookupResult = {
   id: string
   type: "book" | "movie"

@@ -1,5 +1,5 @@
 import { Link, createFileRoute, redirect, useRouter } from "@tanstack/react-router"
-import { LogOut, Pencil, Plus, Trash2 } from "lucide-react"
+import { LogOut, Pencil, Plus, Trash2, UploadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { deleteItem, getAdminStatus, getItems, logout } from "@/server/items"
 
@@ -29,6 +29,7 @@ function Admin() {
         <div><p className="text-sm text-muted-foreground">Private index</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">On the shelf</h1></div>
         <div className="flex items-center gap-2">
           <Button render={<Link to="/admin/new" />}><Plus /> Add an item</Button>
+          <Button render={<Link to="/admin/import" />} variant="outline"><UploadIcon /> Import</Button>
           <Button onClick={signOut} size="icon" title="Log out" variant="ghost"><LogOut /></Button>
         </div>
       </div>
