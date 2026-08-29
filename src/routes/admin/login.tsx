@@ -35,7 +35,9 @@ function Login() {
     <main className="container mx-auto flex min-h-[calc(100vh-4rem)] max-w-sm items-center px-4">
       <form className="w-full rounded-lg border p-6" onSubmit={submit}>
         <p className="text-sm text-muted-foreground">Admin</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+          Welcome back
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter your password to edit the catalog.
         </p>
@@ -51,7 +53,9 @@ function Login() {
               />
               <InputGroupAddon align="inline-end">
                 <InputGroupButton
-                  aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                  aria-label={
+                    isPasswordVisible ? "Hide password" : "Show password"
+                  }
                   onClick={() => setIsPasswordVisible((visible) => !visible)}
                   size="icon-xs"
                   type="button"
@@ -66,7 +70,11 @@ function Login() {
             {busy ? "Logging in…" : "Login"}
           </Button>
         </div>
-        {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
+        {error && (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
       </form>
     </main>
   )
