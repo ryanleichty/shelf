@@ -114,7 +114,27 @@ function ItemDetail() {
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
             {item.title}
           </h1>
-          <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
+          <p className="mt-2 text-lg text-muted-foreground">
+            {(item.type === "book" ? item.authors : item.directors).length
+              ? (item.type === "book" ? item.authors : item.directors).map(
+                  (person, index) => (
+                    <span key={person}>
+                      {index > 0 && ", "}
+                      <Link
+                        params={{ slug: slugify(person) }}
+                        to={
+                          item.type === "book"
+                            ? "/author/$slug"
+                            : "/director/$slug"
+                        }
+                      >
+                        {person}
+                      </Link>
+                    </span>
+                  )
+                )
+              : item.creator}
+          </p>
           <ItemListToggle
             initiallyInList={item.targetList.containsItem}
             itemId={item.id}

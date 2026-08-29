@@ -19,6 +19,8 @@ import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminNewRouteImport } from './routes/admin/new'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
+import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
+import { Route as DirectorSlugRouteImport } from './routes/director.$slug'
 import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
@@ -78,6 +80,16 @@ const ApiItemsRoute = ApiItemsRouteImport.update({
   path: '/api/items',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthorSlugRoute = AuthorSlugRouteImport.update({
+  id: '/author/$slug',
+  path: '/author/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DirectorSlugRoute = DirectorSlugRouteImport.update({
+  id: '/director/$slug',
+  path: '/director/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GenreSlugRoute = GenreSlugRouteImport.update({
   id: '/genre/$slug',
   path: '/genre/$slug',
@@ -129,6 +141,8 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/author/$slug': typeof AuthorSlugRoute
+  '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
@@ -149,6 +163,8 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/author/$slug': typeof AuthorSlugRoute
+  '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
@@ -170,6 +186,8 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/author/$slug': typeof AuthorSlugRoute
+  '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
@@ -192,6 +210,8 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/author/$slug'
+    | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
@@ -212,6 +232,8 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/author/$slug'
+    | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
@@ -232,6 +254,8 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/author/$slug'
+    | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
@@ -253,6 +277,8 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
   ApiItemsRoute: typeof ApiItemsRouteWithChildren
+  AuthorSlugRoute: typeof AuthorSlugRoute
+  DirectorSlugRoute: typeof DirectorSlugRoute
   GenreSlugRoute: typeof GenreSlugRoute
   ItemSlugRoute: typeof ItemSlugRoute
   KeywordSlugRoute: typeof KeywordSlugRoute
@@ -332,6 +358,20 @@ declare module '@tanstack/react-router' {
       path: '/api/items'
       fullPath: '/api/items'
       preLoaderRoute: typeof ApiItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/author/$slug': {
+      id: '/author/$slug'
+      path: '/author/$slug'
+      fullPath: '/author/$slug'
+      preLoaderRoute: typeof AuthorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/director/$slug': {
+      id: '/director/$slug'
+      path: '/director/$slug'
+      fullPath: '/director/$slug'
+      preLoaderRoute: typeof DirectorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/genre/$slug': {
@@ -417,6 +457,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
   ApiItemsRoute: ApiItemsRouteWithChildren,
+  AuthorSlugRoute: AuthorSlugRoute,
+  DirectorSlugRoute: DirectorSlugRoute,
   GenreSlugRoute: GenreSlugRoute,
   ItemSlugRoute: ItemSlugRoute,
   KeywordSlugRoute: KeywordSlugRoute,

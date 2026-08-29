@@ -1,4 +1,9 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import {
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 
 export const itemTypes = ["book", "movie", "tv"] as const
 export type ItemType = (typeof itemTypes)[number]
@@ -82,6 +87,54 @@ export const itemKeywords = sqliteTable(
   ]
 )
 
+export const authors = sqliteTable("authors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+})
+
+export const itemAuthors = sqliteTable(
+  "item_authors",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("item_authors_item_id_author_id_unique").on(
+      table.itemId,
+      table.authorId
+    ),
+  ]
+)
+
+export const directors = sqliteTable("directors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+})
+
+export const itemDirectors = sqliteTable(
+  "item_directors",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    directorId: integer("director_id")
+      .notNull()
+      .references(() => directors.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("item_directors_item_id_director_id_unique").on(
+      table.itemId,
+      table.directorId
+    ),
+  ]
+)
+
 export const lists = sqliteTable("lists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
@@ -111,4 +164,9 @@ export const listItems = sqliteTable(
 )
 
 export type ItemRecord = typeof items.$inferSelect
-export type Item = ItemRecord & { genres: string[]; keywords: string[] }
+export type Item = ItemRecord & {
+  genres: string[]
+  keywords: string[]
+  authors: string[]
+  directors: string[]
+}
