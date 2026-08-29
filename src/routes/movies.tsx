@@ -8,7 +8,8 @@ import { getItems } from "@/server/items"
 
 export const Route = createFileRoute("/movies")({
   validateSearch: z.object({ query: z.string().optional() }),
-  loader: ({ search }) => getItems({ data: { type: "movie", query: search.query } }),
+  loaderDeps: ({ search }) => ({ query: search.query }),
+  loader: ({ deps }) => getItems({ data: { type: "movie", query: deps.query } }),
   component: Movies,
 })
 
