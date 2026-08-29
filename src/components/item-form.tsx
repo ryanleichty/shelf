@@ -56,13 +56,13 @@ export function ItemForm({
     item?.type ?? initialType ?? "book"
   )
   const [status, setStatus] = useState<
-    "" | "borrowed" | "reading" | "watching"
+    "unspecified" | "borrowed" | "reading" | "watching"
   >(
     item?.status === "reading" ||
       item?.status === "borrowed" ||
       item?.status === "watching"
       ? item.status
-      : ""
+      : "unspecified"
   )
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
@@ -167,7 +167,7 @@ export function ItemForm({
     updateValue("format", "")
     updateValue("edition", "")
     if ((nextType === "movie" || nextType === "tv") && status === "reading")
-      setStatus("")
+      setStatus("unspecified")
   }
 
   async function choose(result: LookupResult) {
@@ -216,7 +216,7 @@ export function ItemForm({
           title: values.title,
           slug: values.slug,
           type,
-          status: status || "owned",
+          status: status === "unspecified" ? "owned" : status,
           creator: values.creator,
           year: Number(values.year),
           coverImageUrl: values.coverImageUrl,
@@ -343,8 +343,7 @@ export function ItemForm({
           <FieldLabel htmlFor="status">Status</FieldLabel>
           <Select
             onValueChange={(value) => {
-              const nextStatus = (value ?? "") as
-                "" | "borrowed" | "reading" | "watching"
+              const nextStatus = (value ?? "unspecified") as typeof status
               setStatus(nextStatus)
               if (nextStatus !== "borrowed")
                 setValues((current) => ({
@@ -359,7 +358,7 @@ export function ItemForm({
               <SelectValue placeholder="Unspecified" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Unspecified</SelectItem>
+              <SelectItem value="unspecified">Unspecified</SelectItem>
               {type === "book" && (
                 <SelectItem value="reading">Reading</SelectItem>
               )}
@@ -385,14 +384,19 @@ export function ItemForm({
         <Field>
           <FieldLabel htmlFor="format">Format</FieldLabel>
           <Select
-            onValueChange={(value) => updateValue("format", value ?? "")}
-            value={values.format}
+            onValueChange={(value) =>
+              updateValue(
+                "format",
+                value === "unspecified" ? "" : (value ?? "")
+              )
+            }
+            value={values.format || "unspecified"}
           >
             <SelectTrigger id="format" name="format">
               <SelectValue placeholder="Unspecified" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Unspecified</SelectItem>
+              <SelectItem value="unspecified">Unspecified</SelectItem>
               {type === "book" ? (
                 <>
                   <SelectItem value="hardcover">Hardcover</SelectItem>
@@ -412,14 +416,19 @@ export function ItemForm({
           <Field>
             <FieldLabel htmlFor="edition">Edition</FieldLabel>
             <Select
-              onValueChange={(value) => updateValue("edition", value ?? "")}
-              value={values.edition}
+              onValueChange={(value) =>
+                updateValue(
+                  "edition",
+                  value === "unspecified" ? "" : (value ?? "")
+                )
+              }
+              value={values.edition || "unspecified"}
             >
               <SelectTrigger id="edition" name="edition">
                 <SelectValue placeholder="Unspecified" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Unspecified</SelectItem>
+                <SelectItem value="unspecified">Unspecified</SelectItem>
                 <SelectItem value="theatrical">Theatrical</SelectItem>
                 <SelectItem value="extended">Extended</SelectItem>
                 <SelectItem value="director-cut">

@@ -1,6 +1,12 @@
 import { useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
-import { EyeIcon, EyeOffIcon, PencilIcon, Trash2Icon } from "lucide-react"
+import {
+  EllipsisIcon,
+  EyeIcon,
+  EyeOffIcon,
+  PencilIcon,
+  Trash2Icon,
+} from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,23 +16,31 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardAction,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -77,6 +91,10 @@ function Settings() {
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<UserForm | null>(null)
+  const [deletingUser, setDeletingUser] = useState<{
+    id: number
+    name: string
+  } | null>(null)
   const [isProfilePasswordVisible, setIsProfilePasswordVisible] =
     useState(false)
   const [isUserPasswordVisible, setIsUserPasswordVisible] = useState(false)
@@ -167,38 +185,32 @@ function Settings() {
               <FieldGroup className="px-4 sm:grid-cols-2">
                 <Field>
                   <FieldLabel htmlFor="firstName">First name</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      defaultValue={data.profile.firstName}
-                      id="firstName"
-                      name="firstName"
-                      required
-                    />
-                  </InputGroup>
+                  <Input
+                    defaultValue={data.profile.firstName}
+                    id="firstName"
+                    name="firstName"
+                    required
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="lastName">Last name</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      defaultValue={data.profile.lastName}
-                      id="lastName"
-                      name="lastName"
-                      required
-                    />
-                  </InputGroup>
+                  <Input
+                    defaultValue={data.profile.lastName}
+                    id="lastName"
+                    name="lastName"
+                    required
+                  />
                 </Field>
                 <Field className="sm:col-span-2">
                   <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      autoComplete="email"
-                      defaultValue={data.profile.email}
-                      id="email"
-                      name="email"
-                      required
-                      type="email"
-                    />
-                  </InputGroup>
+                  <Input
+                    autoComplete="email"
+                    defaultValue={data.profile.email}
+                    id="email"
+                    name="email"
+                    required
+                    type="email"
+                  />
                 </Field>
                 <Field className="sm:col-span-2">
                   <FieldLabel htmlFor="password">
@@ -276,7 +288,7 @@ function Settings() {
                   </Button>
                 </CardAction>
               </CardHeader>
-              <FieldGroup className="px-4">
+              <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -300,64 +312,81 @@ function Settings() {
                           {user.role}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              aria-label={`Edit ${user.firstName} ${user.lastName}`}
-                              onClick={() =>
-                                setEditing({
-                                  id: user.id,
-                                  firstName: user.firstName,
-                                  lastName: user.lastName,
-                                  email: user.email,
-                                  role: user.role,
-                                  password: "",
-                                })
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  aria-label={`Actions for ${user.firstName} ${user.lastName}`}
+                                  size="icon-sm"
+                                  variant="ghost"
+                                >
+                                  <EllipsisIcon />
+                                </Button>
                               }
-                              size="icon-sm"
-                              variant="ghost"
-                            >
-                              <PencilIcon />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger
-                                render={
-                                  <Button
-                                    aria-label={`Delete ${user.firstName} ${user.lastName}`}
-                                    size="icon-sm"
-                                    variant="ghost"
-                                  >
-                                    <Trash2Icon />
-                                  </Button>
+                            />
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setEditing({
+                                    id: user.id,
+                                    firstName: user.firstName,
+                                    lastName: user.lastName,
+                                    email: user.email,
+                                    role: user.role,
+                                    password: "",
+                                  })
                                 }
-                              />
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Delete {user.firstName} {user.lastName}?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    They will no longer be able to sign in.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    disabled={busy}
-                                    onClick={() => removeUser(user.id)}
-                                    variant="destructive"
-                                  >
-                                    Delete user
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                              >
+                                <PencilIcon /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setDeletingUser({
+                                    id: user.id,
+                                    name: `${user.firstName} ${user.lastName}`,
+                                  })
+                                }
+                                variant="destructive"
+                              >
+                                <Trash2Icon /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </FieldGroup>
+              </CardContent>
+              <AlertDialog
+                onOpenChange={(open) => !open && setDeletingUser(null)}
+                open={Boolean(deletingUser)}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete {deletingUser?.name}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      They will no longer be able to sign in.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={busy}
+                      onClick={() => {
+                        if (deletingUser) void removeUser(deletingUser.id)
+                        setDeletingUser(null)
+                      }}
+                      variant="destructive"
+                    >
+                      Delete user
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </Card>
           </TabsContent>
         )}
@@ -379,46 +408,40 @@ function Settings() {
               <FieldGroup className="px-4">
                 <Field>
                   <FieldLabel htmlFor="user-first-name">First name</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      id="user-first-name"
-                      onChange={(event) =>
-                        setEditing({
-                          ...editing,
-                          firstName: event.target.value,
-                        })
-                      }
-                      required
-                      value={editing.firstName}
-                    />
-                  </InputGroup>
+                  <Input
+                    id="user-first-name"
+                    onChange={(event) =>
+                      setEditing({
+                        ...editing,
+                        firstName: event.target.value,
+                      })
+                    }
+                    required
+                    value={editing.firstName}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="user-last-name">Last name</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      id="user-last-name"
-                      onChange={(event) =>
-                        setEditing({ ...editing, lastName: event.target.value })
-                      }
-                      required
-                      value={editing.lastName}
-                    />
-                  </InputGroup>
+                  <Input
+                    id="user-last-name"
+                    onChange={(event) =>
+                      setEditing({ ...editing, lastName: event.target.value })
+                    }
+                    required
+                    value={editing.lastName}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="user-email">Email</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      id="user-email"
-                      onChange={(event) =>
-                        setEditing({ ...editing, email: event.target.value })
-                      }
-                      required
-                      type="email"
-                      value={editing.email}
-                    />
-                  </InputGroup>
+                  <Input
+                    id="user-email"
+                    onChange={(event) =>
+                      setEditing({ ...editing, email: event.target.value })
+                    }
+                    required
+                    type="email"
+                    value={editing.email}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="user-role">Role</FieldLabel>
