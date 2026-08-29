@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BooksRouteImport } from './routes/books'
+import { Route as CheckRouteImport } from './routes/check'
 import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as TvRouteImport } from './routes/tv'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
 const BooksRoute = BooksRouteImport.update({
   id: '/books',
   path: '/books',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckRoute = CheckRouteImport.update({
+  id: '/check',
+  path: '/check',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoviesRoute = MoviesRouteImport.update({
@@ -134,6 +140,7 @@ const TvListSlugRoute = TvListSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
+  '/check': typeof CheckRoute
   '/movies': typeof MoviesRoute
   '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
+  '/check': typeof CheckRoute
   '/movies': typeof MoviesRoute
   '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
+  '/check': typeof CheckRoute
   '/movies': typeof MoviesRoute
   '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/books'
+    | '/check'
     | '/movies'
     | '/tv'
     | '/admin/$id'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/books'
+    | '/check'
     | '/movies'
     | '/tv'
     | '/admin/$id'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/books'
+    | '/check'
     | '/movies'
     | '/tv'
     | '/admin/$id'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BooksRoute: typeof BooksRoute
+  CheckRoute: typeof CheckRoute
   MoviesRoute: typeof MoviesRoute
   TvRoute: typeof TvRoute
   AdminIdRoute: typeof AdminIdRoute
@@ -302,6 +315,13 @@ declare module '@tanstack/react-router' {
       path: '/books'
       fullPath: '/books'
       preLoaderRoute: typeof BooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check': {
+      id: '/check'
+      path: '/check'
+      fullPath: '/check'
+      preLoaderRoute: typeof CheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/movies': {
@@ -450,6 +470,7 @@ const ApiItemsRouteWithChildren = ApiItemsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BooksRoute: BooksRoute,
+  CheckRoute: CheckRoute,
   MoviesRoute: MoviesRoute,
   TvRoute: TvRoute,
   AdminIdRoute: AdminIdRoute,

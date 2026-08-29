@@ -80,7 +80,9 @@ function Check() {
     setResult(null)
     handlingCode.current = false
     setScanning(true)
-    await new Promise<void>((resolve) => window.requestAnimationFrame(resolve))
+    await new Promise<void>((resolve) =>
+      window.requestAnimationFrame(() => resolve())
+    )
     if (!videoRef.current) return
     try {
       const Detector = (
