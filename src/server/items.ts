@@ -959,6 +959,59 @@ export const getItemsByTag = createServerFn({ method: "GET" })
     return { name: tag.name, items: await enrichItems(records.map((row) => row.items)) }
   })
 
+const namedLists: Array<{
+  slug: string
+  title: string
+  allowedTypes: Item["type"][]
+}> = [
+  { slug: "watchlist", title: "Watchlist", allowedTypes: ["movie", "tv"] },
+  { slug: "reading-list", title: "Reading list", allowedTypes: ["book"] },
+]
+
+export const getItemsByList = createServerFn({ method: "GET" })
+  .validator(z.object({
+    listSlug: z.string(),
+    type: z.enum(itemTypes),
+    query: z.string().max(100).optional(),
+  }))
+  .handler(async ({ data }) => {
+    await ensureDatabase()
+    const namedList = namedLists.find((list) => list.slug === data.listSlug)
+    if (!namedList?.allowedTypes.includes(data.type)) return null
+
+    const [list] = await db
+      .select({ id: lists.id, name: lists.name })
+      .from(lists)
+      .where(eq(lists.slug, data.listSlug))
+      .limit(1)
+    if (!list) return null
+
+    const filters = [
+      eq(listItems.listId, list.id),
+      eq(items.type, data.type),
+    ]
+    if (data.query?.trim()) {
+      const search = data.query
+        .trim()
+        .split(/\s+/)
+        .map((term) => term.replace(/[^a-z0-9]/gi, ""))
+        .filter(Boolean)
+        .map((term) => `${term}*`)
+        .join(" AND ")
+      if (search) {
+        filters.push(sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`)
+      }
+    }
+
+    const records = await db
+      .select()
+      .from(items)
+      .innerJoin(listItems, eq(listItems.itemId, items.id))
+      .where(and(...filters))
+      .orderBy(asc(listItems.position))
+    return { name: list.name, items: await enrichItems(records.map((row) => row.items)) }
+  })
+
 const listMembershipInput = z.object({
   itemId: z.number().int(),
   listSlug: z.string().min(1).max(120),
@@ -1022,14 +1075,6 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
 
     const rows: Array<{ title: string; slug?: string; items: Item[] }> = []
     const itemsById = new Map(allItems.map((item) => [item.id, item]))
-    const namedLists: Array<{
-      slug: string
-      title: string
-      allowedTypes: Item["type"][]
-    }> = [
-      { slug: "watchlist", title: "Watchlist", allowedTypes: ["movie", "tv"] },
-      { slug: "reading-list", title: "Reading list", allowedTypes: ["book"] },
-    ]
     for (const { slug, title, allowedTypes } of namedLists) {
       const rowItems = memberships.flatMap((membership) => {
         const item = itemsById.get(membership.itemId)

@@ -1,27 +1,57 @@
 "use client"
 
-import { Link, useRouter } from "@tanstack/react-router"
-import { BookOpenIcon, FilmIcon, HouseIcon, LogInIcon, LogOutIcon, SearchIcon, TvIcon } from "lucide-react"
+import { Link, useLocation, useRouter } from "@tanstack/react-router"
+import { BookOpenIcon, ChevronRightIcon, FilmIcon, HouseIcon, LogInIcon, LogOutIcon, SearchIcon, TvIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getAdminStatus, logout } from "@/server/items"
 import { CatalogCommand } from "@/components/catalog-command"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarRail,
+  SidebarHeader, SidebarMenu, SidebarMenuAction, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub,
+  SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail,
 } from "@/components/ui/sidebar"
 
 const navigation = [
   { title: "Home", to: "/", icon: HouseIcon },
-  { title: "Books", to: "/books", icon: BookOpenIcon },
-  { title: "Movies", to: "/movies", icon: FilmIcon },
-  { title: "TV", to: "/tv", icon: TvIcon },
+  {
+    title: "Books",
+    to: "/books",
+    icon: BookOpenIcon,
+    items: [{ title: "Reading list", to: "/books/list/reading-list" }],
+  },
+  {
+    title: "Movies",
+    to: "/movies",
+    icon: FilmIcon,
+    items: [{ title: "Watchlist", to: "/movies/list/watchlist" }],
+  },
+  {
+    title: "TV",
+    to: "/tv",
+    icon: TvIcon,
+    items: [{ title: "Watchlist", to: "/tv/list/watchlist" }],
+  },
 ] as const
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const location = useLocation()
   const router = useRouter()
   const [admin, setAdmin] = useState(false)
+  const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>({})
   const [searchOpen, setSearchOpen] = useState(false)
   useEffect(() => { getAdminStatus().then(setAdmin).catch(() => setAdmin(false)) }, [])
+  useEffect(() => {
+    const currentParent = navigation.find((item) =>
+      "items" in item &&
+      (item.items.some((subItem) => location.pathname === subItem.to) ||
+        location.pathname === item.to)
+    )
+    if (currentParent && "items" in currentParent) {
+      setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
+    }
+  }, [location.pathname])
+
   async function signOut() {
     await logout()
     setAdmin(false)
@@ -41,9 +71,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent><SidebarMenu>
             <SidebarMenuItem><SidebarMenuButton onClick={() => setSearchOpen(true)} tooltip="Search"><SearchIcon /><span>Search</span></SidebarMenuButton></SidebarMenuItem>
-            {navigation.map((item) => <SidebarMenuItem key={item.to}>
-            <SidebarMenuButton render={<Link to={item.to} />} tooltip={item.title}><item.icon /><span>{item.title}</span></SidebarMenuButton>
-            </SidebarMenuItem>)}
+            {navigation.map((item) => {
+              if (!("items" in item)) {
+                return <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton isActive={location.pathname === item.to} render={<Link to={item.to} />} tooltip={item.title}><item.icon /><span>{item.title}</span></SidebarMenuButton>
+                </SidebarMenuItem>
+              }
+
+              const isOnBranch = location.pathname === item.to ||
+                item.items.some((subItem) => location.pathname === subItem.to)
+              return <Collapsible
+                className="group/collapsible"
+                key={item.to}
+                onOpenChange={(open) => setOpenNavigation((navigation) => ({ ...navigation, [item.to]: open }))}
+                open={openNavigation[item.to] ?? isOnBranch}
+              >
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={location.pathname === item.to} render={<Link to={item.to} />} tooltip={item.title}><item.icon /><span>{item.title}</span></SidebarMenuButton>
+                  <CollapsibleTrigger render={<SidebarMenuAction aria-label={`Toggle ${item.title} navigation`} />}>
+                    <ChevronRightIcon className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => <SidebarMenuSubItem key={subItem.to}>
+                        <SidebarMenuSubButton isActive={location.pathname === subItem.to} render={<Link to={subItem.to} />}>
+                          <span>{subItem.title}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>)}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            })}
           </SidebarMenu></SidebarGroupContent>
         </SidebarGroup>
         {admin && <SidebarGroup>
