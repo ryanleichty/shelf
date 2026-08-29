@@ -1,4 +1,4 @@
-import { Link, createFileRoute, notFound, useRouter } from "@tanstack/react-router"
+import { Link, createFileRoute, notFound, useCanGoBack, useRouter } from "@tanstack/react-router"
 import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/item/$slug")({
 
 function ItemDetail() {
   const item = Route.useLoaderData()
+  const canGoBack = useCanGoBack()
   const router = useRouter()
   return (
     <main className="container mx-auto max-w-5xl px-4 py-10">
@@ -48,7 +49,7 @@ function ItemDetail() {
         <Link
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           onClick={(event) => {
-            if (hasInAppHistory()) {
+            if (canGoBack) {
               event.preventDefault()
               router.history.back()
             }
@@ -181,14 +182,6 @@ function ItemDetail() {
         </div>
       </article>
     </main>
-  )
-}
-
-function hasInAppHistory() {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.history.state?.__TSR_index === "number" &&
-    window.history.state.__TSR_index > 0
   )
 }
 
