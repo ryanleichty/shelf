@@ -44,11 +44,12 @@ export function isAgentToken(value: string | null | undefined) {
 }
 
 export function verifyPassword(password: string) {
-  const expected = process.env.ADMIN_PASSWORD
+  const expected = process.env.ADMIN_PASSWORD?.trim()
+  const presented = password.trim()
   if (!expected) return false
   return (
-    password.length === expected.length &&
-    timingSafeEqual(Buffer.from(password), Buffer.from(expected))
+    presented.length === expected.length &&
+    timingSafeEqual(Buffer.from(presented), Buffer.from(expected))
   )
 }
 

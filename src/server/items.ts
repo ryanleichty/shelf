@@ -895,7 +895,14 @@ export const login = createServerFn({ method: "POST" })
     }
     if (!verifyPassword(data.password))
       return { ok: false, error: "That password doesn’t open this shelf." }
-    startAdminSession()
+    try {
+      startAdminSession()
+    } catch {
+      return {
+        ok: false,
+        error: "Couldn’t start a session. Check SESSION_SECRET / ADMIN_PASSWORD.",
+      }
+    }
     return { ok: true, error: "" }
   })
 

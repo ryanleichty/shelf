@@ -1,4 +1,3 @@
-import { mkdirSync } from "node:fs"
 import { createClient } from "@libsql/client"
 import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
@@ -6,21 +5,29 @@ import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 
 const isEphemeral = !process.env.TURSO_DATABASE_URL
-if (isEphemeral) mkdirSync("/tmp", { recursive: true })
 const url = process.env.TURSO_DATABASE_URL ?? "file:/tmp/shelf.db"
 
-const client = createClient({
-  url,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-})
+const client = import.meta.env.SSR
+  ? createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    })
+  : null
 
-export const db = drizzle({ client, schema })
+export const db = import.meta.env.SSR
+  ? drizzle({ client: client!, schema })
+  : (undefined as unknown as ReturnType<typeof drizzle<typeof schema>>)
+
+function getClient() {
+  if (!client) throw new Error("Database access is only available on the server.")
+  return client
+}
 
 let setupPromise: Promise<void> | undefined
 
 export function ensureDatabase() {
   setupPromise ??= (async () => {
-    await client.execute(`
+    await getClient().execute(`
       CREATE TABLE IF NOT EXISTS items (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
@@ -43,37 +50,39 @@ export function ensureDatabase() {
         updated_at TEXT NOT NULL
       )
     `)
-    const columns = await client.execute("PRAGMA table_info(items)")
+    const columns = await getClient().execute("PRAGMA table_info(items)")
     if (!columns.rows.some((column) => column.name === "status")) {
-      await client.execute(
+      await getClient().execute(
         "ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'"
       )
     }
     if (!columns.rows.some((column) => column.name === "open_library_key")) {
-      await client.execute("ALTER TABLE items ADD COLUMN open_library_key TEXT")
+      await getClient().execute(
+        "ALTER TABLE items ADD COLUMN open_library_key TEXT"
+      )
     }
     if (!columns.rows.some((column) => column.name === "tmdb_id")) {
-      await client.execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
+      await getClient().execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
     }
     if (!columns.rows.some((column) => column.name === "borrower")) {
-      await client.execute("ALTER TABLE items ADD COLUMN borrower TEXT")
+      await getClient().execute("ALTER TABLE items ADD COLUMN borrower TEXT")
     }
     if (!columns.rows.some((column) => column.name === "loaned_at")) {
-      await client.execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
+      await getClient().execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
     }
     if (!columns.rows.some((column) => column.name === "format")) {
-      await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
+      await getClient().execute("ALTER TABLE items ADD COLUMN format TEXT")
     }
     if (!columns.rows.some((column) => column.name === "edition")) {
-      await client.execute("ALTER TABLE items ADD COLUMN edition TEXT")
+      await getClient().execute("ALTER TABLE items ADD COLUMN edition TEXT")
     }
     if (!columns.rows.some((column) => column.name === "genres"))
-      await client.execute(
+      await getClient().execute(
         "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
       )
     if (!isEphemeral) return
     const now = new Date().toISOString()
-    const count = await client.execute("SELECT COUNT(*) AS count FROM items")
+    const count = await getClient().execute("SELECT COUNT(*) AS count FROM items")
     if (Number(count.rows[0]?.count ?? 0) === 0) {
       await db
         .insert(schema.items)
