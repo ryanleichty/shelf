@@ -20,11 +20,15 @@ function TVList() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
   const { items, name } = Route.useLoaderData()
-  return <ListCatalog
-    items={items}
-    name={name}
-    onQueryChange={(query) => navigate({ search: { query: query || undefined } })}
-    query={search.query}
-    type="tv"
-  />
+  return (
+    <ListCatalog
+      items={items}
+      name={name}
+      onQueryChange={(query) =>
+        navigate({ search: { query: query || undefined } })
+      }
+      query={search.query}
+      type="tv"
+    />
+  )
 }

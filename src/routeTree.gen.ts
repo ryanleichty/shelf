@@ -24,6 +24,9 @@ import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
+import { Route as BooksListSlugRouteImport } from './routes/books.list.$slug'
+import { Route as MoviesListSlugRouteImport } from './routes/movies.list.$slug'
+import { Route as TvListSlugRouteImport } from './routes/tv.list.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,12 +103,27 @@ const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiItemsRoute,
 } as any)
+const BooksListSlugRoute = BooksListSlugRouteImport.update({
+  id: '/list/$slug',
+  path: '/list/$slug',
+  getParentRoute: () => BooksRoute,
+} as any)
+const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
+  id: '/list/$slug',
+  path: '/list/$slug',
+  getParentRoute: () => MoviesRoute,
+} as any)
+const TvListSlugRoute = TvListSlugRouteImport.update({
+  id: '/list/$slug',
+  path: '/list/$slug',
+  getParentRoute: () => TvRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/books': typeof BooksRoute
-  '/movies': typeof MoviesRoute
-  '/tv': typeof TvRoute
+  '/books': typeof BooksRouteWithChildren
+  '/movies': typeof MoviesRouteWithChildren
+  '/tv': typeof TvRouteWithChildren
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -117,12 +135,15 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/list/$slug': typeof BooksListSlugRoute
+  '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/tv/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/books': typeof BooksRoute
-  '/movies': typeof MoviesRoute
-  '/tv': typeof TvRoute
+  '/books': typeof BooksRouteWithChildren
+  '/movies': typeof MoviesRouteWithChildren
+  '/tv': typeof TvRouteWithChildren
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -134,13 +155,16 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/list/$slug': typeof BooksListSlugRoute
+  '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/tv/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/books': typeof BooksRoute
-  '/movies': typeof MoviesRoute
-  '/tv': typeof TvRoute
+  '/books': typeof BooksRouteWithChildren
+  '/movies': typeof MoviesRouteWithChildren
+  '/tv': typeof TvRouteWithChildren
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -152,6 +176,9 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/list/$slug': typeof BooksListSlugRoute
+  '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/tv/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +198,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/list/$slug'
+    | '/movies/list/$slug'
+    | '/tv/list/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +218,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/list/$slug'
+    | '/movies/list/$slug'
+    | '/tv/list/$slug'
   id:
     | '__root__'
     | '/'
@@ -205,13 +238,16 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/list/$slug'
+    | '/movies/list/$slug'
+    | '/tv/list/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BooksRoute: typeof BooksRoute
-  MoviesRoute: typeof MoviesRoute
-  TvRoute: typeof TvRoute
+  BooksRoute: typeof BooksRouteWithChildren
+  MoviesRoute: typeof MoviesRouteWithChildren
+  TvRoute: typeof TvRouteWithChildren
   AdminIdRoute: typeof AdminIdRoute
   AdminImportRoute: typeof AdminImportRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -330,8 +366,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiItemsSyncRouteImport
       parentRoute: typeof ApiItemsRoute
     }
+    '/books/list/$slug': {
+      id: '/books/list/$slug'
+      path: '/list/$slug'
+      fullPath: '/books/list/$slug'
+      preLoaderRoute: typeof BooksListSlugRouteImport
+      parentRoute: typeof BooksRoute
+    }
+    '/movies/list/$slug': {
+      id: '/movies/list/$slug'
+      path: '/list/$slug'
+      fullPath: '/movies/list/$slug'
+      preLoaderRoute: typeof MoviesListSlugRouteImport
+      parentRoute: typeof MoviesRoute
+    }
+    '/tv/list/$slug': {
+      id: '/tv/list/$slug'
+      path: '/list/$slug'
+      fullPath: '/tv/list/$slug'
+      preLoaderRoute: typeof TvListSlugRouteImport
+      parentRoute: typeof TvRoute
+    }
   }
 }
+
+interface BooksRouteChildren {
+  BooksListSlugRoute: typeof BooksListSlugRoute
+}
+
+const BooksRouteChildren: BooksRouteChildren = {
+  BooksListSlugRoute: BooksListSlugRoute,
+}
+
+const BooksRouteWithChildren = BooksRoute._addFileChildren(BooksRouteChildren)
+
+interface MoviesRouteChildren {
+  MoviesListSlugRoute: typeof MoviesListSlugRoute
+}
+
+const MoviesRouteChildren: MoviesRouteChildren = {
+  MoviesListSlugRoute: MoviesListSlugRoute,
+}
+
+const MoviesRouteWithChildren =
+  MoviesRoute._addFileChildren(MoviesRouteChildren)
+
+interface TvRouteChildren {
+  TvListSlugRoute: typeof TvListSlugRoute
+}
+
+const TvRouteChildren: TvRouteChildren = {
+  TvListSlugRoute: TvListSlugRoute,
+}
+
+const TvRouteWithChildren = TvRoute._addFileChildren(TvRouteChildren)
 
 interface ApiItemsRouteChildren {
   ApiItemsIdRoute: typeof ApiItemsIdRoute
@@ -349,9 +437,9 @@ const ApiItemsRouteWithChildren = ApiItemsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BooksRoute: BooksRoute,
-  MoviesRoute: MoviesRoute,
-  TvRoute: TvRoute,
+  BooksRoute: BooksRouteWithChildren,
+  MoviesRoute: MoviesRouteWithChildren,
+  TvRoute: TvRouteWithChildren,
   AdminIdRoute: AdminIdRoute,
   AdminImportRoute: AdminImportRoute,
   AdminLoginRoute: AdminLoginRoute,

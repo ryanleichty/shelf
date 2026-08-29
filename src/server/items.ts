@@ -185,24 +185,27 @@ export const importItems = createServerFn({ method: "POST" })
         }
         const slug = await uniqueSlug(resolved.slug, data.edition)
         const now = new Date().toISOString()
-        const [created] = await db.insert(items).values({
-          slug,
-          type: data.type,
-          status: "owned",
-          title: resolved.title,
-          creator: resolved.creator,
-          year: resolved.year ?? 0,
-          coverImageUrl:
-            (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
-          openLibraryKey: data.type === "book" ? match.id : null,
-          tmdbId: data.type === "book" ? null : match.id,
-          format: data.format || null,
-          edition: normalizeEdition(data.edition),
-          notes: "",
-          acquiredAt: null,
-          createdAt: now,
-          updatedAt: now,
-        }).returning({ id: items.id })
+        const [created] = await db
+          .insert(items)
+          .values({
+            slug,
+            type: data.type,
+            status: "owned",
+            title: resolved.title,
+            creator: resolved.creator,
+            year: resolved.year ?? 0,
+            coverImageUrl:
+              (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
+            openLibraryKey: data.type === "book" ? match.id : null,
+            tmdbId: data.type === "book" ? null : match.id,
+            format: data.format || null,
+            edition: normalizeEdition(data.edition),
+            notes: "",
+            acquiredAt: null,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning({ id: items.id })
         await replaceItemTags(created.id, {
           genres: resolved.genres,
           keywords: resolved.keywords,
@@ -430,7 +433,9 @@ export async function upsertTags(
 ) {
   const table = kind === "genre" ? genres : keywords
   const joins = kind === "genre" ? itemGenres : itemKeywords
-  const normalized = [...new Set(names.map((name) => name.trim()).filter(Boolean))]
+  const normalized = [
+    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
+  ]
   await db.delete(joins).where(eq(joins.itemId, itemId))
   for (const name of normalized) {
     const slug = slugify(name)
@@ -439,7 +444,10 @@ export async function upsertTags(
       .insert(table)
       .values({ slug, name })
       .onConflictDoNothing({ target: table.slug })
-    const [tag] = await db.select({ id: table.id }).from(table).where(eq(table.slug, slug))
+    const [tag] = await db
+      .select({ id: table.id })
+      .from(table)
+      .where(eq(table.slug, slug))
     if (!tag) continue
     if (kind === "genre") {
       await db
@@ -483,7 +491,8 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   ])
   const namesById = (rows: Array<{ itemId: number; name: string }>) => {
     const grouped = new Map<number, Array<{ itemId: number; name: string }>>()
-    for (const row of rows) grouped.set(row.itemId, [...(grouped.get(row.itemId) ?? []), row])
+    for (const row of rows)
+      grouped.set(row.itemId, [...(grouped.get(row.itemId) ?? []), row])
     return grouped
   }
   const genreNames = namesById(genreRows)
@@ -582,7 +591,10 @@ export const getCollectionResult = createServerFn({ method: "GET" })
   })
 
 export function normalizeOpenLibraryWorkKey(key: string) {
-  const workId = key.trim().replace(/^\/?works\//, "").replace(/^\//, "")
+  const workId = key
+    .trim()
+    .replace(/^\/?works\//, "")
+    .replace(/^\//, "")
   return `/works/${workId}`
 }
 
@@ -629,7 +641,8 @@ export async function getCollectionResultById(data: {
   const response = await fetch(url)
   if (response.status === 404)
     throw new Error(`Provider 404: TMDB ${data.type} ${data.id} was not found.`)
-  if (!response.ok) throw new Error(`TMDB could not load ${data.type} ${data.id}.`)
+  if (!response.ok)
+    throw new Error(`TMDB could not load ${data.type} ${data.id}.`)
   const result = (await response.json()) as {
     title?: string
     name?: string
@@ -638,7 +651,10 @@ export async function getCollectionResultById(data: {
     poster_path?: string | null
     overview?: string
     genres?: Array<{ name?: string }>
-    keywords?: { keywords?: Array<{ name?: string }>; results?: Array<{ name?: string }> }
+    keywords?: {
+      keywords?: Array<{ name?: string }>
+      results?: Array<{ name?: string }>
+    }
     created_by?: Array<{ name?: string }>
     credits?: { crew?: Array<{ job?: string; name?: string }> }
   }
@@ -670,8 +686,10 @@ export async function getCollectionResultById(data: {
       result.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ?? [],
     description: result.overview ?? "",
     keywords:
-      (data.type === "tv" ? result.keywords?.results : result.keywords?.keywords)
-        ?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
+      (data.type === "tv"
+        ? result.keywords?.results
+        : result.keywords?.keywords
+      )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
     slug: slugify(title),
   }
 }
@@ -692,7 +710,10 @@ export type ProviderSyncResult = {
   changes?: Partial<
     Record<
       keyof SyncedFields,
-      { before: string | number | string[] | null; after: string | number | string[] | null }
+      {
+        before: string | number | string[] | null
+        after: string | number | string[] | null
+      }
     >
   >
 }
@@ -701,8 +722,7 @@ export async function syncItemFromProvider(
   item: Item | ItemRecord,
   dryRun = false
 ): Promise<ProviderSyncResult> {
-  const syncedItem =
-    "genres" in item ? item : (await enrichItems([item]))[0]!
+  const syncedItem = "genres" in item ? item : (await enrichItems([item]))[0]!
   const providerId =
     syncedItem.type === "book" ? syncedItem.openLibraryKey : syncedItem.tmdbId
   if (!providerId)
@@ -719,12 +739,19 @@ export async function syncItemFromProvider(
 
   const changes = changedFields(syncedItem, metadata)
   if (!Object.keys(changes).length)
-    return { itemId: syncedItem.id, slug: syncedItem.slug, skipped: "Already up to date." }
+    return {
+      itemId: syncedItem.id,
+      slug: syncedItem.slug,
+      skipped: "Already up to date.",
+    }
   if (!dryRun) {
-    const { genres: nextGenres, keywords: nextKeywords, ...itemFields } =
-      Object.fromEntries(
-        Object.entries(changes).map(([field, change]) => [field, change.after])
-      ) as SyncedFields
+    const {
+      genres: nextGenres,
+      keywords: nextKeywords,
+      ...itemFields
+    } = Object.fromEntries(
+      Object.entries(changes).map(([field, change]) => [field, change.after])
+    ) as SyncedFields
     await db
       .update(items)
       .set({
@@ -772,7 +799,10 @@ async function getTmdbSyncMetadata(
     first_air_date?: string
     overview?: string
     genres?: Array<{ name?: string }>
-    keywords?: { keywords?: Array<{ name?: string }>; results?: Array<{ name?: string }> }
+    keywords?: {
+      keywords?: Array<{ name?: string }>
+      results?: Array<{ name?: string }>
+    }
     created_by?: Array<{ name?: string }>
     credits?: { crew?: Array<{ job?: string; name?: string }> }
   }
@@ -805,8 +835,10 @@ async function getTmdbSyncMetadata(
       result.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ?? [],
     description: result.overview ?? "",
     keywords:
-      (type === "tv" ? result.keywords?.results : result.keywords?.keywords)
-        ?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
+      (type === "tv"
+        ? result.keywords?.results
+        : result.keywords?.keywords
+      )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
   }
 }
 
@@ -867,7 +899,14 @@ function changedFields(
   metadata: SyncedFields
 ): NonNullable<ProviderSyncResult["changes"]> {
   const changes: NonNullable<ProviderSyncResult["changes"]> = {}
-  for (const field of ["title", "creator", "year", "genres", "description", "keywords"] as const) {
+  for (const field of [
+    "title",
+    "creator",
+    "year",
+    "genres",
+    "description",
+    "keywords",
+  ] as const) {
     const next = metadata[field]
     if (next === undefined) continue
     const previous = item[field]
@@ -920,7 +959,9 @@ export const getItems = createServerFn({ method: "GET" })
         .map((term) => `${term}*`)
         .join(" AND ")
       if (search)
-        filters.push(sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`)
+        filters.push(
+          sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`
+        )
     }
     const records = await db
       .select()
@@ -948,15 +989,32 @@ export const getItemsByTag = createServerFn({ method: "GET" })
       .innerJoin(joins, eq(joins.itemId, items.id))
       .where(
         data.kind === "genre"
-          ? eq(itemGenres.genreId, (
-              await db.select({ id: genres.id }).from(genres).where(eq(genres.slug, data.slug)).limit(1)
-            )[0]!.id)
-          : eq(itemKeywords.keywordId, (
-              await db.select({ id: keywords.id }).from(keywords).where(eq(keywords.slug, data.slug)).limit(1)
-            )[0]!.id)
+          ? eq(
+              itemGenres.genreId,
+              (
+                await db
+                  .select({ id: genres.id })
+                  .from(genres)
+                  .where(eq(genres.slug, data.slug))
+                  .limit(1)
+              )[0]!.id
+            )
+          : eq(
+              itemKeywords.keywordId,
+              (
+                await db
+                  .select({ id: keywords.id })
+                  .from(keywords)
+                  .where(eq(keywords.slug, data.slug))
+                  .limit(1)
+              )[0]!.id
+            )
       )
       .orderBy(asc(items.title))
-    return { name: tag.name, items: await enrichItems(records.map((row) => row.items)) }
+    return {
+      name: tag.name,
+      items: await enrichItems(records.map((row) => row.items)),
+    }
   })
 
 const namedLists: Array<{
@@ -969,11 +1027,13 @@ const namedLists: Array<{
 ]
 
 export const getItemsByList = createServerFn({ method: "GET" })
-  .validator(z.object({
-    listSlug: z.string(),
-    type: z.enum(itemTypes),
-    query: z.string().max(100).optional(),
-  }))
+  .validator(
+    z.object({
+      listSlug: z.string(),
+      type: z.enum(itemTypes),
+      query: z.string().max(100).optional(),
+    })
+  )
   .handler(async ({ data }) => {
     await ensureDatabase()
     const namedList = namedLists.find((list) => list.slug === data.listSlug)
@@ -986,10 +1046,7 @@ export const getItemsByList = createServerFn({ method: "GET" })
       .limit(1)
     if (!list) return null
 
-    const filters = [
-      eq(listItems.listId, list.id),
-      eq(items.type, data.type),
-    ]
+    const filters = [eq(listItems.listId, list.id), eq(items.type, data.type)]
     if (data.query?.trim()) {
       const search = data.query
         .trim()
@@ -999,7 +1056,9 @@ export const getItemsByList = createServerFn({ method: "GET" })
         .map((term) => `${term}*`)
         .join(" AND ")
       if (search) {
-        filters.push(sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`)
+        filters.push(
+          sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`
+        )
       }
     }
 
@@ -1009,7 +1068,10 @@ export const getItemsByList = createServerFn({ method: "GET" })
       .innerJoin(listItems, eq(listItems.itemId, items.id))
       .where(and(...filters))
       .orderBy(asc(listItems.position))
-    return { name: list.name, items: await enrichItems(records.map((row) => row.items)) }
+    return {
+      name: list.name,
+      items: await enrichItems(records.map((row) => row.items)),
+    }
   })
 
 const listMembershipInput = z.object({
@@ -1053,7 +1115,9 @@ export const removeItemFromList = createServerFn({ method: "POST" })
     if (!list) return { ok: true }
     await db
       .delete(listItems)
-      .where(and(eq(listItems.listId, list.id), eq(listItems.itemId, data.itemId)))
+      .where(
+        and(eq(listItems.listId, list.id), eq(listItems.itemId, data.itemId))
+      )
     return { ok: true }
   })
 
@@ -1098,8 +1162,10 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
     return [
       ...rows,
       ...[...genres.entries()]
-        .sort(([leftName, leftItems], [rightName, rightItems]) =>
-          rightItems.length - leftItems.length || leftName.localeCompare(rightName)
+        .sort(
+          ([leftName, leftItems], [rightName, rightItems]) =>
+            rightItems.length - leftItems.length ||
+            leftName.localeCompare(rightName)
         )
         .map(([title, rowItems]) => ({
           title,
@@ -1137,7 +1203,8 @@ export const getItemBySlug = createServerFn({ method: "GET" })
       ...item,
       targetList: {
         slug: listSlug,
-        name: list?.name ?? (item.type === "book" ? "Reading list" : "Watchlist"),
+        name:
+          list?.name ?? (item.type === "book" ? "Reading list" : "Watchlist"),
         containsItem: Boolean(membership),
       },
     }
@@ -1252,7 +1319,8 @@ export const login = createServerFn({ method: "POST" })
     } catch {
       return {
         ok: false,
-        error: "Couldn’t start a session. Check SESSION_SECRET / ADMIN_PASSWORD.",
+        error:
+          "Couldn’t start a session. Check SESSION_SECRET / ADMIN_PASSWORD.",
       }
     }
     return { ok: true, error: "" }
