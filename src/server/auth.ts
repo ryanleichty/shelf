@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto"
-import { getCookie, setCookie } from "@tanstack/react-start/server"
+import { getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server"
 
 const COOKIE_NAME = "shelf-admin"
 const sessionSecret = () => process.env.SESSION_SECRET ?? process.env.ADMIN_PASSWORD
@@ -25,17 +25,19 @@ export function requireAdmin() {
 }
 
 export function isAgentRequest(request: Request) {
-  const value = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+  const header = request.headers.get("authorization") ?? getRequestHeader("authorization")
+  const value = header?.replace(/^Bearer\s+/i, "")
   return isAgentToken(value)
 }
 
 export function isAgentToken(value: string | null | undefined) {
-  const token = process.env.SHELF_AGENT_TOKEN
+  const token = process.env.SHELF_AGENT_TOKEN?.trim()
+  const presented = value?.trim()
   return Boolean(
     token &&
-      value &&
-      value.length === token.length &&
-      timingSafeEqual(Buffer.from(value), Buffer.from(token)),
+      presented &&
+      presented.length === token.length &&
+      timingSafeEqual(Buffer.from(presented), Buffer.from(token)),
   )
 }
 
