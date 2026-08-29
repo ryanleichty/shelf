@@ -343,7 +343,7 @@ export function ItemForm({
           <FieldLabel htmlFor="status">Status</FieldLabel>
           <Select
             onValueChange={(value) => {
-              const nextStatus = value as
+              const nextStatus = (value ?? "") as
                 "" | "borrowed" | "reading" | "watching"
               setStatus(nextStatus)
               if (nextStatus !== "borrowed")
@@ -385,7 +385,7 @@ export function ItemForm({
         <Field>
           <FieldLabel htmlFor="format">Format</FieldLabel>
           <Select
-            onValueChange={(value) => updateValue("format", value)}
+            onValueChange={(value) => updateValue("format", value ?? "")}
             value={values.format}
           >
             <SelectTrigger id="format" name="format">
@@ -412,7 +412,7 @@ export function ItemForm({
           <Field>
             <FieldLabel htmlFor="edition">Edition</FieldLabel>
             <Select
-              onValueChange={(value) => updateValue("edition", value)}
+              onValueChange={(value) => updateValue("edition", value ?? "")}
               value={values.edition}
             >
               <SelectTrigger id="edition" name="edition">
