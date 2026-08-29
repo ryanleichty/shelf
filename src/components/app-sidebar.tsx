@@ -178,10 +178,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         render={
                           <SidebarMenuAction
                             aria-label={`Toggle ${item.title} navigation`}
+                            className="rounded-full"
                           />
                         }
                       >
-                        <ChevronRightIcon className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        <span className="inline-flex transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 [&>svg]:size-4">
+                          <ChevronRightIcon />
+                        </span>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
