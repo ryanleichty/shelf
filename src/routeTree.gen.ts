@@ -26,9 +26,15 @@ import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
+import { Route as BooksDecadeDecadeRouteImport } from './routes/books_.decade.$decade'
 import { Route as BooksListSlugRouteImport } from './routes/books_.list.$slug'
+import { Route as BooksYearYearRouteImport } from './routes/books_.year.$year'
+import { Route as MoviesDecadeDecadeRouteImport } from './routes/movies_.decade.$decade'
 import { Route as MoviesListSlugRouteImport } from './routes/movies_.list.$slug'
+import { Route as MoviesYearYearRouteImport } from './routes/movies_.year.$year'
+import { Route as TvDecadeDecadeRouteImport } from './routes/tv_.decade.$decade'
 import { Route as TvListSlugRouteImport } from './routes/tv_.list.$slug'
+import { Route as TvYearYearRouteImport } from './routes/tv_.year.$year'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -115,9 +121,24 @@ const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiItemsRoute,
 } as any)
+const BooksDecadeDecadeRoute = BooksDecadeDecadeRouteImport.update({
+  id: '/books_/decade/$decade',
+  path: '/books/decade/$decade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BooksListSlugRoute = BooksListSlugRouteImport.update({
   id: '/books_/list/$slug',
   path: '/books/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksYearYearRoute = BooksYearYearRouteImport.update({
+  id: '/books_/year/$year',
+  path: '/books/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesDecadeDecadeRoute = MoviesDecadeDecadeRouteImport.update({
+  id: '/movies_/decade/$decade',
+  path: '/movies/decade/$decade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
@@ -125,9 +146,24 @@ const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
   path: '/movies/list/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoviesYearYearRoute = MoviesYearYearRouteImport.update({
+  id: '/movies_/year/$year',
+  path: '/movies/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvDecadeDecadeRoute = TvDecadeDecadeRouteImport.update({
+  id: '/tv_/decade/$decade',
+  path: '/tv/decade/$decade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TvListSlugRoute = TvListSlugRouteImport.update({
   id: '/tv_/list/$slug',
   path: '/tv/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvYearYearRoute = TvYearYearRouteImport.update({
+  id: '/tv_/year/$year',
+  path: '/tv/year/$year',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -149,9 +185,15 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/decade/$decade': typeof BooksDecadeDecadeRoute
   '/books/list/$slug': typeof BooksListSlugRoute
+  '/books/year/$year': typeof BooksYearYearRoute
+  '/movies/decade/$decade': typeof MoviesDecadeDecadeRoute
   '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/movies/year/$year': typeof MoviesYearYearRoute
+  '/tv/decade/$decade': typeof TvDecadeDecadeRoute
   '/tv/list/$slug': typeof TvListSlugRoute
+  '/tv/year/$year': typeof TvYearYearRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,9 +213,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/decade/$decade': typeof BooksDecadeDecadeRoute
   '/books/list/$slug': typeof BooksListSlugRoute
+  '/books/year/$year': typeof BooksYearYearRoute
+  '/movies/decade/$decade': typeof MoviesDecadeDecadeRoute
   '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/movies/year/$year': typeof MoviesYearYearRoute
+  '/tv/decade/$decade': typeof TvDecadeDecadeRoute
   '/tv/list/$slug': typeof TvListSlugRoute
+  '/tv/year/$year': typeof TvYearYearRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -194,9 +242,15 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books_/decade/$decade': typeof BooksDecadeDecadeRoute
   '/books_/list/$slug': typeof BooksListSlugRoute
+  '/books_/year/$year': typeof BooksYearYearRoute
+  '/movies_/decade/$decade': typeof MoviesDecadeDecadeRoute
   '/movies_/list/$slug': typeof MoviesListSlugRoute
+  '/movies_/year/$year': typeof MoviesYearYearRoute
+  '/tv_/decade/$decade': typeof TvDecadeDecadeRoute
   '/tv_/list/$slug': typeof TvListSlugRoute
+  '/tv_/year/$year': typeof TvYearYearRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -218,9 +272,15 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/decade/$decade'
     | '/books/list/$slug'
+    | '/books/year/$year'
+    | '/movies/decade/$decade'
     | '/movies/list/$slug'
+    | '/movies/year/$year'
+    | '/tv/decade/$decade'
     | '/tv/list/$slug'
+    | '/tv/year/$year'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -240,9 +300,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/decade/$decade'
     | '/books/list/$slug'
+    | '/books/year/$year'
+    | '/movies/decade/$decade'
     | '/movies/list/$slug'
+    | '/movies/year/$year'
+    | '/tv/decade/$decade'
     | '/tv/list/$slug'
+    | '/tv/year/$year'
   id:
     | '__root__'
     | '/'
@@ -262,9 +328,15 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books_/decade/$decade'
     | '/books_/list/$slug'
+    | '/books_/year/$year'
+    | '/movies_/decade/$decade'
     | '/movies_/list/$slug'
+    | '/movies_/year/$year'
+    | '/tv_/decade/$decade'
     | '/tv_/list/$slug'
+    | '/tv_/year/$year'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -283,9 +355,15 @@ export interface RootRouteChildren {
   ItemSlugRoute: typeof ItemSlugRoute
   KeywordSlugRoute: typeof KeywordSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  BooksDecadeDecadeRoute: typeof BooksDecadeDecadeRoute
   BooksListSlugRoute: typeof BooksListSlugRoute
+  BooksYearYearRoute: typeof BooksYearYearRoute
+  MoviesDecadeDecadeRoute: typeof MoviesDecadeDecadeRoute
   MoviesListSlugRoute: typeof MoviesListSlugRoute
+  MoviesYearYearRoute: typeof MoviesYearYearRoute
+  TvDecadeDecadeRoute: typeof TvDecadeDecadeRoute
   TvListSlugRoute: typeof TvListSlugRoute
+  TvYearYearRoute: typeof TvYearYearRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,11 +487,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiItemsSyncRouteImport
       parentRoute: typeof ApiItemsRoute
     }
+    '/books_/decade/$decade': {
+      id: '/books_/decade/$decade'
+      path: '/books/decade/$decade'
+      fullPath: '/books/decade/$decade'
+      preLoaderRoute: typeof BooksDecadeDecadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/books_/list/$slug': {
       id: '/books_/list/$slug'
       path: '/books/list/$slug'
       fullPath: '/books/list/$slug'
       preLoaderRoute: typeof BooksListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books_/year/$year': {
+      id: '/books_/year/$year'
+      path: '/books/year/$year'
+      fullPath: '/books/year/$year'
+      preLoaderRoute: typeof BooksYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movies_/decade/$decade': {
+      id: '/movies_/decade/$decade'
+      path: '/movies/decade/$decade'
+      fullPath: '/movies/decade/$decade'
+      preLoaderRoute: typeof MoviesDecadeDecadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/movies_/list/$slug': {
@@ -423,11 +522,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoviesListSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/movies_/year/$year': {
+      id: '/movies_/year/$year'
+      path: '/movies/year/$year'
+      fullPath: '/movies/year/$year'
+      preLoaderRoute: typeof MoviesYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv_/decade/$decade': {
+      id: '/tv_/decade/$decade'
+      path: '/tv/decade/$decade'
+      fullPath: '/tv/decade/$decade'
+      preLoaderRoute: typeof TvDecadeDecadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tv_/list/$slug': {
       id: '/tv_/list/$slug'
       path: '/tv/list/$slug'
       fullPath: '/tv/list/$slug'
       preLoaderRoute: typeof TvListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv_/year/$year': {
+      id: '/tv_/year/$year'
+      path: '/tv/year/$year'
+      fullPath: '/tv/year/$year'
+      preLoaderRoute: typeof TvYearYearRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -463,9 +583,15 @@ const rootRouteChildren: RootRouteChildren = {
   ItemSlugRoute: ItemSlugRoute,
   KeywordSlugRoute: KeywordSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
+  BooksDecadeDecadeRoute: BooksDecadeDecadeRoute,
   BooksListSlugRoute: BooksListSlugRoute,
+  BooksYearYearRoute: BooksYearYearRoute,
+  MoviesDecadeDecadeRoute: MoviesDecadeDecadeRoute,
   MoviesListSlugRoute: MoviesListSlugRoute,
+  MoviesYearYearRoute: MoviesYearYearRoute,
+  TvDecadeDecadeRoute: TvDecadeDecadeRoute,
   TvListSlugRoute: TvListSlugRoute,
+  TvYearYearRoute: TvYearYearRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

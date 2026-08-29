@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router"
 import { YearBrowse } from "@/components/year-browse"
 import { getItemsForYearBrowse } from "@/server/items"
 
-export const Route = createFileRoute("/tv/decade/$decade")({
+export const Route = createFileRoute("/tv_/decade/$decade")({
   loader: async ({ params }) => {
     const match = params.decade.match(/^(\d{4})s$/)
     if (!match) throw notFound()
