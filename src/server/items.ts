@@ -150,7 +150,7 @@ const slugify = (title: string) =>
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {
-    requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
     if (data.type === "book") {
       const url = new URL("https://openlibrary.org/search.json")
       url.searchParams.set("q", data.query)
@@ -214,7 +214,7 @@ export const searchCollection = createServerFn({ method: "GET" })
 export const getCollectionResult = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
-    requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
     if (data.type === "book") {
       const response = await fetch(`https://openlibrary.org${data.id}.json`, {
         headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },

@@ -19,6 +19,7 @@ import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminNewRouteImport } from './routes/admin/new'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
+import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,11 @@ const ItemSlugRoute = ItemSlugRouteImport.update({
   path: '/item/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiItemsIdRoute = ApiItemsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiItemsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -79,9 +85,10 @@ export interface FileRoutesByFullPath {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
-  '/api/items': typeof ApiItemsRoute
+  '/api/items': typeof ApiItemsRouteWithChildren
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/items/$id': typeof ApiItemsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,9 +98,10 @@ export interface FileRoutesByTo {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
-  '/api/items': typeof ApiItemsRoute
+  '/api/items': typeof ApiItemsRouteWithChildren
   '/item/$slug': typeof ItemSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/api/items/$id': typeof ApiItemsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,9 +112,10 @@ export interface FileRoutesById {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
-  '/api/items': typeof ApiItemsRoute
+  '/api/items': typeof ApiItemsRouteWithChildren
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/items/$id': typeof ApiItemsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/item/$slug'
     | '/admin/'
+    | '/api/items/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/item/$slug'
     | '/admin'
+    | '/api/items/$id'
   id:
     | '__root__'
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/item/$slug'
     | '/admin/'
+    | '/api/items/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -155,7 +167,7 @@ export interface RootRouteChildren {
   AdminImportRoute: typeof AdminImportRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
-  ApiItemsRoute: typeof ApiItemsRoute
+  ApiItemsRoute: typeof ApiItemsRouteWithChildren
   ItemSlugRoute: typeof ItemSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -232,8 +244,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ItemSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/items/$id': {
+      id: '/api/items/$id'
+      path: '/$id'
+      fullPath: '/api/items/$id'
+      preLoaderRoute: typeof ApiItemsIdRouteImport
+      parentRoute: typeof ApiItemsRoute
+    }
   }
 }
+
+interface ApiItemsRouteChildren {
+  ApiItemsIdRoute: typeof ApiItemsIdRoute
+}
+
+const ApiItemsRouteChildren: ApiItemsRouteChildren = {
+  ApiItemsIdRoute: ApiItemsIdRoute,
+}
+
+const ApiItemsRouteWithChildren = ApiItemsRoute._addFileChildren(
+  ApiItemsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -243,7 +274,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminImportRoute: AdminImportRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
-  ApiItemsRoute: ApiItemsRoute,
+  ApiItemsRoute: ApiItemsRouteWithChildren,
   ItemSlugRoute: ItemSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

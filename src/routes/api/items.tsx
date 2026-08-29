@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { eq } from "drizzle-orm"
+import { eq, or } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db, ensureDatabase } from "@/server/db"
-import { importItems } from "@/server/items"
+import { getCollectionResult, searchCollection } from "@/server/items"
+import { storeCover } from "@/server/covers"
 import { items, itemTypes } from "@/server/schema"
 
 const unauthorized = () => Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -22,9 +23,33 @@ export const Route = createFileRoute("/api/items")({
       if (!isAgentRequest(request)) return unauthorized()
       const body = z.object({ dryRun: z.boolean().optional(), items: z.array(z.object({ type: z.enum(itemTypes).default("movie"), query: z.string().min(1), format: z.string().optional(), status: z.enum(["", "reading", "borrowed"]).optional(), year: z.number().optional(), tmdbId: z.string().optional(), openLibraryKey: z.string().optional() })).max(40) }).safeParse(await request.json())
       if (!body.success) return Response.json({ error: "Invalid body" }, { status: 400 })
-      if (body.data.dryRun) return Response.json({ added: [], skipped: [], failed: [], needsReview: body.data.items.map((item) => ({ query: item.query, candidates: [] })) })
-      const result = await importItems({ data: { type: body.data.items[0]?.type ?? "movie", format: (body.data.items[0]?.format ?? "") as "" | "hardcover" | "paperback" | "blu-ray" | "dvd" | "other", queries: body.data.items.map((item) => item.query) } })
-      return Response.json({ ...result, added: result.added, needsReview: [] })
+      const added: Array<{ title: string; slug: string; id?: number }> = [], skipped: Array<{ query: string; reason: string }> = [], failed: Array<{ query: string; reason: string }> = [], needsReview: Array<{ query: string; candidates: unknown[] }> = []
+      for (const input of body.data.items) {
+        try {
+          const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
+          const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
+          const title = input.query.replace(/(?:\(|\s)\d{4}\)?\s*$/, "").trim()
+          const matches = await searchCollection({ data: { type: input.type, query: title } })
+          const ranked = [...matches].sort((a, b) => Number(b.year === year) - Number(a.year === year) || Number(normalize(a.title) === normalize(title)) - Number(normalize(b.title) === normalize(title)))
+          const top = ranked[0]
+          const exact = top && (normalize(top.title) === normalize(title) || (year !== undefined && top.year === year))
+          if (!top || !exact || (ranked[1] && ranked[1].year === top.year && normalize(ranked[1].title) !== normalize(title))) {
+            needsReview.push({ query: input.query, candidates: ranked.slice(0, 5) }); continue
+          }
+          const providerId = input.type === "movie" ? (input.tmdbId ?? top.id) : (input.openLibraryKey ?? top.id)
+          const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, slugify(top.title)), input.type === "movie" ? eq(items.tmdbId, providerId) : eq(items.openLibraryKey, providerId))).limit(1)
+          if (existing.length) { skipped.push({ query: input.query, reason: "Already on Shelf" }); continue }
+          const resolved = input.type === "movie" ? await getCollectionResult({ data: { type: "movie", id: providerId } }) : { ...top, slug: slugify(top.title) }
+          if (body.data.dryRun) { added.push({ title: resolved.title, slug: resolved.slug }); continue }
+          const now = new Date().toISOString()
+          const [created] = await db.insert(items).values({ slug: resolved.slug, type: input.type, status: input.status || "owned", title: resolved.title, creator: resolved.creator, year: resolved.year ?? 0, format: input.format || null, coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null, tmdbId: input.type === "movie" ? providerId : null, openLibraryKey: input.type === "book" ? providerId : null, notes: "", createdAt: now, updatedAt: now }).returning({ id: items.id, title: items.title, slug: items.slug })
+          added.push(created)
+        } catch (error) { failed.push({ query: input.query, reason: error instanceof Error ? error.message : "Import failed" }) }
+      }
+      return Response.json({ added, skipped, failed, needsReview })
     },
   } },
 })
+
+function normalize(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, "") }
+function slugify(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") }
