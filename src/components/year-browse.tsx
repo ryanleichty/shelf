@@ -44,7 +44,7 @@ export function YearBrowse({
         <div className="flex flex-wrap gap-2">
           {decades.map((decade) => (
             <PeriodLink
-              active={mode === "decade" && decade === value}
+              active={decade === activeDecade}
               decade={decade}
               key={decade}
               type={type}
