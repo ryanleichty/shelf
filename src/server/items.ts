@@ -485,15 +485,23 @@ export const getCollectionResult = createServerFn({ method: "GET" })
     return getCollectionResultById(data)
   })
 
-async function getCollectionResultById(data: {
+export function normalizeOpenLibraryWorkKey(key: string) {
+  const workId = key.trim().replace(/^\/?works\//, "").replace(/^\//, "")
+  return `/works/${workId}`
+}
+
+export async function getCollectionResultById(data: {
   id: string
   type: "book" | "movie" | "tv"
 }): Promise<LookupResult & { slug: string }> {
   if (data.type === "book") {
-    const response = await fetch(`https://openlibrary.org${data.id}.json`, {
+    const id = normalizeOpenLibraryWorkKey(data.id)
+    const response = await fetch(`https://openlibrary.org${id}.json`, {
       headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
     })
-    if (!response.ok) throw new Error("Open Library could not load that book.")
+    if (response.status === 404)
+      throw new Error(`Provider 404: Open Library work ${id} was not found.`)
+    if (!response.ok) throw new Error(`Open Library could not load ${id}.`)
     const book = (await response.json()) as {
       title?: string
       first_publish_date?: string
@@ -501,7 +509,7 @@ async function getCollectionResultById(data: {
     }
     const title = book.title ?? "Untitled"
     return {
-      id: data.id,
+      id,
       type: "book",
       title,
       creator: "Unknown author",
@@ -521,10 +529,9 @@ async function getCollectionResultById(data: {
   url.searchParams.set("append_to_response", "credits")
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
-  if (!response.ok)
-    throw new Error(
-      `TMDB could not load that ${data.type}. Check TMDB_API_KEY.`
-    )
+  if (response.status === 404)
+    throw new Error(`Provider 404: TMDB ${data.type} ${data.id} was not found.`)
+  if (!response.ok) throw new Error(`TMDB could not load ${data.type} ${data.id}.`)
   const result = (await response.json()) as {
     title?: string
     name?: string
