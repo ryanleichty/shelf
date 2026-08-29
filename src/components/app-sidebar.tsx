@@ -80,10 +80,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const currentParent = navigation.find(
       (item) =>
         "items" in item &&
-        (item.items.some(
+        item.items.some(
           (subItem) => location.pathname === `${item.to}/list/${subItem.slug}`
-        ) ||
-          location.pathname === item.to)
+        )
     )
     if (currentParent && "items" in currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
@@ -147,12 +146,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   )
                 }
 
-                const isOnBranch =
-                  location.pathname === item.to ||
-                  item.items.some(
-                    (subItem) =>
-                      location.pathname === `${item.to}/list/${subItem.slug}`
-                  )
+                const isOnListSubpage = item.items.some(
+                  (subItem) =>
+                    location.pathname === `${item.to}/list/${subItem.slug}`
+                )
                 return (
                   <Collapsible
                     className="group/collapsible"
@@ -163,7 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         [item.to]: open,
                       }))
                     }
-                    open={openNavigation[item.to] ?? isOnBranch}
+                    open={openNavigation[item.to] ?? isOnListSubpage}
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -178,13 +175,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         render={
                           <SidebarMenuAction
                             aria-label={`Toggle ${item.title} navigation`}
-                            className="rounded-full"
+                            className="rounded-full transition-transform duration-200 aria-expanded:rotate-90 data-[state=open]:rotate-90 data-open:rotate-90"
                           />
                         }
                       >
-                        <span className="inline-flex transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 [&>svg]:size-4">
-                          <ChevronRightIcon />
-                        </span>
+                        <ChevronRightIcon />
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
