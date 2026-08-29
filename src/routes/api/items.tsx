@@ -4,9 +4,11 @@ import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db, ensureDatabase } from "@/server/db"
 import {
+  getCollectionResultById,
   itemExists,
   lookupCollection,
   normalizeTitle,
+  normalizeOpenLibraryWorkKey,
   uniqueSlug,
 } from "@/server/items"
 import { storeCover } from "@/server/covers"
@@ -79,46 +81,6 @@ export const Route = createFileRoute("/api/items")({
           needsReview: Array<{ query: string; candidates: unknown[] }> = []
         for (const input of body.data.items) {
           try {
-            const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
-            const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
-            const title = input.query
-              .replace(/(?:\(|\s)\d{4}\)?\s*$/, "")
-              .trim()
-            const matches = await lookupCollection({
-              type: input.type,
-              query: title,
-            })
-            const ranked = [...matches].sort(
-              (a, b) =>
-                Number(b.year === year) - Number(a.year === year) ||
-                Number(normalizeTitle(a.title) === normalizeTitle(title)) -
-                  Number(normalizeTitle(b.title) === normalizeTitle(title))
-            )
-            const exactTitles = ranked.filter(
-              (candidate) =>
-                normalizeTitle(candidate.title) === normalizeTitle(title)
-            )
-            const yearMatches =
-              year === undefined
-                ? exactTitles
-                : exactTitles.filter((candidate) => candidate.year === year)
-            const top =
-              yearMatches.length === 1
-                ? yearMatches[0]
-                : year === undefined && exactTitles.length === 1
-                  ? exactTitles[0]
-                  : undefined
-            if (!top) {
-              needsReview.push({
-                query: input.query,
-                candidates: ranked.slice(0, 5),
-              })
-              continue
-            }
-            const providerId =
-              input.type === "book"
-                ? (input.openLibraryKey ?? top.id)
-                : (input.tmdbId ?? top.id)
             if (input.type === "book" && input.edition) {
               failed.push({
                 query: input.query,
@@ -126,6 +88,57 @@ export const Route = createFileRoute("/api/items")({
               })
               continue
             }
+            const pinnedId =
+              input.type === "book"
+                ? input.openLibraryKey?.trim()
+                  ? normalizeOpenLibraryWorkKey(input.openLibraryKey)
+                  : undefined
+                : input.tmdbId?.trim() || undefined
+            const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
+            const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
+            const title = input.query
+              .replace(/(?:\(|\s)\d{4}\)?\s*$/, "")
+              .trim()
+            let top
+            if (pinnedId) {
+              top = await getCollectionResultById({
+                type: input.type,
+                id: pinnedId,
+              })
+            } else {
+              const matches = await lookupCollection({
+                type: input.type,
+                query: title,
+              })
+              const ranked = [...matches].sort(
+                (a, b) =>
+                  Number(b.year === year) - Number(a.year === year) ||
+                  Number(normalizeTitle(a.title) === normalizeTitle(title)) -
+                    Number(normalizeTitle(b.title) === normalizeTitle(title))
+              )
+              const exactTitles = ranked.filter(
+                (candidate) =>
+                  normalizeTitle(candidate.title) === normalizeTitle(title)
+              )
+              const yearMatches =
+                year === undefined
+                  ? exactTitles
+                  : exactTitles.filter((candidate) => candidate.year === year)
+              top =
+                yearMatches.length === 1
+                  ? yearMatches[0]
+                  : year === undefined && exactTitles.length === 1
+                    ? exactTitles[0]
+                    : undefined
+              if (!top) {
+                needsReview.push({
+                  query: input.query,
+                  candidates: ranked.slice(0, 5),
+                })
+                continue
+              }
+            }
+            const providerId = pinnedId ?? top.id
             if (
               await itemExists({
                 type: input.type,
