@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListToggle } from "@/components/item-list-toggle"
@@ -42,21 +42,31 @@ function ItemDetail() {
   const item = Route.useLoaderData()
   return (
     <main className="container mx-auto max-w-5xl px-4 py-10">
-      <Link
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        to={
-          item.type === "book"
-            ? "/books"
-            : item.type === "tv"
-              ? "/tv"
-              : "/movies"
-        }
-      >
-        <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
-        {item.type === "book" ? "books" : item.type === "tv" ? "TV" : "movies"}
-      </Link>
+      <div className="flex items-start justify-between gap-4">
+        <Link
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          to={
+            item.type === "book"
+              ? "/books"
+              : item.type === "tv"
+                ? "/tv"
+                : "/movies"
+          }
+        >
+          <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
+          {item.type === "book" ? "books" : item.type === "tv" ? "TV" : "movies"}
+        </Link>
+        <ItemAdminActions
+          id={item.id}
+          providerId={
+            item.type === "book" ? item.openLibraryKey : item.tmdbId
+          }
+          title={item.title}
+          type={item.type}
+        />
+      </div>
       <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
-        <div className="aspect-[2/3] overflow-hidden rounded-lg border bg-muted">
+        <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted">
           {item.coverImageUrl ? (
             <img
               alt={item.title}
@@ -69,6 +79,7 @@ function ItemDetail() {
               {item.type}
             </span>
           )}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[inherit] border" />
         </div>
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -95,14 +106,6 @@ function ItemDetail() {
             listName={item.targetList.name}
             listSlug={item.targetList.slug}
           />
-          <ItemAdminActions
-            id={item.id}
-            providerId={
-              item.type === "book" ? item.openLibraryKey : item.tmdbId
-            }
-            title={item.title}
-            type={item.type}
-          />
           {item.genres.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {item.genres.map((genre) => (
@@ -112,29 +115,24 @@ function ItemDetail() {
               ))}
             </div>
           )}
-          {item.keywords.length > 0 && (
-            <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              {item.keywords.map((keyword) => (
-                <Link
-                  className="hover:text-foreground hover:underline"
-                  key={keyword}
-                  params={{ slug: slugify(keyword) }}
-                  to="/keyword/$slug"
-                >
-                  {keyword}
-                </Link>
-              ))}
-            </p>
-          )}
           {item.description && (
             <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
               {item.description}
             </p>
           )}
+          {item.keywords.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {item.keywords.map((keyword) => (
+                <Badge key={keyword} render={<Link params={{ slug: slugify(keyword) }} to="/keyword/$slug" />} variant="secondary">
+                  {titleCase(keyword)}
+                </Badge>
+              ))}
+            </div>
+          )}
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">
             {(item.format || item.edition) && (
-              <p className="flex gap-2">
-                {item.format && <span>{formatLabel(item.format)}</span>}
+              <p className="flex items-center gap-2">
+                {item.format && <><FormatIcon format={item.format} /><span>{formatLabel(item.format)}</span></>}
                 {item.edition && <span>{editionLabel(item.edition)}</span>}
               </p>
             )}
@@ -165,6 +163,26 @@ function editionLabel(edition: string) {
   return edition === "director-cut"
     ? "Director's Cut"
     : edition[0].toUpperCase() + edition.slice(1)
+}
+
+function titleCase(value: string) {
+  return value.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase())
+}
+
+function FormatIcon({ format }: { format: string }) {
+  if (format === "blu-ray" || format === "dvd") {
+    return (
+      <svg aria-hidden="true" className="size-5 shrink-0" fill="none" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="7.25" stroke="currentColor" strokeWidth="1.25" />
+        <circle cx="10" cy="10" fill="currentColor" r="1.25" />
+        <path d="M4.75 5.1h5.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.25" />
+        <text fill="currentColor" fontFamily="sans-serif" fontSize="4.5" fontWeight="700" textAnchor="middle" x="10" y="17">
+          {format === "blu-ray" ? "BR" : "DVD"}
+        </text>
+      </svg>
+    )
+  }
+  return <BookOpenIcon aria-hidden="true" className="size-4 shrink-0" />
 }
 
 function slugify(value: string) {
