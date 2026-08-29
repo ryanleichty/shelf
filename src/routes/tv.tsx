@@ -17,5 +17,5 @@ function TV() {
   const items = Route.useLoaderData()
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  return <main className="container mx-auto max-w-6xl px-4 py-10"><section className="mb-8 flex items-end justify-between gap-4"><div><p className="text-sm text-muted-foreground">The television shelf</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">TV</h1></div><Button render={<Link search={{ type: "tv" }} to="/admin/new" />}><PlusIcon /> Add TV</Button></section><OutNow items={items} /><Catalog items={items} onQueryChange={(query) => navigate({ search: { query: query || undefined } })} query={search.query} type="tv" /></main>
+  return <main className="container mx-auto max-w-6xl px-4 py-10"><section className="mb-8 flex items-end justify-between gap-4"><div><p className="text-sm text-muted-foreground">The television shelf</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">TV</h1></div><Button render={<Link search={{ type: "tv" }} to="/admin/new" />}><PlusIcon /> Add TV</Button></section><OutNow items={items} /><Catalog items={items} onQueryChange={(query) => navigate({ replace: true, search: { query: query || undefined } })} query={search.query} type="tv" /></main>
 }

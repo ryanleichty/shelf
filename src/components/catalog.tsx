@@ -1,4 +1,5 @@
 import { Search } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { CoverTile } from "@/components/cover-tile"
 import type { Item } from "@/server/schema"
@@ -14,7 +15,19 @@ export function Catalog({
   query?: string
   onQueryChange?: (query: string) => void
 }) {
+  const [draftQuery, setDraftQuery] = useState(query ?? "")
   const visibleItems = items.filter((item) => item.type === type)
+
+  useEffect(() => {
+    setDraftQuery(query ?? "")
+  }, [query])
+
+  useEffect(() => {
+    if (draftQuery === (query ?? "")) return
+
+    const timeoutId = window.setTimeout(() => onQueryChange?.(draftQuery), 300)
+    return () => window.clearTimeout(timeoutId)
+  }, [draftQuery, onQueryChange, query])
 
   return (
     <>
@@ -28,9 +41,9 @@ export function Catalog({
           <span className="sr-only">Search the collection</span>
           <Input
             className="pl-8"
-            onChange={(event) => onQueryChange?.(event.target.value)}
+            onChange={(event) => setDraftQuery(event.target.value)}
             placeholder="Search the shelf"
-            value={query ?? ""}
+            value={draftQuery}
           />
         </label>
       </div>
