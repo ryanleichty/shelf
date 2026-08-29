@@ -4,6 +4,11 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { nitro } from "nitro/vite"
+import { fileURLToPath } from "node:url"
+
+const externalStoreSelectorShim = fileURLToPath(
+  new URL("./src/lib/use-sync-external-store-with-selector.ts", import.meta.url)
+)
 
 const config = defineConfig({
   resolve: {
@@ -14,8 +19,7 @@ const config = defineConfig({
       },
       {
         find: /^use-sync-external-store\/shim\/with-selector(?:\.js)?$/,
-        replacement:
-          "/workspace/src/lib/use-sync-external-store-with-selector.ts",
+        replacement: externalStoreSelectorShim,
       },
     ],
     tsconfigPaths: true,
