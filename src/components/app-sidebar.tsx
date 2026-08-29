@@ -175,7 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         render={
                           <SidebarMenuAction
                             aria-label={`Toggle ${item.title} navigation`}
-                            className="rounded-full transition-transform duration-200 data-[state=open]:rotate-90 data-open:rotate-90 aria-expanded:rotate-90"
+                            className="rounded-full transition-transform duration-200 aria-expanded:rotate-90 data-[state=open]:rotate-90 data-open:rotate-90"
                           />
                         }
                       >
