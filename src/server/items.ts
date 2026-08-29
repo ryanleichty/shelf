@@ -1,8 +1,9 @@
 import { and, asc, eq, like, or } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { db, ensureDatabase } from "./db"
-import { requireAdmin } from "./auth"
+import { isAgentToken, requireAdmin } from "./auth"
 import { storeCover } from "./covers"
 import { items, itemStatuses, itemTypes } from "./schema"
 
@@ -52,7 +53,7 @@ export const importItems = createServerFn({ method: "POST" })
     queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
   }))
   .handler(async ({ data }) => {
-    requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
     await ensureDatabase()
     const added: Array<{ title: string; slug: string }> = []
     const skipped: Array<{ query: string; reason: string }> = []

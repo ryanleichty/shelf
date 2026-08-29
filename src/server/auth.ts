@@ -24,6 +24,21 @@ export function requireAdmin() {
   if (!isAdmin()) throw new Error("Unauthorized")
 }
 
+export function isAgentRequest(request: Request) {
+  const value = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+  return isAgentToken(value)
+}
+
+export function isAgentToken(value: string | null | undefined) {
+  const token = process.env.SHELF_AGENT_TOKEN
+  return Boolean(
+    token &&
+      value &&
+      value.length === token.length &&
+      timingSafeEqual(Buffer.from(value), Buffer.from(token)),
+  )
+}
+
 export function verifyPassword(password: string) {
   const expected = process.env.ADMIN_PASSWORD
   if (!expected) return false

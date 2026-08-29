@@ -17,6 +17,7 @@ import { Route as AdminIdRouteImport } from './routes/admin/$id'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminNewRouteImport } from './routes/admin/new'
+import { Route as ApiItemsRouteImport } from './routes/api/items'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const AdminNewRoute = AdminNewRouteImport.update({
   path: '/admin/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiItemsRoute = ApiItemsRouteImport.update({
+  id: '/api/items',
+  path: '/api/items',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemSlugRoute = ItemSlugRouteImport.update({
   id: '/item/$slug',
   path: '/item/$slug',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/api/items': typeof ApiItemsRoute
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/api/items': typeof ApiItemsRoute
   '/item/$slug': typeof ItemSlugRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
+  '/api/items': typeof ApiItemsRoute
   '/item/$slug': typeof ItemSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/login'
     | '/admin/new'
+    | '/api/items'
     | '/item/$slug'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/login'
     | '/admin/new'
+    | '/api/items'
     | '/item/$slug'
     | '/admin'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/admin/login'
     | '/admin/new'
+    | '/api/items'
     | '/item/$slug'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   AdminImportRoute: typeof AdminImportRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
+  ApiItemsRoute: typeof ApiItemsRoute
   ItemSlugRoute: typeof ItemSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/items': {
+      id: '/api/items'
+      path: '/api/items'
+      fullPath: '/api/items'
+      preLoaderRoute: typeof ApiItemsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$slug': {
       id: '/item/$slug'
       path: '/item/$slug'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminImportRoute: AdminImportRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
+  ApiItemsRoute: ApiItemsRoute,
   ItemSlugRoute: ItemSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
