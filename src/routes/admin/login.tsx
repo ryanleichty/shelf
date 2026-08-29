@@ -22,14 +22,20 @@ function Login() {
     event.preventDefault()
     setBusy(true)
     setError("")
-    const password = new FormData(event.currentTarget).get("password")
-    const result = await login({ data: { password: String(password) } })
-    if (!result.ok) {
-      setError(result.error)
+    try {
+      const password = new FormData(event.currentTarget).get("password")
+      const result = await login({ data: { password: String(password) } })
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      await router.invalidate()
+      await router.navigate({ to: "/admin" })
+    } catch {
+      setError("Couldn’t sign in. Try again.")
+    } finally {
       setBusy(false)
-      return
     }
-    await router.navigate({ to: "/admin" })
   }
   return (
     <main className="container mx-auto flex min-h-[calc(100vh-4rem)] max-w-sm items-center px-4">
@@ -47,6 +53,8 @@ function Login() {
             <InputGroup>
               <InputGroupInput
                 autoFocus
+                aria-invalid={Boolean(error)}
+                autoComplete="current-password"
                 name="password"
                 required
                 type={isPasswordVisible ? "text" : "password"}
