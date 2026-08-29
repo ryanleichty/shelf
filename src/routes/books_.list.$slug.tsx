@@ -3,7 +3,7 @@ import { z } from "zod"
 import { ListCatalog } from "@/components/list-catalog"
 import { getItemsByList } from "@/server/items"
 
-export const Route = createFileRoute("/books/list/$slug")({
+export const Route = createFileRoute("/books_/list/$slug")({
   validateSearch: z.object({ query: z.string().optional() }),
   loaderDeps: ({ search }) => ({ query: search.query }),
   loader: async ({ deps, params }) => {
