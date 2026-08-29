@@ -5,6 +5,11 @@ import { BookmarkIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   addItemToList,
   getAdminStatus,
   removeItemFromList,
@@ -35,6 +40,10 @@ export function ItemListToggle({
 
   if (!admin) return null
 
+  const actionLabel = inList
+    ? `Remove from ${listName}`
+    : `Add to ${listName}`
+
   async function toggle() {
     setSaving(true)
     setError("")
@@ -57,15 +66,37 @@ export function ItemListToggle({
 
   return (
     <div className="mt-4">
-      <Button
-        aria-label={inList ? `In ${listName}` : `Add to ${listName}`}
-        disabled={saving}
-        onClick={toggle}
-        size="icon"
-        variant={inList ? "secondary" : "outline"}
-      >
-        <BookmarkIcon fill={inList ? "currentColor" : "none"} />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            saving ? (
+              <span className="inline-flex">
+                <Button
+                  aria-label={actionLabel}
+                  disabled
+                  onClick={toggle}
+                  size="icon"
+                  variant={inList ? "secondary" : "outline"}
+                >
+                  <BookmarkIcon fill={inList ? "currentColor" : "none"} />
+                </Button>
+              </span>
+            ) : (
+              <Button
+                aria-label={actionLabel}
+                onClick={toggle}
+                size="icon"
+                variant={inList ? "secondary" : "outline"}
+              >
+                <BookmarkIcon fill={inList ? "currentColor" : "none"} />
+              </Button>
+            )
+          }
+        />
+        <TooltipContent>
+          <p>{actionLabel}</p>
+        </TooltipContent>
+      </Tooltip>
       {error && (
         <p className="mt-2 text-sm text-destructive" role="alert">
           {error}
