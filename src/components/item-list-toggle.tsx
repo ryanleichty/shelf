@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "@tanstack/react-router"
+import { BookmarkIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,7 +28,9 @@ export function ItemListToggle({
   const [error, setError] = useState("")
 
   useEffect(() => {
-    getAdminStatus().then(setAdmin).catch(() => setAdmin(false))
+    getAdminStatus()
+      .then(setAdmin)
+      .catch(() => setAdmin(false))
   }, [])
 
   if (!admin) return null
@@ -53,13 +56,15 @@ export function ItemListToggle({
   }
 
   return (
-    <div className="mt-6">
-      <Button disabled={saving} onClick={toggle} variant={inList ? "secondary" : "outline"}>
-        {saving
-          ? "Saving…"
-          : inList
-            ? `In ${listName}`
-            : `Add to ${listName}`}
+    <div className="mt-4">
+      <Button
+        aria-label={inList ? `In ${listName}` : `Add to ${listName}`}
+        disabled={saving}
+        onClick={toggle}
+        size="icon"
+        variant={inList ? "secondary" : "outline"}
+      >
+        <BookmarkIcon fill={inList ? "currentColor" : "none"} />
       </Button>
       {error && (
         <p className="mt-2 text-sm text-destructive" role="alert">
