@@ -10,11 +10,13 @@ export function Catalog({
   type,
   query,
   onQueryChange,
+  rememberQuery = true,
 }: {
   items: Item[]
   type: Item["type"]
   query?: string
   onQueryChange?: (query: string) => void
+  rememberQuery?: boolean
 }) {
   const [draftQuery, setDraftQuery] = useState(query ?? "")
   const visibleItems = items.filter((item) => item.type === type)
@@ -24,8 +26,8 @@ export function Catalog({
   }, [query])
 
   useEffect(() => {
-    rememberCatalogQuery(type, query)
-  }, [query, type])
+    if (rememberQuery) rememberCatalogQuery(type, query)
+  }, [query, rememberQuery, type])
 
   useEffect(() => {
     if (draftQuery === (query ?? "")) return

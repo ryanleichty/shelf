@@ -24,6 +24,9 @@ import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
+import { Route as BooksListSlugRouteImport } from './routes/books_.list.$slug'
+import { Route as MoviesListSlugRouteImport } from './routes/movies_.list.$slug'
+import { Route as TvListSlugRouteImport } from './routes/tv_.list.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -100,6 +103,21 @@ const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => ApiItemsRoute,
 } as any)
+const BooksListSlugRoute = BooksListSlugRouteImport.update({
+  id: '/books_/list/$slug',
+  path: '/books/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
+  id: '/movies_/list/$slug',
+  path: '/movies/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvListSlugRoute = TvListSlugRouteImport.update({
+  id: '/tv_/list/$slug',
+  path: '/tv/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +135,9 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/list/$slug': typeof BooksListSlugRoute
+  '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/tv/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +155,9 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books/list/$slug': typeof BooksListSlugRoute
+  '/movies/list/$slug': typeof MoviesListSlugRoute
+  '/tv/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +176,9 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
+  '/books_/list/$slug': typeof BooksListSlugRoute
+  '/movies_/list/$slug': typeof MoviesListSlugRoute
+  '/tv_/list/$slug': typeof TvListSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +198,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/list/$slug'
+    | '/movies/list/$slug'
+    | '/tv/list/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +218,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books/list/$slug'
+    | '/movies/list/$slug'
+    | '/tv/list/$slug'
   id:
     | '__root__'
     | '/'
@@ -205,6 +238,9 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
+    | '/books_/list/$slug'
+    | '/movies_/list/$slug'
+    | '/tv_/list/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,6 +257,9 @@ export interface RootRouteChildren {
   ItemSlugRoute: typeof ItemSlugRoute
   KeywordSlugRoute: typeof KeywordSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  BooksListSlugRoute: typeof BooksListSlugRoute
+  MoviesListSlugRoute: typeof MoviesListSlugRoute
+  TvListSlugRoute: typeof TvListSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -330,6 +369,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiItemsSyncRouteImport
       parentRoute: typeof ApiItemsRoute
     }
+    '/books_/list/$slug': {
+      id: '/books_/list/$slug'
+      path: '/books/list/$slug'
+      fullPath: '/books/list/$slug'
+      preLoaderRoute: typeof BooksListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movies_/list/$slug': {
+      id: '/movies_/list/$slug'
+      path: '/movies/list/$slug'
+      fullPath: '/movies/list/$slug'
+      preLoaderRoute: typeof MoviesListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv_/list/$slug': {
+      id: '/tv_/list/$slug'
+      path: '/tv/list/$slug'
+      fullPath: '/tv/list/$slug'
+      preLoaderRoute: typeof TvListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -361,6 +421,9 @@ const rootRouteChildren: RootRouteChildren = {
   ItemSlugRoute: ItemSlugRoute,
   KeywordSlugRoute: KeywordSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
+  BooksListSlugRoute: BooksListSlugRoute,
+  MoviesListSlugRoute: MoviesListSlugRoute,
+  TvListSlugRoute: TvListSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
