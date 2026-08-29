@@ -25,9 +25,11 @@ export function requireAdmin() {
 }
 
 export function isAgentRequest(request: Request) {
-  const header = request.headers.get("authorization") ?? getRequestHeader("authorization")
-  const value = header?.replace(/^Bearer\s+/i, "")
-  return isAgentToken(value)
+  const headers = [
+    request.headers.get("authorization")?.trim(),
+    getRequestHeader("authorization")?.trim(),
+  ]
+  return headers.some((header) => isAgentToken(header?.replace(/^Bearer\s+/i, "").trim()))
 }
 
 export function isAgentToken(value: string | null | undefined) {

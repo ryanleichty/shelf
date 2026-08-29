@@ -31,18 +31,18 @@ function ItemDetail() {
   const item = Route.useLoaderData()
   return (
     <main className="container mx-auto max-w-5xl px-4 py-10">
-      <Link className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to={item.type === "book" ? "/books" : "/movies"}>
-        <ArrowLeft aria-hidden="true" size={15} /> Back to {item.type === "book" ? "books" : "movies"}
+      <Link className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" to={item.type === "book" ? "/books" : item.type === "tv" ? "/tv" : "/movies"}>
+        <ArrowLeft aria-hidden="true" size={15} /> Back to {item.type === "book" ? "books" : item.type === "tv" ? "TV" : "movies"}
       </Link>
       <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
         <div className="aspect-[2/3] overflow-hidden rounded-lg border bg-muted">
           {item.coverImageUrl ? <img alt={item.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" src={item.coverImageUrl} /> : <span className="flex h-full items-center justify-center text-sm text-muted-foreground">{item.type}</span>}
         </div>
         <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground"><span>{item.type} · {item.year}</span>{item.status !== "owned" && <Badge variant="outline">{item.status === "reading" ? "Reading" : "Borrowed"}</Badge>}</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><span>{item.type} · {item.year}</span>{item.status !== "owned" && <Badge variant="outline">{item.status === "reading" ? "Reading" : item.status === "watching" ? "Watching" : "Borrowed"}</Badge>}</div>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{item.title}</h1>
           <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
-          <ItemAdminActions id={item.id} title={item.title} type={item.type} />
+          <ItemAdminActions id={item.id} providerId={item.type === "book" ? item.openLibraryKey : item.tmdbId} title={item.title} type={item.type} />
           {item.genres.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{item.genres.map((genre) => <Badge key={genre} variant="secondary">{genre}</Badge>)}</div>}
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">{item.format && <p>{formatLabel(item.format)}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
         </div>

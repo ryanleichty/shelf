@@ -10,6 +10,8 @@ import {
   getCoverOptions,
   saveItem,
   searchCollection,
+  bookGenreOptions,
+  screenGenreOptions,
   type ItemInput,
   type LookupResult,
 } from "@/server/items"
@@ -39,7 +41,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     borrower: item?.borrower ?? "", loanedAt: item?.loanedAt ?? "", format: item?.format ?? "",
     genres: item?.genres ?? [],
   })
-  const genreOptions = type === "book" ? ["Fiction", "Nonfiction", "Science Fiction", "Fantasy", "Mystery", "Romance", "History", "Biography", "Young Adult", "Poetry", "Comics"] : ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"]
+  const genreOptions = type === "book" ? bookGenreOptions : screenGenreOptions
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -102,18 +104,17 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
   async function choose(result: LookupResult) {
     setSearchError("")
     try {
-      const resolved = result.type === "movie"
-        ? await getCollectionResult({ data: { id: result.id, type: "movie" } })
-        : { ...result, slug: toSlug(result.title) }
+      const resolved = await getCollectionResult({ data: { id: result.id, type: result.type } })
       setValues((current) => ({
         ...current,
         title: resolved.title,
-        creator: resolved.creator,
+        creator: resolved.creator === "Unknown author" ? result.creator : resolved.creator,
         year: resolved.year ? String(resolved.year) : "",
-        coverImageUrl: resolved.coverImageUrl,
+        coverImageUrl: current.coverImageUrl || resolved.coverImageUrl || result.coverImageUrl,
         slug: !current.slug || slugWasAutoFilled ? resolved.slug : current.slug,
+        genres: resolved.genres,
         openLibraryKey: result.type === "book" ? result.id : "",
-        tmdbId: result.type === "movie" ? result.id : "",
+        tmdbId: result.type === "book" ? "" : result.id,
       }))
       setCoversLoading(true)
       if (!values.slug || slugWasAutoFilled) setSlugWasAutoFilled(true)
@@ -182,10 +183,6 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
       <div className="form-footer"><Button render={<Link to="/admin" />} variant="outline">Cancel</Button><Button disabled={saving} type="submit">{saving ? "Saving…" : item ? "Save changes" : "Add to shelf"}</Button></div>
     </form>
   )
-}
-
-function toSlug(title: string) {
-  return title.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
 }
 
 function Field({ hint, label, ...props }: React.ComponentProps<typeof Input> & { label: string; hint?: string }) {
