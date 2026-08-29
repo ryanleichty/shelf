@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import {
   Combobox,
   ComboboxChips,
   ComboboxChip,
@@ -285,32 +292,47 @@ export function ItemForm({
           <p className="lookup-status">Details added below. Make them yours.</p>
         )}
       </section>
-      <div className="form-grid">
-        <Field
-          label="Title"
-          name="title"
-          onChange={(event) => updateValue("title", event.target.value)}
-          required
-          value={values.title}
-        />
-        <Field
-          label={type === "movie" ? "Director" : "Author / creator"}
-          name="creator"
-          onChange={(event) => updateValue("creator", event.target.value)}
-          required
-          value={values.creator}
-        />
-        <Field
-          hint="Lowercase words separated by hyphens."
-          label="Slug"
-          name="slug"
-          onChange={(event) => updateValue("slug", event.target.value)}
-          required
-          value={values.slug}
-        />
-        <label className="field">
-          <span>Status</span>
+      <FieldGroup className="form-grid">
+        <Field>
+          <FieldLabel htmlFor="title">Title</FieldLabel>
+          <Input
+            id="title"
+            name="title"
+            onChange={(event) => updateValue("title", event.target.value)}
+            required
+            value={values.title}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="creator">
+            {type === "movie" ? "Director" : "Author / creator"}
+          </FieldLabel>
+          <Input
+            id="creator"
+            name="creator"
+            onChange={(event) => updateValue("creator", event.target.value)}
+            required
+            value={values.creator}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="slug">Slug</FieldLabel>
+          <Input
+            id="slug"
+            name="slug"
+            onChange={(event) => updateValue("slug", event.target.value)}
+            required
+            value={values.slug}
+          />
+          <FieldDescription>
+            Lowercase words separated by hyphens.
+          </FieldDescription>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="status">Status</FieldLabel>
           <select
+            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            id="status"
             name="status"
             onChange={(event) => {
               const nextStatus = event.target.value as
@@ -330,19 +352,24 @@ export function ItemForm({
             {type === "tv" && <option value="watching">Watching</option>}
             <option value="borrowed">Borrowed</option>
           </select>
-        </label>
-        <Field
-          label="Year"
-          min="0"
-          name="year"
-          onChange={(event) => updateValue("year", event.target.value)}
-          required
-          type="number"
-          value={values.year}
-        />
-        <label className="field">
-          <span>Format</span>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="year">Year</FieldLabel>
+          <Input
+            id="year"
+            min="0"
+            name="year"
+            onChange={(event) => updateValue("year", event.target.value)}
+            required
+            type="number"
+            value={values.year}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="format">Format</FieldLabel>
           <select
+            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            id="format"
             name="format"
             onChange={(event) => updateValue("format", event.target.value)}
             value={values.format}
@@ -361,11 +388,13 @@ export function ItemForm({
             )}
             <option value="other">Other</option>
           </select>
-        </label>
+        </Field>
         {type !== "book" && (
-          <label className="field">
-            <span>Edition</span>
+          <Field>
+            <FieldLabel htmlFor="edition">Edition</FieldLabel>
             <select
+              className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              id="edition"
               name="edition"
               onChange={(event) => updateValue("edition", event.target.value)}
               value={values.edition}
@@ -375,10 +404,10 @@ export function ItemForm({
               <option value="extended">Extended</option>
               <option value="director-cut">Director&apos;s Cut</option>
             </select>
-          </label>
+          </Field>
         )}
-        <div className="field sm:col-span-2">
-          <span>Genres</span>
+        <Field className="sm:col-span-2">
+          <FieldLabel htmlFor="genres">Genres</FieldLabel>
           <Combobox
             items={genreOptions}
             multiple
@@ -391,7 +420,7 @@ export function ItemForm({
               <ComboboxValue>
                 {(genre) => <ComboboxChip key={genre}>{genre}</ComboboxChip>}
               </ComboboxValue>
-              <ComboboxChipsInput placeholder="Select genres…" />
+              <ComboboxChipsInput id="genres" placeholder="Select genres…" />
             </ComboboxChips>
             <ComboboxContent>
               <ComboboxEmpty>No genres found.</ComboboxEmpty>
@@ -404,18 +433,21 @@ export function ItemForm({
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
-        </div>
-        <Field
-          disabled={
-            coversLoading &&
-            Boolean(type === "book" ? values.openLibraryKey : values.tmdbId)
-          }
-          label="Cover image URL"
-          name="coverImageUrl"
-          onChange={(event) => updateValue("coverImageUrl", event.target.value)}
-          type="url"
-          value={values.coverImageUrl}
-        />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="coverImageUrl">Cover image URL</FieldLabel>
+          <Input
+            disabled={
+              coversLoading &&
+              Boolean(type === "book" ? values.openLibraryKey : values.tmdbId)
+            }
+            id="coverImageUrl"
+            name="coverImageUrl"
+            onChange={(event) => updateValue("coverImageUrl", event.target.value)}
+            type="url"
+            value={values.coverImageUrl}
+          />
+        </Field>
         {(type === "book" ? values.openLibraryKey : values.tmdbId) && (
           <div className="sm:col-span-2">
             <p className="mb-2 text-sm font-medium">Choose a cover</p>
@@ -454,47 +486,63 @@ export function ItemForm({
           </div>
         )}
         {type === "book" ? (
-          <Field
-            hint="Stored for future refreshes."
-            label="Open Library work key"
-            name="openLibraryKey"
-            onChange={(event) =>
-              updateValue("openLibraryKey", event.target.value)
-            }
-            value={values.openLibraryKey}
-          />
+          <Field>
+            <FieldLabel htmlFor="openLibraryKey">
+              Open Library work key
+            </FieldLabel>
+            <Input
+              id="openLibraryKey"
+              name="openLibraryKey"
+              onChange={(event) =>
+                updateValue("openLibraryKey", event.target.value)
+              }
+              value={values.openLibraryKey}
+            />
+            <FieldDescription>Stored for future refreshes.</FieldDescription>
+          </Field>
         ) : (
-          <Field
-            hint="Stored for future refreshes."
-            label="TMDB ID"
-            name="tmdbId"
-            onChange={(event) => updateValue("tmdbId", event.target.value)}
-            value={values.tmdbId}
-          />
+          <Field>
+            <FieldLabel htmlFor="tmdbId">TMDB ID</FieldLabel>
+            <Input
+              id="tmdbId"
+              name="tmdbId"
+              onChange={(event) => updateValue("tmdbId", event.target.value)}
+              value={values.tmdbId}
+            />
+            <FieldDescription>Stored for future refreshes.</FieldDescription>
+          </Field>
         )}
         {status === "borrowed" && (
           <>
-            <Field
-              label="With whom"
-              name="borrower"
-              onChange={(event) => updateValue("borrower", event.target.value)}
-              required
-              value={values.borrower}
-            />
-            <Field
-              label="Loaned out"
-              name="loanedAt"
-              onChange={(event) => updateValue("loanedAt", event.target.value)}
-              type="date"
-              value={values.loanedAt}
-            />
+            <Field>
+              <FieldLabel htmlFor="borrower">With whom</FieldLabel>
+              <Input
+                id="borrower"
+                name="borrower"
+                onChange={(event) =>
+                  updateValue("borrower", event.target.value)
+                }
+                required
+                value={values.borrower}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="loanedAt">Loaned out</FieldLabel>
+              <Input
+                id="loanedAt"
+                name="loanedAt"
+                onChange={(event) =>
+                  updateValue("loanedAt", event.target.value)
+                }
+                type="date"
+                value={values.loanedAt}
+              />
+            </Field>
           </>
         )}
-      </div>
+      </FieldGroup>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <FieldError>{error}</FieldError>
       )}
       <div className="form-footer">
         <Button render={<Link to="/admin" />} variant="outline">
@@ -505,19 +553,5 @@ export function ItemForm({
         </Button>
       </div>
     </form>
-  )
-}
-
-function Field({
-  hint,
-  label,
-  ...props
-}: React.ComponentProps<typeof Input> & { label: string; hint?: string }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <Input {...props} />
-      {hint && <small>{hint}</small>}
-    </label>
   )
 }
