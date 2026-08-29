@@ -7,6 +7,10 @@ import { isAgentToken, requireAdmin } from "./auth"
 import { storeCover } from "./covers"
 import {
   items,
+  authors,
+  directors,
+  itemAuthors,
+  itemDirectors,
   itemGenres,
   itemKeywords,
   genres,
@@ -210,6 +214,7 @@ export const importItems = createServerFn({ method: "POST" })
           genres: resolved.genres,
           keywords: resolved.keywords,
         })
+        await replaceItemCreators(created.id, data.type, resolved.creator)
         added.push({ title: resolved.title, slug })
       } catch (cause) {
         failed.push({
@@ -424,15 +429,29 @@ const slugify = (title: string) =>
 
 const normalizeEdition = (edition?: string | null) => edition?.trim() || null
 
-type TagKind = "genre" | "keyword"
+type TagKind = "genre" | "keyword" | "author" | "director"
 
 export async function upsertTags(
   itemId: number,
   kind: TagKind,
   names: string[]
 ) {
-  const table = kind === "genre" ? genres : keywords
-  const joins = kind === "genre" ? itemGenres : itemKeywords
+  const table =
+    kind === "genre"
+      ? genres
+      : kind === "keyword"
+        ? keywords
+        : kind === "author"
+          ? authors
+          : directors
+  const joins =
+    kind === "genre"
+      ? itemGenres
+      : kind === "keyword"
+        ? itemKeywords
+        : kind === "author"
+          ? itemAuthors
+          : itemDirectors
   const normalized = [
     ...new Set(names.map((name) => name.trim()).filter(Boolean)),
   ]
@@ -454,13 +473,42 @@ export async function upsertTags(
         .insert(itemGenres)
         .values({ itemId, genreId: tag.id })
         .onConflictDoNothing()
-    } else {
+    } else if (kind === "keyword") {
       await db
         .insert(itemKeywords)
         .values({ itemId, keywordId: tag.id })
         .onConflictDoNothing()
+    } else if (kind === "author") {
+      await db
+        .insert(itemAuthors)
+        .values({ itemId, authorId: tag.id })
+        .onConflictDoNothing()
+    } else {
+      await db
+        .insert(itemDirectors)
+        .values({ itemId, directorId: tag.id })
+        .onConflictDoNothing()
     }
   }
+}
+
+function parseCreatorNames(creator: string) {
+  return creator
+    .split(/,|\s+and\s+|\s+&\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
+
+async function replaceItemCreators(
+  itemId: number,
+  type: Item["type"],
+  creator: string
+) {
+  await upsertTags(
+    itemId,
+    type === "book" ? "author" : "director",
+    parseCreatorNames(creator)
+  )
 }
 
 async function replaceItemTags(
@@ -477,7 +525,7 @@ async function replaceItemTags(
 async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   if (!records.length) return []
   const itemIds = records.map((item) => item.id)
-  const [genreRows, keywordRows] = await Promise.all([
+  const [genreRows, keywordRows, authorRows, directorRows] = await Promise.all([
     db
       .select({ itemId: itemGenres.itemId, name: genres.name })
       .from(itemGenres)
@@ -488,6 +536,16 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
       .from(itemKeywords)
       .innerJoin(keywords, eq(itemKeywords.keywordId, keywords.id))
       .where(inArray(itemKeywords.itemId, itemIds)),
+    db
+      .select({ itemId: itemAuthors.itemId, name: authors.name })
+      .from(itemAuthors)
+      .innerJoin(authors, eq(itemAuthors.authorId, authors.id))
+      .where(inArray(itemAuthors.itemId, itemIds)),
+    db
+      .select({ itemId: itemDirectors.itemId, name: directors.name })
+      .from(itemDirectors)
+      .innerJoin(directors, eq(itemDirectors.directorId, directors.id))
+      .where(inArray(itemDirectors.itemId, itemIds)),
   ])
   const namesById = (rows: Array<{ itemId: number; name: string }>) => {
     const grouped = new Map<number, Array<{ itemId: number; name: string }>>()
@@ -497,10 +555,14 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   }
   const genreNames = namesById(genreRows)
   const keywordNames = namesById(keywordRows)
+  const authorNames = namesById(authorRows)
+  const directorNames = namesById(directorRows)
   return records.map((item) => ({
     ...item,
     genres: (genreNames.get(item.id) ?? []).map((tag) => tag.name),
     keywords: (keywordNames.get(item.id) ?? []).map((tag) => tag.name),
+    authors: (authorNames.get(item.id) ?? []).map((person) => person.name),
+    directors: (directorNames.get(item.id) ?? []).map((person) => person.name),
   }))
 }
 
@@ -738,12 +800,19 @@ export async function syncItemFromProvider(
       : await getTmdbSyncMetadata(syncedItem.type, providerId)
 
   const changes = changedFields(syncedItem, metadata)
-  if (!Object.keys(changes).length)
+  if (!Object.keys(changes).length) {
+    if (!dryRun)
+      await replaceItemCreators(
+        syncedItem.id,
+        syncedItem.type,
+        syncedItem.creator
+      )
     return {
       itemId: syncedItem.id,
       slug: syncedItem.slug,
       skipped: "Already up to date.",
     }
+  }
   if (!dryRun) {
     const {
       genres: nextGenres,
@@ -763,6 +832,11 @@ export async function syncItemFromProvider(
       genres: nextGenres,
       keywords: nextKeywords,
     })
+    await replaceItemCreators(
+      syncedItem.id,
+      syncedItem.type,
+      itemFields.creator ?? syncedItem.creator
+    )
   }
   return { itemId: syncedItem.id, slug: syncedItem.slug, changes }
 }
@@ -1013,6 +1087,49 @@ export const getItemsByTag = createServerFn({ method: "GET" })
       .orderBy(asc(items.title))
     return {
       name: tag.name,
+      items: await enrichItems(records.map((row) => row.items)),
+    }
+  })
+
+export const getItemsByPerson = createServerFn({ method: "GET" })
+  .validator(
+    z.object({ kind: z.enum(["author", "director"]), slug: z.string() })
+  )
+  .handler(async ({ data }) => {
+    await ensureDatabase()
+    if (data.kind === "author") {
+      const [author] = await db
+        .select({ id: authors.id, name: authors.name })
+        .from(authors)
+        .where(eq(authors.slug, data.slug))
+        .limit(1)
+      if (!author) return null
+      const records = await db
+        .select()
+        .from(items)
+        .innerJoin(itemAuthors, eq(itemAuthors.itemId, items.id))
+        .where(eq(itemAuthors.authorId, author.id))
+        .orderBy(asc(items.title))
+      return {
+        name: author.name,
+        items: await enrichItems(records.map((row) => row.items)),
+      }
+    }
+
+    const [director] = await db
+      .select({ id: directors.id, name: directors.name })
+      .from(directors)
+      .where(eq(directors.slug, data.slug))
+      .limit(1)
+    if (!director) return null
+    const records = await db
+      .select()
+      .from(items)
+      .innerJoin(itemDirectors, eq(itemDirectors.itemId, items.id))
+      .where(eq(itemDirectors.directorId, director.id))
+      .orderBy(asc(items.title))
+    return {
+      name: director.name,
       items: await enrichItems(records.map((row) => row.items)),
     }
   })
@@ -1269,6 +1386,7 @@ export const saveItem = createServerFn({ method: "POST" })
       }
       await db.update(items).set(values).where(eq(items.id, data.id))
       await replaceItemTags(data.id, { genres: data.genres })
+      await replaceItemCreators(data.id, data.type, data.creator)
       return { id: data.id, slug: data.slug }
     }
     if (
@@ -1288,6 +1406,7 @@ export const saveItem = createServerFn({ method: "POST" })
       .values({ ...values, createdAt: now })
       .returning({ id: items.id, slug: items.slug })
     await replaceItemTags(item.id, { genres: data.genres })
+    await replaceItemCreators(item.id, data.type, data.creator)
     return item
   })
 

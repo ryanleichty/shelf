@@ -19,7 +19,8 @@ export const db = import.meta.env.SSR
   : (undefined as unknown as ReturnType<typeof drizzle<typeof schema>>)
 
 function getClient() {
-  if (!client) throw new Error("Database access is only available on the server.")
+  if (!client)
+    throw new Error("Database access is only available on the server.")
   return client
 }
 
@@ -112,11 +113,40 @@ export function ensureDatabase() {
       )
     `)
     await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS authors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL
+      )
+    `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS item_authors (
+        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+        author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+        UNIQUE(item_id, author_id)
+      )
+    `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS directors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL
+      )
+    `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS item_directors (
+        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+        director_id INTEGER NOT NULL REFERENCES directors(id) ON DELETE CASCADE,
+        UNIQUE(item_id, director_id)
+      )
+    `)
+    await getClient().execute(`
       CREATE VIRTUAL TABLE IF NOT EXISTS item_search USING fts5(
         title, creator, description, genres, keywords
       )
     `)
     await migrateLegacyGenres()
+    await migrateLegacyCreators()
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS lists (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -152,17 +182,17 @@ export function ensureDatabase() {
       ],
     })
     if (!isEphemeral) return
-    const count = await getClient().execute("SELECT COUNT(*) AS count FROM items")
+    const count = await getClient().execute(
+      "SELECT COUNT(*) AS count FROM items"
+    )
     if (Number(count.rows[0]?.count ?? 0) === 0) {
-      await db
-        .insert(schema.items)
-        .values(
-          sampleItems.map((item) => ({
-            ...item,
-            createdAt: now,
-            updatedAt: now,
-          }))
-        )
+      await db.insert(schema.items).values(
+        sampleItems.map((item) => ({
+          ...item,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      )
       await refreshSearchIndex()
       return
     }
@@ -193,7 +223,9 @@ const slugify = (value: string) =>
 
 async function replaceGenreJoins(itemId: number, names: string[]) {
   const client = getClient()
-  for (const name of [...new Set(names.map((name) => name.trim()).filter(Boolean))]) {
+  for (const name of [
+    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
+  ]) {
     const slug = slugify(name)
     if (!slug) continue
     await client.execute({
@@ -219,6 +251,59 @@ async function migrateLegacyGenres() {
     } catch {
       // Ignore malformed legacy JSON rather than blocking database startup.
     }
+  }
+}
+
+function parseCreatorNames(creator: string) {
+  return creator
+    .split(/,|\s+and\s+|\s+&\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
+
+async function replaceCreatorJoins(
+  itemId: number,
+  kind: "author" | "director",
+  names: string[]
+) {
+  const client = getClient()
+  const table = kind === "author" ? "authors" : "directors"
+  const joinTable = kind === "author" ? "item_authors" : "item_directors"
+  const personColumn = kind === "author" ? "author_id" : "director_id"
+  for (const name of [...new Set(names)]) {
+    const slug = slugify(name)
+    if (!slug) continue
+    await client.execute({
+      sql: `INSERT INTO ${table} (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING`,
+      args: [slug, name],
+    })
+    await client.execute({
+      sql: `INSERT INTO ${joinTable} (item_id, ${personColumn}) SELECT ?, id FROM ${table} WHERE slug = ? ON CONFLICT DO NOTHING`,
+      args: [itemId, slug],
+    })
+  }
+}
+
+async function migrateLegacyCreators() {
+  const client = getClient()
+  const legacyItems = await client.execute(`
+    SELECT id, type, creator FROM items
+    WHERE
+      (type = 'book' AND NOT EXISTS (
+        SELECT 1 FROM item_authors WHERE item_authors.item_id = items.id
+      ))
+      OR
+      (type IN ('movie', 'tv') AND NOT EXISTS (
+        SELECT 1 FROM item_directors WHERE item_directors.item_id = items.id
+      ))
+  `)
+  for (const row of legacyItems.rows) {
+    const kind = row.type === "book" ? "author" : "director"
+    await replaceCreatorJoins(
+      Number(row.id),
+      kind,
+      parseCreatorNames(String(row.creator ?? ""))
+    )
   }
 }
 
