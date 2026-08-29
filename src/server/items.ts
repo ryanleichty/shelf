@@ -5,7 +5,7 @@ import { z } from "zod"
 import { db, ensureDatabase } from "./db"
 import { isAgentToken, requireAdmin } from "./auth"
 import { storeCover } from "./covers"
-import { items, itemStatuses, itemTypes, type Item } from "./schema"
+import { items, itemEditions, itemStatuses, itemTypes, type Item } from "./schema"
 
 export const bookGenreOptions = ["Fiction", "Nonfiction", "Science Fiction", "Fantasy", "Mystery", "Romance", "History", "Biography", "Young Adult", "Poetry", "Comics"] as const
 export const screenGenreOptions = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"] as const
@@ -24,6 +24,7 @@ const itemInput = z.object({
   borrower: z.string().max(120).optional().or(z.literal("")),
   loanedAt: z.string().date().optional().or(z.literal("")),
   format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
+  edition: z.enum(itemEditions).optional().or(z.literal("")),
   genres: z.array(z.string().max(60)).max(20).default([]),
 }).superRefine((item, context) => {
   if (item.type !== "book" && item.status === "reading") {
@@ -41,6 +42,9 @@ const itemInput = z.object({
   if ((item.type === "movie" || item.type === "tv") && ["hardcover", "paperback"].includes(item.format ?? "")) {
     context.addIssue({ code: "custom", message: "Choose a movie format.", path: ["format"] })
   }
+  if (item.type === "book" && item.edition) {
+    context.addIssue({ code: "custom", message: "Only movies and TV shows can have an edition.", path: ["edition"] })
+  }
 })
 
 export type ItemInput = z.infer<typeof itemInput>
@@ -54,6 +58,7 @@ export const importItems = createServerFn({ method: "POST" })
   .validator(z.object({
     type: z.enum(itemTypes),
     format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
+    edition: z.enum(itemEditions).optional().or(z.literal("")),
     queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
   }))
   .handler(async ({ data }) => {
@@ -64,25 +69,26 @@ export const importItems = createServerFn({ method: "POST" })
     const failed: Array<{ query: string; reason: string }> = []
     for (const query of data.queries) {
       try {
-        const matches = await searchCollection({ data: { type: data.type, query } })
+        const matches = await lookupCollection({ type: data.type, query })
         const match = matches[0]
         if (!match) { skipped.push({ query, reason: "No match found" }); continue }
-        const resolved = data.type === "movie"
-          ? await getCollectionResult({ data: { type: "movie", id: match.id } })
+        const resolved = data.type !== "book"
+          ? await getCollectionResultById({ type: data.type, id: match.id })
           : { ...match, slug: slugify(match.title) }
-        const providerWhere = data.type === "movie" ? eq(items.tmdbId, match.id) : eq(items.openLibraryKey, match.id)
-        const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, resolved.slug), providerWhere)).limit(1)
-        if (existing.length) { skipped.push({ query, reason: "Already on Shelf" }); continue }
+        if (await itemExists({ type: data.type, title: resolved.title, year: resolved.year ?? 0, providerId: match.id, edition: data.edition })) {
+          skipped.push({ query, reason: "Already on Shelf" }); continue
+        }
+        const slug = await uniqueSlug(resolved.slug, data.edition)
         const now = new Date().toISOString()
         await db.insert(items).values({
-          slug: resolved.slug, type: data.type, status: "owned", title: resolved.title,
+          slug, type: data.type, status: "owned", title: resolved.title,
           creator: resolved.creator, year: resolved.year ?? 0,
           coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
           openLibraryKey: data.type === "book" ? match.id : null,
-          tmdbId: data.type === "movie" ? match.id : null,
-          format: data.format || null, notes: "", acquiredAt: null, createdAt: now, updatedAt: now,
+          tmdbId: data.type === "book" ? null : match.id,
+          format: data.format || null, edition: normalizeEdition(data.edition), notes: "", acquiredAt: null, createdAt: now, updatedAt: now,
         })
-        added.push({ title: resolved.title, slug: resolved.slug })
+        added.push({ title: resolved.title, slug })
       } catch (cause) {
         failed.push({ query, reason: cause instanceof Error ? cause.message : "Import failed" })
       }
@@ -170,6 +176,44 @@ const slugify = (title: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
+
+const normalizeEdition = (edition?: string | null) => edition?.trim() || null
+
+export async function itemExists({ id, type, title, year, providerId, edition }: {
+  id?: number
+  type: Item["type"]
+  title: string
+  year: number
+  providerId?: string | null
+  edition?: string | null
+}) {
+  const editionWhere = normalizeEdition(edition) ? eq(items.edition, normalizeEdition(edition)!) : or(eq(items.edition, null), eq(items.edition, ""))
+  const candidates = await db.select({
+    id: items.id, title: items.title, year: items.year, tmdbId: items.tmdbId, openLibraryKey: items.openLibraryKey,
+  }).from(items).where(and(eq(items.type, type), editionWhere))
+  return candidates.some((item) =>
+    item.id !== id && (
+      providerId
+        ? (type === "book" ? item.openLibraryKey : item.tmdbId) === providerId
+        : normalizeTitle(item.title) === normalizeTitle(title) && item.year === year
+    ),
+  )
+}
+
+export async function uniqueSlug(baseSlug: string, edition?: string | null, excludeId?: number) {
+  const base = await db.select({ id: items.id }).from(items).where(eq(items.slug, baseSlug)).limit(1)
+  if (!base.length || base[0].id === excludeId) return baseSlug
+  const preferred = normalizeEdition(edition) ? `${baseSlug}-${normalizeEdition(edition)}` : baseSlug
+  const existing = await db.select({ id: items.id }).from(items).where(eq(items.slug, preferred)).limit(1)
+  if (!existing.length || existing[0].id === excludeId) return preferred
+  for (let suffix = 2; ; suffix++) {
+    const slug = `${preferred}-${suffix}`
+    const collision = await db.select({ id: items.id }).from(items).where(eq(items.slug, slug)).limit(1)
+    if (!collision.length || collision[0].id === excludeId) return slug
+  }
+}
+
+export const normalizeTitle = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
@@ -401,14 +445,22 @@ export const saveItem = createServerFn({ method: "POST" })
       borrower: data.borrower?.trim() || null,
       loanedAt: data.loanedAt || null,
       format: data.format?.trim() || null,
+      edition: normalizeEdition(data.edition),
       notes: "",
       acquiredAt: null,
       updatedAt: now,
     }
     if (data.id) {
+      if (await itemExists({ id: data.id, type: data.type, title: data.title, year: data.year, providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId, edition: data.edition })) {
+        throw new Error("This edition is already on your shelf.")
+      }
       await db.update(items).set(values).where(eq(items.id, data.id))
       return { id: data.id, slug: data.slug }
     }
+    if (await itemExists({ type: data.type, title: data.title, year: data.year, providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId, edition: data.edition })) {
+      throw new Error("This edition is already on your shelf.")
+    }
+    values.slug = await uniqueSlug(data.slug, data.edition)
     const [item] = await db
       .insert(items)
       .values({ ...values, createdAt: now })

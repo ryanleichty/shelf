@@ -43,7 +43,7 @@ export function Catalog({ items, type }: { items: Item[]; type: Item["type"] }) 
                 )}
                 {item.status !== "owned" && <Badge className="absolute right-2 bottom-2 bg-background/90" variant="outline">{statusLabel(item.status)}</Badge>}
               </div>
-              <CardContent className="p-3"><h2 className="line-clamp-2 text-sm font-medium">{item.title}</h2><p className="mt-1 text-xs text-muted-foreground">{item.creator}</p>{item.status === "borrowed" && item.borrower && <p className="mt-2 text-xs text-muted-foreground">With {item.borrower}</p>}</CardContent>
+              <CardContent className="p-3"><h2 className="line-clamp-2 text-sm font-medium">{item.title}</h2><p className="mt-1 text-xs text-muted-foreground">{item.creator}</p>{item.edition && <p className="mt-1 text-xs text-muted-foreground">{editionLabel(item.edition)}</p>}{item.status === "borrowed" && item.borrower && <p className="mt-2 text-xs text-muted-foreground">With {item.borrower}</p>}</CardContent>
               </Card>
             </Link>
           ))}
@@ -59,4 +59,8 @@ export function Catalog({ items, type }: { items: Item[]; type: Item["type"] }) 
 
 function statusLabel(status: Exclude<Item["status"], "owned">) {
   return status === "reading" ? "Reading" : "Borrowed"
+}
+
+function editionLabel(edition: string) {
+  return edition === "director-cut" ? "Director's Cut" : edition[0].toUpperCase() + edition.slice(1)
 }

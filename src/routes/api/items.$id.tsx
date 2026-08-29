@@ -2,18 +2,23 @@ import { createFileRoute } from "@tanstack/react-router"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
-import { storeCover } from "@/server/covers"
 import { db, ensureDatabase } from "@/server/db"
+import { storeCover } from "@/server/covers"
+import { itemExists } from "@/server/items"
 import { items } from "@/server/schema"
 
 const unauthorized = () => Response.json({ error: "Unauthorized" }, { status: 401 })
-const patch = z.object({ title: z.string().min(1).optional(), creator: z.string().min(1).optional(), year: z.number().int().optional(), format: z.string().nullable().optional(), status: z.enum(["owned", "reading", "borrowed"]).optional(), coverImageUrl: z.string().url().nullable().optional(), slug: z.string().min(1).optional() })
+const patch = z.object({ title: z.string().min(1).optional(), creator: z.string().min(1).optional(), year: z.number().int().optional(), format: z.string().nullable().optional(), edition: z.enum(["theatrical", "extended", "director-cut"]).nullable().optional(), status: z.enum(["owned", "reading", "watching", "borrowed"]).optional(), coverImageUrl: z.string().url().nullable().optional(), slug: z.string().min(1).optional() })
 export const Route = createFileRoute("/api/items/$id")({ server: { handlers: {
   PATCH: async ({ request, params }) => {
     if (!isAgentRequest(request)) return unauthorized(); await ensureDatabase()
     const data = patch.safeParse(await request.json()); if (!data.success) return Response.json({ error: "Invalid body" }, { status: 400 })
     const id = Number(params.id); const [current] = await db.select().from(items).where(eq(items.id, id))
     if (!current) return Response.json({ error: "Not found" }, { status: 404 })
+    if (current.type === "book" && data.data.edition) return Response.json({ error: "Only movies and TV shows can have an edition" }, { status: 400 })
+    if (data.data.edition !== undefined && await itemExists({ id, type: current.type, title: data.data.title ?? current.title, year: data.data.year ?? current.year, providerId: current.type === "book" ? current.openLibraryKey : current.tmdbId, edition: data.data.edition })) {
+      return Response.json({ error: "This edition is already on your shelf" }, { status: 409 })
+    }
     const coverImageUrl = data.data.coverImageUrl === undefined ? current.coverImageUrl : data.data.coverImageUrl ? await storeCover(data.data.coverImageUrl, data.data.slug ?? current.slug) : null
     const [updated] = await db.update(items).set({ ...data.data, coverImageUrl, updatedAt: new Date().toISOString() }).where(eq(items.id, id)).returning()
     return Response.json(updated)

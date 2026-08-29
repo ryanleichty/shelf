@@ -39,6 +39,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     year: item?.year ? String(item.year) : "", coverImageUrl: item?.coverImageUrl ?? "",
     openLibraryKey: item?.openLibraryKey ?? "", tmdbId: item?.tmdbId ?? "",
     borrower: item?.borrower ?? "", loanedAt: item?.loanedAt ?? "", format: item?.format ?? "",
+    edition: item?.edition ?? "",
     genres: item?.genres ?? [],
   })
   const genreOptions = type === "book" ? bookGenreOptions : screenGenreOptions
@@ -98,6 +99,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     setSelected(false)
     setCoversLoading(false)
     updateValue("format", "")
+    updateValue("edition", "")
     if ((nextType === "movie" || nextType === "tv") && status === "reading") setStatus("")
   }
 
@@ -138,6 +140,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
           openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId,
           borrower: values.borrower, loanedAt: values.loanedAt,
           format: values.format as ItemInput["format"],
+          edition: values.edition as ItemInput["edition"],
           genres: values.genres,
         } satisfies ItemInput,
       })
@@ -173,6 +176,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
         <label className="field"><span>Status</span><select name="status" onChange={(event) => { const nextStatus = event.target.value as "" | "borrowed" | "reading" | "watching"; setStatus(nextStatus); if (nextStatus !== "borrowed") setValues((current) => ({ ...current, borrower: "", loanedAt: "" })) }} value={status}><option value="">Unspecified</option>{type === "book" && <option value="reading">Reading</option>}{type === "tv" && <option value="watching">Watching</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
+        {type !== "book" && <label className="field"><span>Edition</span><select name="edition" onChange={(event) => updateValue("edition", event.target.value)} value={values.edition}><option value="">Unspecified</option><option value="theatrical">Theatrical</option><option value="extended">Extended</option><option value="director-cut">Director&apos;s Cut</option></select></label>}
         <div className="field sm:col-span-2"><span>Genres</span><Combobox items={genreOptions} multiple onValueChange={(genres) => setValues((current) => ({ ...current, genres }))} value={values.genres}><ComboboxChips><ComboboxValue>{(genre) => <ComboboxChip key={genre}>{genre}</ComboboxChip>}</ComboboxValue><ComboboxChipsInput placeholder="Select genres…" /></ComboboxChips><ComboboxContent><ComboboxEmpty>No genres found.</ComboboxEmpty><ComboboxList>{(genre) => <ComboboxItem key={genre} value={genre}>{genre}</ComboboxItem>}</ComboboxList></ComboboxContent></Combobox></div>
         <Field disabled={coversLoading && Boolean(type === "book" ? values.openLibraryKey : values.tmdbId)} label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />
         {(type === "book" ? values.openLibraryKey : values.tmdbId) && <div className="sm:col-span-2"><p className="mb-2 text-sm font-medium">Choose a cover</p>{coversLoading ? <div className="grid grid-cols-6 gap-2 sm:grid-cols-9">{Array.from({ length: 9 }, (_, index) => <Skeleton className="aspect-[2/3] w-full rounded-md" key={index} />)}</div> : coverOptions.length > 0 ? <div className="grid grid-cols-6 gap-2 sm:grid-cols-9">{coverOptions.map((url) => <button aria-label="Use this cover" className={`aspect-[2/3] overflow-hidden rounded-md border ${values.coverImageUrl === url ? "ring-2 ring-ring ring-offset-2" : "hover:border-foreground/40"}`} key={url} onClick={() => updateValue("coverImageUrl", url)} type="button"><img alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" src={url} /></button>)}</div> : null}{coverError && <p className="mt-2 text-sm text-destructive">{coverError}</p>}</div>}

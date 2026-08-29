@@ -44,7 +44,7 @@ function ItemDetail() {
           <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
           <ItemAdminActions id={item.id} providerId={item.type === "book" ? item.openLibraryKey : item.tmdbId} title={item.title} type={item.type} />
           {item.genres.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{item.genres.map((genre) => <Badge key={genre} variant="secondary">{genre}</Badge>)}</div>}
-          <div className="mt-6 space-y-2 text-sm text-muted-foreground">{item.format && <p>{formatLabel(item.format)}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground">{(item.format || item.edition) && <p className="flex gap-2">{item.format && <span>{formatLabel(item.format)}</span>}{item.edition && <span>{editionLabel(item.edition)}</span>}</p>}{item.status === "borrowed" && item.borrower && <p>With {item.borrower}{item.loanedAt ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}</p>}</div>
         </div>
       </article>
     </main>
@@ -53,4 +53,8 @@ function ItemDetail() {
 
 function formatLabel(format: string) {
   return format === "blu-ray" ? "Blu-ray" : format === "dvd" ? "DVD" : format[0].toUpperCase() + format.slice(1)
+}
+
+function editionLabel(edition: string) {
+  return edition === "director-cut" ? "Director's Cut" : edition[0].toUpperCase() + edition.slice(1)
 }
