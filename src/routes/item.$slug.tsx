@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListToggle } from "@/components/item-list-toggle"
 import { getItemBySlug } from "@/server/items"
@@ -195,42 +196,8 @@ function titleCase(value: string) {
 }
 
 function FormatIcon({ format }: { format: string }) {
-  if (format === "blu-ray" || format === "dvd") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="size-5 shrink-0"
-        fill="none"
-        viewBox="0 0 20 20"
-      >
-        <circle
-          cx="10"
-          cy="10"
-          r="7.25"
-          stroke="currentColor"
-          strokeWidth="1.25"
-        />
-        <circle cx="10" cy="10" fill="currentColor" r="1.25" />
-        <path
-          d="M4.75 5.1h5.5"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeWidth="1.25"
-        />
-        <text
-          fill="currentColor"
-          fontFamily="sans-serif"
-          fontSize="4.5"
-          fontWeight="700"
-          textAnchor="middle"
-          x="10"
-          y="17"
-        >
-          {format === "blu-ray" ? "BR" : "DVD"}
-        </text>
-      </svg>
-    )
-  }
+  if (format === "blu-ray") return <BluRayIcon />
+  if (format === "dvd") return <DvdIcon />
   return <BookOpenIcon aria-hidden="true" className="size-4 shrink-0" />
 }
 
