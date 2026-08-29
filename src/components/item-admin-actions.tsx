@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteItem, getAdminStatus, syncItem } from "@/server/items"
+import { deleteItem, getSignedInStatus, syncItem } from "@/server/items"
 
 export function ItemAdminActions({
   id,
@@ -25,15 +25,15 @@ export function ItemAdminActions({
   providerId: string | null
 }) {
   const router = useRouter()
-  const [admin, setAdmin] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState("")
   useEffect(() => {
-    getAdminStatus()
-      .then(setAdmin)
-      .catch(() => setAdmin(false))
+    getSignedInStatus()
+      .then(setSignedIn)
+      .catch(() => setSignedIn(false))
   }, [])
-  if (!admin) return null
+  if (!signedIn) return null
   async function remove() {
     if (!window.confirm(`Remove “${title}” from Shelf?`)) return
     await deleteItem({ data: { id } })

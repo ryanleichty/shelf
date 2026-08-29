@@ -24,8 +24,13 @@ function Login() {
     setBusy(true)
     setError("")
     try {
-      const password = new FormData(event.currentTarget).get("password")
-      const result = await login({ data: { password: String(password) } })
+      const form = new FormData(event.currentTarget)
+      const result = await login({
+        data: {
+          email: String(form.get("email") || ""),
+          password: String(form.get("password")),
+        },
+      })
       if (!result.ok) {
         setError(result.error)
         return
@@ -46,9 +51,20 @@ function Login() {
           Welcome back
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter your password to edit the catalog.
+          Sign in to add and manage the shared collection.
         </p>
         <div className="mt-6 grid gap-6">
+          <Field>
+            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                autoComplete="email"
+                id="email"
+                name="email"
+                type="email"
+              />
+            </InputGroup>
+          </Field>
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <InputGroup>

@@ -9,10 +9,11 @@ import {
   LogInIcon,
   LogOutIcon,
   SearchIcon,
+  SettingsIcon,
   TvIcon,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getAdminStatus, logout } from "@/server/items"
+import { getSignedInStatus, logout } from "@/server/items"
 import { CatalogCommand } from "@/components/catalog-command"
 import {
   Collapsible,
@@ -66,15 +67,15 @@ const navigation = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const router = useRouter()
-  const [admin, setAdmin] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
   const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>(
     {}
   )
   const [searchOpen, setSearchOpen] = useState(false)
   useEffect(() => {
-    getAdminStatus()
-      .then(setAdmin)
-      .catch(() => setAdmin(false))
+    getSignedInStatus()
+      .then(setSignedIn)
+      .catch(() => setSignedIn(false))
   }, [])
   useEffect(() => {
     const currentParent = navigation.find(
@@ -91,7 +92,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   async function signOut() {
     await logout()
-    setAdmin(false)
+    setSignedIn(false)
     await router.navigate({ to: "/" })
   }
   return (
@@ -210,7 +211,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {admin && (
+        {signedIn && (
           <SidebarGroup>
             <SidebarGroupLabel>Manage</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -232,11 +233,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {admin ? (
-              <SidebarMenuButton onClick={signOut} tooltip="Log out">
-                <LogOutIcon />
-                <span>Log out</span>
-              </SidebarMenuButton>
+            {signedIn ? (
+              <>
+                <SidebarMenuButton
+                  isActive={location.pathname === "/settings"}
+                  render={<Link to="/settings" />}
+                  tooltip="Settings"
+                >
+                  <SettingsIcon />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton onClick={signOut} tooltip="Log out">
+                  <LogOutIcon />
+                  <span>Log out</span>
+                </SidebarMenuButton>
+              </>
             ) : (
               <SidebarMenuButton
                 render={<Link to="/admin/login" />}
