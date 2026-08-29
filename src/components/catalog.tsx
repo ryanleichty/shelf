@@ -1,9 +1,7 @@
-import { Link } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import { CoverTile } from "@/components/cover-tile"
 import type { Item } from "@/server/schema"
 
 export function Catalog({
@@ -48,56 +46,7 @@ export function Catalog({
       {visibleItems.length ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {visibleItems.map((item) => (
-            <Link
-              className="group"
-              key={item.id}
-              params={{ slug: item.slug }}
-              to="/item/$slug"
-            >
-              <Card className="overflow-hidden py-0 transition-colors group-hover:border-foreground/30">
-                <div className="relative aspect-[2/3] bg-muted">
-                  {item.coverImageUrl ? (
-                    <img
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                      referrerPolicy="no-referrer"
-                      src={item.coverImageUrl}
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col justify-between p-4 text-sm text-muted-foreground">
-                      <span>{item.type}</span>
-                      <span>{item.year}</span>
-                    </div>
-                  )}
-                  {item.status !== "owned" && (
-                    <Badge
-                      className="absolute right-2 bottom-2 bg-background/90"
-                      variant="outline"
-                    >
-                      {statusLabel(item.status)}
-                    </Badge>
-                  )}
-                </div>
-                <CardContent className="p-3">
-                  <h2 className="line-clamp-2 text-sm font-medium">
-                    {item.title}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.creator}
-                  </p>
-                  {item.edition && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {editionLabel(item.edition)}
-                    </p>
-                  )}
-                  {item.status === "borrowed" && item.borrower && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      With {item.borrower}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
+            <CoverTile item={item} key={item.id} />
           ))}
         </div>
       ) : (
@@ -110,18 +59,4 @@ export function Catalog({
       )}
     </>
   )
-}
-
-function statusLabel(status: Exclude<Item["status"], "owned">) {
-  return status === "reading"
-    ? "Reading"
-    : status === "watching"
-      ? "Watching"
-      : "Borrowed"
-}
-
-function editionLabel(edition: string) {
-  return edition === "director-cut"
-    ? "Director's Cut"
-    : edition[0].toUpperCase() + edition.slice(1)
 }

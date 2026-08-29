@@ -2,6 +2,7 @@ import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ItemAdminActions } from "@/components/item-admin-actions"
+import { ItemListToggle } from "@/components/item-list-toggle"
 import { getItemBySlug } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -88,6 +89,12 @@ function ItemDetail() {
             {item.title}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">{item.creator}</p>
+          <ItemListToggle
+            initiallyInList={item.targetList.containsItem}
+            itemId={item.id}
+            listName={item.targetList.name}
+            listSlug={item.targetList.slug}
+          />
           <ItemAdminActions
             id={item.id}
             providerId={
