@@ -157,19 +157,12 @@ export function ensureDatabase() {
       await db
         .insert(schema.items)
         .values(
-          sampleItems.map(({ genres: _genres, ...item }) => ({
+          sampleItems.map((item) => ({
             ...item,
             createdAt: now,
             updatedAt: now,
           }))
         )
-      const seededItems = await db.select().from(schema.items)
-      await Promise.all(
-        sampleItems.map((item) => {
-          const seeded = seededItems.find((candidate) => candidate.slug === item.slug)
-          return seeded ? replaceGenreJoins(seeded.id, item.genres) : undefined
-        })
-      )
       await refreshSearchIndex()
       return
     }

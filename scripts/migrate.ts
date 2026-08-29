@@ -57,6 +57,67 @@ if (!columns.rows.some((column) => column.name === "genres")) {
     "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
   )
 }
+if (!columns.rows.some((column) => column.name === "description")) {
+  await client.execute("ALTER TABLE items ADD COLUMN description TEXT")
+}
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS genres (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS item_genres (
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    genre_id INTEGER NOT NULL REFERENCES genres(id) ON DELETE CASCADE,
+    UNIQUE(item_id, genre_id)
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS item_keywords (
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    keyword_id INTEGER NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
+    UNIQUE(item_id, keyword_id)
+  )
+`)
+await client.execute(`
+  CREATE VIRTUAL TABLE IF NOT EXISTS item_search USING fts5(
+    title, creator, description, genres, keywords
+  )
+`)
+const legacyItems = await client.execute("SELECT id, genres FROM items")
+for (const row of legacyItems.rows) {
+  try {
+    const names = JSON.parse(String(row.genres ?? "[]"))
+    if (!Array.isArray(names)) continue
+    for (const rawName of names) {
+      if (typeof rawName !== "string") continue
+      const name = rawName.trim()
+      const slug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      if (!slug) continue
+      await client.execute({ sql: "INSERT INTO genres (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING", args: [slug, name] })
+      await client.execute({ sql: "INSERT INTO item_genres (item_id, genre_id) SELECT ?, id FROM genres WHERE slug = ? ON CONFLICT DO NOTHING", args: [Number(row.id), slug] })
+    }
+  } catch {
+    // Ignore malformed legacy JSON.
+  }
+}
+await client.execute("DELETE FROM item_search")
+await client.execute(`
+  INSERT INTO item_search (rowid, title, creator, description, genres, keywords)
+  SELECT items.id, items.title, items.creator, COALESCE(items.description, ''),
+    COALESCE((SELECT group_concat(genres.name, ' ') FROM item_genres JOIN genres ON genres.id = item_genres.genre_id WHERE item_genres.item_id = items.id), ''),
+    COALESCE((SELECT group_concat(keywords.name, ' ') FROM item_keywords JOIN keywords ON keywords.id = item_keywords.keyword_id WHERE item_keywords.item_id = items.id), '')
+  FROM items
+`)
 const now = new Date().toISOString()
 await client.execute(`
   CREATE TABLE IF NOT EXISTS lists (

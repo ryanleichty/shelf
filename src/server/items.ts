@@ -432,15 +432,18 @@ export async function upsertTags(
       .values({ slug, name })
       .onConflictDoNothing({ target: table.slug })
     const [tag] = await db.select({ id: table.id }).from(table).where(eq(table.slug, slug))
-    if (tag)
+    if (!tag) continue
+    if (kind === "genre") {
       await db
-        .insert(joins)
-        .values(
-          kind === "genre"
-            ? { itemId, genreId: tag.id }
-            : { itemId, keywordId: tag.id }
-        )
+        .insert(itemGenres)
+        .values({ itemId, genreId: tag.id })
         .onConflictDoNothing()
+    } else {
+      await db
+        .insert(itemKeywords)
+        .values({ itemId, keywordId: tag.id })
+        .onConflictDoNothing()
+    }
   }
 }
 
@@ -681,31 +684,34 @@ export type ProviderSyncResult = {
   changes?: Partial<
     Record<
       keyof SyncedFields,
-      { before: string | number | string[]; after: string | number | string[] }
+      { before: string | number | string[] | null; after: string | number | string[] | null }
     >
   >
 }
 
 export async function syncItemFromProvider(
-  item: Item,
+  item: Item | ItemRecord,
   dryRun = false
 ): Promise<ProviderSyncResult> {
-  const providerId = item.type === "book" ? item.openLibraryKey : item.tmdbId
+  const syncedItem =
+    "genres" in item ? item : (await enrichItems([item]))[0]!
+  const providerId =
+    syncedItem.type === "book" ? syncedItem.openLibraryKey : syncedItem.tmdbId
   if (!providerId)
     return {
-      itemId: item.id,
-      slug: item.slug,
-      skipped: `Missing ${item.type === "book" ? "Open Library key" : "TMDB ID"}.`,
+      itemId: syncedItem.id,
+      slug: syncedItem.slug,
+      skipped: `Missing ${syncedItem.type === "book" ? "Open Library key" : "TMDB ID"}.`,
     }
 
   const metadata =
-    item.type === "book"
+    syncedItem.type === "book"
       ? await getBookSyncMetadata(providerId)
-      : await getTmdbSyncMetadata(item.type, providerId)
+      : await getTmdbSyncMetadata(syncedItem.type, providerId)
 
-  const changes = changedFields(item, metadata)
+  const changes = changedFields(syncedItem, metadata)
   if (!Object.keys(changes).length)
-    return { itemId: item.id, slug: item.slug, skipped: "Already up to date." }
+    return { itemId: syncedItem.id, slug: syncedItem.slug, skipped: "Already up to date." }
   if (!dryRun) {
     const { genres: nextGenres, keywords: nextKeywords, ...itemFields } =
       Object.fromEntries(
@@ -717,13 +723,13 @@ export async function syncItemFromProvider(
         ...itemFields,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(items.id, item.id))
-    await replaceItemTags(item.id, {
+      .where(eq(items.id, syncedItem.id))
+    await replaceItemTags(syncedItem.id, {
       genres: nextGenres,
       keywords: nextKeywords,
     })
   }
-  return { itemId: item.id, slug: item.slug, changes }
+  return { itemId: syncedItem.id, slug: syncedItem.slug, changes }
 }
 
 export const syncItem = createServerFn({ method: "POST" })

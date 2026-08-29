@@ -19,7 +19,9 @@ import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminNewRouteImport } from './routes/admin/new'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
+import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
+import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
 
@@ -73,9 +75,19 @@ const ApiItemsRoute = ApiItemsRouteImport.update({
   path: '/api/items',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GenreSlugRoute = GenreSlugRouteImport.update({
+  id: '/genre/$slug',
+  path: '/genre/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ItemSlugRoute = ItemSlugRouteImport.update({
   id: '/item/$slug',
   path: '/item/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KeywordSlugRoute = KeywordSlugRouteImport.update({
+  id: '/keyword/$slug',
+  path: '/keyword/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiItemsIdRoute = ApiItemsIdRouteImport.update({
@@ -99,7 +111,9 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
+  '/keyword/$slug': typeof KeywordSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -114,7 +128,9 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
+  '/keyword/$slug': typeof KeywordSlugRoute
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -130,7 +146,9 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
+  '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
+  '/keyword/$slug': typeof KeywordSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -147,7 +165,9 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/genre/$slug'
     | '/item/$slug'
+    | '/keyword/$slug'
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -162,7 +182,9 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/genre/$slug'
     | '/item/$slug'
+    | '/keyword/$slug'
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -177,7 +199,9 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/new'
     | '/api/items'
+    | '/genre/$slug'
     | '/item/$slug'
+    | '/keyword/$slug'
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -193,7 +217,9 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AdminNewRoute: typeof AdminNewRoute
   ApiItemsRoute: typeof ApiItemsRouteWithChildren
+  GenreSlugRoute: typeof GenreSlugRoute
   ItemSlugRoute: typeof ItemSlugRoute
+  KeywordSlugRoute: typeof KeywordSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -269,11 +295,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/genre/$slug': {
+      id: '/genre/$slug'
+      path: '/genre/$slug'
+      fullPath: '/genre/$slug'
+      preLoaderRoute: typeof GenreSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/item/$slug': {
       id: '/item/$slug'
       path: '/item/$slug'
       fullPath: '/item/$slug'
       preLoaderRoute: typeof ItemSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/keyword/$slug': {
+      id: '/keyword/$slug'
+      path: '/keyword/$slug'
+      fullPath: '/keyword/$slug'
+      preLoaderRoute: typeof KeywordSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/items/$id': {
@@ -317,7 +357,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   AdminNewRoute: AdminNewRoute,
   ApiItemsRoute: ApiItemsRouteWithChildren,
+  GenreSlugRoute: GenreSlugRoute,
   ItemSlugRoute: ItemSlugRoute,
+  KeywordSlugRoute: KeywordSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
