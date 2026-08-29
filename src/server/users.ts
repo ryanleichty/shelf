@@ -30,33 +30,44 @@ async function adminCount() {
   ).length
 }
 
-export const getSettings = createServerFn({ method: "GET" }).handler(async () => {
-  await requireSignedIn()
-  const currentUser = await getCurrentUser()
-  if (!currentUser) {
+export const getSettings = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await requireSignedIn()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return {
+        profile: {
+          id: null,
+          firstName: "",
+          lastName: "",
+          email: "",
+          role: "admin" as const,
+        },
+        bootstrap: true,
+        isAdmin: true,
+        users: [],
+      }
+    }
+    const admin = await isAdmin()
     return {
-      profile: {
-        id: null,
-        firstName: "",
-        lastName: "",
-        email: "",
-        role: "admin" as const,
-      },
-      bootstrap: true,
-      isAdmin: true,
-      users: [],
+      profile: currentUser,
+      bootstrap: false,
+      isAdmin: admin,
+      users: admin
+        ? await db
+            .select({
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              email: users.email,
+              role: users.role,
+            })
+            .from(users)
+            .orderBy(users.firstName, users.lastName)
+        : [],
     }
   }
-  const admin = await isAdmin()
-  return {
-    profile: currentUser,
-    bootstrap: false,
-    isAdmin: admin,
-    users: admin
-      ? await db.select().from(users).orderBy(users.firstName, users.lastName)
-      : [],
-  }
-})
+)
 
 export const saveProfile = createServerFn({ method: "POST" })
   .validator(profileInput)
@@ -69,7 +80,8 @@ export const saveProfile = createServerFn({ method: "POST" })
 
     if (!currentUser) {
       await requireAdmin()
-      if (!data.password) throw new Error("Choose a password for the first admin.")
+      if (!data.password)
+        throw new Error("Choose a password for the first admin.")
       const [created] = await db
         .insert(users)
         .values({
@@ -92,7 +104,9 @@ export const saveProfile = createServerFn({ method: "POST" })
         firstName: data.firstName,
         lastName: data.lastName,
         email,
-        ...(data.password ? { passwordHash: await hashPassword(data.password) } : {}),
+        ...(data.password
+          ? { passwordHash: await hashPassword(data.password) }
+          : {}),
         updatedAt: now,
       })
       .where(eq(users.id, currentUser.id))
@@ -107,7 +121,8 @@ export const saveUser = createServerFn({ method: "POST" })
     const email = data.email.toLowerCase()
     const now = new Date().toISOString()
     if (!data.id) {
-      if (!data.password) throw new Error("A password is required for a new user.")
+      if (!data.password)
+        throw new Error("A password is required for a new user.")
       await db.insert(users).values({
         firstName: data.firstName,
         lastName: data.lastName,
@@ -126,7 +141,11 @@ export const saveUser = createServerFn({ method: "POST" })
       .where(eq(users.id, data.id))
       .limit(1)
     if (!existing) throw new Error("User not found.")
-    if (existing.role === "admin" && data.role !== "admin" && (await adminCount()) === 1)
+    if (
+      existing.role === "admin" &&
+      data.role !== "admin" &&
+      (await adminCount()) === 1
+    )
       throw new Error("Shelf needs at least one admin.")
     await db
       .update(users)
@@ -135,7 +154,9 @@ export const saveUser = createServerFn({ method: "POST" })
         lastName: data.lastName,
         email,
         role: data.role,
-        ...(data.password ? { passwordHash: await hashPassword(data.password) } : {}),
+        ...(data.password
+          ? { passwordHash: await hashPassword(data.password) }
+          : {}),
         updatedAt: now,
       })
       .where(eq(users.id, data.id))
@@ -147,7 +168,11 @@ export const deleteUser = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin()
     await ensureDatabase()
-    const [user] = await db.select().from(users).where(eq(users.id, data.id)).limit(1)
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, data.id))
+      .limit(1)
     if (!user) return { ok: true }
     if (user.role === "admin" && (await adminCount()) === 1)
       throw new Error("Shelf needs at least one admin.")

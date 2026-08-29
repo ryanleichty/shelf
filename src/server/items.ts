@@ -151,7 +151,8 @@ export const importItems = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data }) => {
-    if (!isAgentToken(getRequestHeader("authorization"))) await requireSignedIn()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     await ensureDatabase()
     const added: Array<{ title: string; slug: string }> = []
     const skipped: Array<{ query: string; reason: string }> = []
@@ -642,14 +643,16 @@ export const normalizeTitle = (value: string) =>
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {
-    if (!isAgentToken(getRequestHeader("authorization"))) await requireSignedIn()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     return lookupCollection(data)
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
-    if (!isAgentToken(getRequestHeader("authorization"))) await requireSignedIn()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     return getCollectionResultById(data)
   })
 
@@ -1387,6 +1390,18 @@ export const getAdminStatus = createServerFn({ method: "GET" }).handler(
   }
 )
 
+export const getLoginMode = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await ensureDatabase()
+    const [admin] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"))
+      .limit(1)
+    return { requiresEmail: Boolean(admin) }
+  }
+)
+
 export const saveItem = createServerFn({ method: "POST" })
   .validator(itemInput)
   .handler(async ({ data }) => {
@@ -1463,13 +1478,15 @@ export const deleteItem = createServerFn({ method: "POST" })
   })
 
 export const login = createServerFn({ method: "POST" })
-  .validator(z.object({ email: z.string().email().optional(), password: z.string().min(1) }))
+  .validator(
+    z.object({
+      email: z.string().email().optional().or(z.literal("")),
+      password: z.string().min(1),
+    })
+  )
   .handler(async ({ data }) => {
-    const {
-      startBootstrapSession,
-      startUserSession,
-      verifyStoredPassword,
-    } = await import("./auth")
+    const { startBootstrapSession, startUserSession, verifyStoredPassword } =
+      await import("./auth")
     await ensureDatabase()
     const [storedAdmin] = await db
       .select({ id: users.id })
@@ -1480,7 +1497,8 @@ export const login = createServerFn({ method: "POST" })
       if (!process.env.ADMIN_PASSWORD) {
         return {
           ok: false,
-          error: "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
+          error:
+            "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
         }
       }
       const expected = process.env.ADMIN_PASSWORD.trim()
@@ -1500,7 +1518,10 @@ export const login = createServerFn({ method: "POST" })
       .from(users)
       .where(eq(users.email, data.email.trim().toLowerCase()))
       .limit(1)
-    if (!user || !(await verifyStoredPassword(data.password, user.passwordHash)))
+    if (
+      !user ||
+      !(await verifyStoredPassword(data.password, user.passwordHash))
+    )
       return { ok: false, error: "That password doesn’t open this shelf." }
     await startUserSession(user.id)
     return { ok: true, error: "" }

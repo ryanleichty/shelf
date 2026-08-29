@@ -232,9 +232,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            {signedIn ? (
-              <>
+          {signedIn ? (
+            <>
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={location.pathname === "/settings"}
                   render={<Link to="/settings" />}
@@ -243,12 +243,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SettingsIcon />
                   <span>Settings</span>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton onClick={signOut} tooltip="Log out">
                   <LogOutIcon />
                   <span>Log out</span>
                 </SidebarMenuButton>
-              </>
-            ) : (
+              </SidebarMenuItem>
+            </>
+          ) : (
+            <SidebarMenuItem>
               <SidebarMenuButton
                 render={<Link to="/admin/login" />}
                 tooltip="Log in"
@@ -256,8 +260,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <LogInIcon />
                 <span>Log in</span>
               </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

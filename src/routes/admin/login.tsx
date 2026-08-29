@@ -9,11 +9,15 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { login } from "@/server/items"
+import { getLoginMode, login } from "@/server/items"
 
-export const Route = createFileRoute("/admin/login")({ component: Login })
+export const Route = createFileRoute("/admin/login")({
+  loader: () => getLoginMode(),
+  component: Login,
+})
 
 function Login() {
+  const { requiresEmail } = Route.useLoaderData()
   const router = useRouter()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -27,7 +31,7 @@ function Login() {
       const form = new FormData(event.currentTarget)
       const result = await login({
         data: {
-          email: String(form.get("email") || ""),
+          email: requiresEmail ? String(form.get("email")) : "",
           password: String(form.get("password")),
         },
       })
@@ -46,25 +50,25 @@ function Login() {
   return (
     <main className="container mx-auto flex min-h-[calc(100vh-4rem)] max-w-sm items-center px-4">
       <form className="w-full rounded-lg border p-6" onSubmit={submit}>
-        <p className="text-sm text-muted-foreground">Admin</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Welcome back
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Sign in to add and manage the shared collection.
         </p>
         <div className="mt-6 grid gap-6">
-          <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                autoComplete="email"
-                id="email"
-                name="email"
-                type="email"
-              />
-            </InputGroup>
-          </Field>
+          {requiresEmail && (
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  autoComplete="email"
+                  id="email"
+                  name="email"
+                  required
+                  type="email"
+                />
+              </InputGroup>
+            </Field>
+          )}
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
             <InputGroup>
