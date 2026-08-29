@@ -5,7 +5,10 @@ import { z } from "zod"
 import { db, ensureDatabase } from "./db"
 import { isAgentToken, requireAdmin } from "./auth"
 import { storeCover } from "./covers"
-import { items, itemStatuses, itemTypes } from "./schema"
+import { items, itemStatuses, itemTypes, type Item } from "./schema"
+
+export const bookGenreOptions = ["Fiction", "Nonfiction", "Science Fiction", "Fantasy", "Mystery", "Romance", "History", "Biography", "Young Adult", "Poetry", "Comics"] as const
+export const screenGenreOptions = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"] as const
 
 const itemInput = z.object({
   id: z.number().int().optional(),
@@ -94,6 +97,7 @@ export type LookupResult = {
   creator: string
   year: number | null
   coverImageUrl: string
+  genres: string[]
 }
 
 export async function lookupCollection(data: { query: string; type: "book" | "movie" | "tv" }): Promise<LookupResult[]> {
@@ -102,8 +106,8 @@ export async function lookupCollection(data: { query: string; type: "book" | "mo
     url.searchParams.set("q", data.query); url.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i"); url.searchParams.set("limit", "6")
     const response = await fetch(url, { headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" } })
     if (!response.ok) throw new Error("Open Library could not complete that search.")
-    const body = (await response.json()) as { docs?: Array<{ key?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number }> }
-    return (body.docs ?? []).flatMap((book) => book.key && book.title ? [{ id: book.key, type: "book" as const, title: book.title, creator: book.author_name?.[0] ?? "Unknown author", year: book.first_publish_year ?? null, coverImageUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : "" }] : [])
+    const body = (await response.json()) as { docs?: Array<{ key?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; subject?: string[] }> }
+    return (body.docs ?? []).flatMap((book) => book.key && book.title ? [{ id: book.key, type: "book" as const, title: book.title, creator: book.author_name?.[0] ?? "Unknown author", year: book.first_publish_year ?? null, coverImageUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : "", genres: curatedBookGenres(book.subject) }] : [])
   }
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
@@ -111,8 +115,8 @@ export async function lookupCollection(data: { query: string; type: "book" | "mo
   url.searchParams.set("query", data.query); url.searchParams.set("include_adult", "false"); url.searchParams.set("language", "en-US"); url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
   if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
-  const body = (await response.json()) as { results?: Array<{ id: number; title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null }> }
-  return (body.results ?? []).flatMap((movie) => (movie.title ?? movie.name) ? [{ id: String(movie.id), type: data.type, title: movie.title ?? movie.name!, creator: data.type === "tv" ? "Creator unavailable" : "Director unavailable", year: (movie.release_date ?? movie.first_air_date) ? Number((movie.release_date ?? movie.first_air_date)!.slice(0, 4)) : null, coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "" }] : [])
+  const body = (await response.json()) as { results?: Array<{ id: number; title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null; genre_ids?: number[] }> }
+  return (body.results ?? []).flatMap((movie) => (movie.title ?? movie.name) ? [{ id: String(movie.id), type: data.type, title: movie.title ?? movie.name!, creator: data.type === "tv" ? "Creator unavailable" : "Director unavailable", year: (movie.release_date ?? movie.first_air_date) ? Number((movie.release_date ?? movie.first_air_date)!.slice(0, 4)) : null, coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "", genres: [] }] : [])
 }
 
 export const getCoverOptions = createServerFn({ method: "GET" })
@@ -172,100 +176,169 @@ export const searchCollection = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<LookupResult[]> => {
     if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
     return lookupCollection(data)
-    if (data.type === "book") {
-      const url = new URL("https://openlibrary.org/search.json")
-      url.searchParams.set("q", data.query)
-      url.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i")
-      url.searchParams.set("limit", "6")
-      const response = await fetch(url, {
-        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-      })
-      if (!response.ok) throw new Error("Open Library could not complete that search.")
-      const body = (await response.json()) as {
-        docs?: Array<{
-          key?: string
-          title?: string
-          author_name?: string[]
-          first_publish_year?: number
-          cover_i?: number
-        }>
-      }
-      return (body.docs ?? []).flatMap((book) =>
-        book.key && book.title
-          ? [{
-              id: book.key,
-              type: "book" as const,
-              title: book.title,
-              creator: book.author_name?.[0] ?? "Unknown author",
-              year: book.first_publish_year ?? null,
-              coverImageUrl: book.cover_i
-                ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
-                : "",
-            }]
-          : [],
-      )
-    }
-
-    const apiKey = process.env.TMDB_API_KEY
-    if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
-    const url = new URL("https://api.themoviedb.org/3/search/movie")
-    url.searchParams.set("query", data.query)
-    url.searchParams.set("include_adult", "false")
-    url.searchParams.set("language", "en-US")
-    url.searchParams.set("api_key", apiKey ?? "")
-    const response = await fetch(url)
-    if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
-    const body = (await response.json()) as {
-      results?: Array<{ id: number; title?: string; release_date?: string; poster_path?: string | null }>
-    }
-    return (body.results ?? []).flatMap((movie) =>
-      movie.title
-        ? [{
-            id: String(movie.id),
-            type: "movie" as const,
-            title: movie.title,
-            creator: "Director unavailable",
-            year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : null,
-            coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",
-          }]
-        : [],
-    )
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
     if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
-    if (data.type === "book") {
-      const response = await fetch(`https://openlibrary.org${data.id}.json`, {
-        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-      })
-      if (!response.ok) throw new Error("Open Library could not load that book.")
-      const book = (await response.json()) as { title?: string; first_publish_date?: string }
-      const title = book.title ?? "Untitled"
-      return { id: data.id, type: "book", title, creator: "Unknown author", year: book.first_publish_date ? Number(book.first_publish_date.slice(-4)) || null : null, coverImageUrl: "", slug: slugify(title) }
-    }
-
-    const apiKey = process.env.TMDB_API_KEY
-    if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
-    const url = new URL(`https://api.themoviedb.org/3/movie/${data.id}`)
-    url.searchParams.set("append_to_response", "credits")
-    url.searchParams.set("api_key", apiKey)
-    const response = await fetch(url)
-    if (!response.ok) throw new Error("TMDB could not load that movie. Check TMDB_API_KEY.")
-    const movie = (await response.json()) as {
-      title?: string; release_date?: string; poster_path?: string | null
-      credits?: { crew?: Array<{ job?: string; name?: string }> }
-    }
-    const title = movie.title ?? "Untitled"
-    return {
-      id: data.id, type: "movie", title,
-      creator: movie.credits?.crew?.find((person) => person.job === "Director")?.name ?? "Director unavailable",
-      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) || null : null,
-      coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",
-      slug: slugify(title),
-    }
+    return getCollectionResultById(data)
   })
+
+async function getCollectionResultById(data: { id: string; type: "book" | "movie" | "tv" }): Promise<LookupResult & { slug: string }> {
+  if (data.type === "book") {
+    const response = await fetch(`https://openlibrary.org${data.id}.json`, {
+      headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+    })
+    if (!response.ok) throw new Error("Open Library could not load that book.")
+    const book = (await response.json()) as { title?: string; first_publish_date?: string; subjects?: string[] }
+    const title = book.title ?? "Untitled"
+    return { id: data.id, type: "book", title, creator: "Unknown author", year: yearFromDate(book.first_publish_date), coverImageUrl: "", genres: curatedBookGenres(book.subjects), slug: slugify(title) }
+  }
+
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) throw new Error("TMDB lookup needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
+  const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.id}`)
+  url.searchParams.set("append_to_response", "credits")
+  url.searchParams.set("api_key", apiKey)
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`TMDB could not load that ${data.type}. Check TMDB_API_KEY.`)
+  const result = (await response.json()) as {
+    title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null
+    genres?: Array<{ name?: string }>
+    created_by?: Array<{ name?: string }>
+    credits?: { crew?: Array<{ job?: string; name?: string }> }
+  }
+  const title = data.type === "tv" ? result.name ?? "Untitled" : result.title ?? "Untitled"
+  const creator = data.type === "tv"
+    ? result.created_by?.[0]?.name ?? result.credits?.crew?.find((person) => person.job === "Creator" || person.job === "Director")?.name ?? "Creator unavailable"
+    : result.credits?.crew?.find((person) => person.job === "Director")?.name ?? "Director unavailable"
+  return {
+    id: data.id, type: data.type, title, creator,
+    year: yearFromDate(data.type === "tv" ? result.first_air_date : result.release_date),
+    coverImageUrl: result.poster_path ? `https://image.tmdb.org/t/p/w500${result.poster_path}` : "",
+    genres: result.genres?.flatMap((genre) => genre.name ? [genre.name] : []) ?? [],
+    slug: slugify(title),
+  }
+}
+
+type SyncedFields = {
+  title?: string
+  creator?: string
+  year?: number
+  genres?: string[]
+}
+
+export type ProviderSyncResult = {
+  itemId: number
+  slug: string
+  skipped?: string
+  changes?: Partial<Record<keyof SyncedFields, { before: string | number | string[]; after: string | number | string[] }>>
+}
+
+export async function syncItemFromProvider(item: Item, dryRun = false): Promise<ProviderSyncResult> {
+  const providerId = item.type === "book" ? item.openLibraryKey : item.tmdbId
+  if (!providerId) return { itemId: item.id, slug: item.slug, skipped: `Missing ${item.type === "book" ? "Open Library key" : "TMDB ID"}.` }
+
+  const metadata = item.type === "book"
+    ? await getBookSyncMetadata(providerId)
+    : await getTmdbSyncMetadata(item.type, providerId)
+
+  const changes = changedFields(item, metadata)
+  if (!Object.keys(changes).length) return { itemId: item.id, slug: item.slug, skipped: "Already up to date." }
+  if (!dryRun) {
+    await db.update(items).set({
+      ...Object.fromEntries(Object.entries(changes).map(([field, change]) => [field, change.after])),
+      updatedAt: new Date().toISOString(),
+    }).where(eq(items.id, item.id))
+  }
+  return { itemId: item.id, slug: item.slug, changes }
+}
+
+export const syncItem = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    requireAdmin()
+    await ensureDatabase()
+    const [item] = await db.select().from(items).where(eq(items.id, data.id))
+    if (!item) throw new Error("Item not found.")
+    return syncItemFromProvider(item)
+  })
+
+async function getTmdbSyncMetadata(type: "movie" | "tv", tmdbId: string): Promise<SyncedFields> {
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) throw new Error("TMDB sync needs TMDB_API_KEY.")
+  const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
+  url.searchParams.set("append_to_response", "credits")
+  url.searchParams.set("api_key", apiKey)
+  const response = await fetch(url)
+  if (response.status === 404) throw new Error(`Provider 404: TMDB ${type} ${tmdbId} was not found.`)
+  if (!response.ok) throw new Error(`TMDB could not load ${type} ${tmdbId}.`)
+  const result = (await response.json()) as {
+    title?: string; name?: string; release_date?: string; first_air_date?: string
+    genres?: Array<{ name?: string }>
+    created_by?: Array<{ name?: string }>
+    credits?: { crew?: Array<{ job?: string; name?: string }> }
+  }
+  const creator = type === "tv"
+    ? result.created_by?.[0]?.name ?? result.credits?.crew?.find((person) => person.job === "Creator" || person.job === "Director")?.name
+    : result.credits?.crew?.find((person) => person.job === "Director")?.name
+  return {
+    ...(type === "tv" ? result.name ? { title: result.name } : {} : result.title ? { title: result.title } : {}),
+    ...(creator ? { creator } : {}),
+    ...(yearFromDate(type === "tv" ? result.first_air_date : result.release_date) !== null ? { year: yearFromDate(type === "tv" ? result.first_air_date : result.release_date)! } : {}),
+    genres: result.genres?.flatMap((genre) => genre.name ? [genre.name] : []) ?? [],
+  }
+}
+
+async function getBookSyncMetadata(openLibraryKey: string): Promise<SyncedFields> {
+  const response = await fetch(`https://openlibrary.org${openLibraryKey}.json`, {
+    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+  })
+  if (response.status === 404) throw new Error(`Provider 404: Open Library work ${openLibraryKey} was not found.`)
+  if (!response.ok) throw new Error(`Open Library could not load ${openLibraryKey}.`)
+  const book = (await response.json()) as {
+    title?: string; first_publish_date?: string; subjects?: string[]
+    authors?: Array<{ author?: { key?: string }; name?: string }>
+  }
+  const authorNames = (await Promise.all((book.authors ?? []).map(async (author) => {
+    if (author.name) return author.name
+    if (!author.author?.key) return undefined
+    const authorResponse = await fetch(`https://openlibrary.org${author.author.key}.json`, {
+      headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+    })
+    if (!authorResponse.ok) return undefined
+    return ((await authorResponse.json()) as { name?: string }).name
+  }))).flatMap((name) => name ? [name] : [])
+  const year = yearFromDate(book.first_publish_date)
+  return {
+    ...(book.title ? { title: book.title } : {}),
+    ...(authorNames.length ? { creator: authorNames.join(", ") } : {}),
+    ...(year !== null ? { year } : {}),
+    genres: curatedBookGenres(book.subjects),
+  }
+}
+
+function changedFields(item: Item, metadata: SyncedFields): NonNullable<ProviderSyncResult["changes"]> {
+  const changes: NonNullable<ProviderSyncResult["changes"]> = {}
+  for (const field of ["title", "creator", "year", "genres"] as const) {
+    const next = metadata[field]
+    if (next === undefined) continue
+    const previous = item[field]
+    if (JSON.stringify(previous) !== JSON.stringify(next)) changes[field] = { before: previous, after: next }
+  }
+  return changes
+}
+
+function curatedBookGenres(subjects?: string[]) {
+  const subjectSet = new Set((subjects ?? []).map((subject) => subject.toLocaleLowerCase()))
+  return bookGenreOptions.filter((genre) => subjectSet.has(genre.toLocaleLowerCase()))
+}
+
+function yearFromDate(value?: string) {
+  const match = value?.match(/\b(\d{4})\b/)
+  return match ? Number(match[1]) : null
+}
 
 export const getItems = createServerFn({ method: "GET" })
   .validator(
