@@ -25,7 +25,9 @@ function Movies() {
       <OutNow items={Route.useLoaderData()} />
       <Catalog
         items={Route.useLoaderData()}
-        onQueryChange={(query) => navigate({ search: { query: query || undefined } })}
+        onQueryChange={(query) =>
+          navigate({ replace: true, search: { query: query || undefined } })
+        }
         query={search.query}
         type="movie"
       />
