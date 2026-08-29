@@ -3,7 +3,7 @@ import { eq, or } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db, ensureDatabase } from "@/server/db"
-import { getCollectionResult, searchCollection } from "@/server/items"
+import { lookupCollection } from "@/server/items"
 import { storeCover } from "@/server/covers"
 import { items, itemTypes } from "@/server/schema"
 
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/items")({
           const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
           const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
           const title = input.query.replace(/(?:\(|\s)\d{4}\)?\s*$/, "").trim()
-          const matches = await searchCollection({ data: { type: input.type, query: title } })
+          const matches = await lookupCollection({ type: input.type, query: title })
           const ranked = [...matches].sort((a, b) => Number(b.year === year) - Number(a.year === year) || Number(normalize(a.title) === normalize(title)) - Number(normalize(b.title) === normalize(title)))
           const top = ranked[0]
           const exact = top && (normalize(top.title) === normalize(title) || (year !== undefined && top.year === year))
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/items")({
           const providerId = input.type === "movie" ? (input.tmdbId ?? top.id) : (input.openLibraryKey ?? top.id)
           const existing = await db.select({ id: items.id }).from(items).where(or(eq(items.slug, slugify(top.title)), input.type === "movie" ? eq(items.tmdbId, providerId) : eq(items.openLibraryKey, providerId))).limit(1)
           if (existing.length) { skipped.push({ query: input.query, reason: "Already on Shelf" }); continue }
-          const resolved = input.type === "movie" ? await getCollectionResult({ data: { type: "movie", id: providerId } }) : { ...top, slug: slugify(top.title) }
+          const resolved = { ...top, slug: slugify(top.title) }
           if (body.data.dryRun) { added.push({ title: resolved.title, slug: resolved.slug }); continue }
           const now = new Date().toISOString()
           const [created] = await db.insert(items).values({ slug: resolved.slug, type: input.type, status: input.status || "owned", title: resolved.title, creator: resolved.creator, year: resolved.year ?? 0, format: input.format || null, coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null, tmdbId: input.type === "movie" ? providerId : null, openLibraryKey: input.type === "book" ? providerId : null, notes: "", createdAt: now, updatedAt: now }).returning({ id: items.id, title: items.title, slug: items.slug })
