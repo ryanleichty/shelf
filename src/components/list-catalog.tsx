@@ -27,6 +27,7 @@ export function ListCatalog({
           items={items}
           onQueryChange={onQueryChange}
           query={query}
+          rememberQuery={false}
           type={type}
         />
       </div>
