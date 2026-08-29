@@ -22,8 +22,8 @@ const itemInput = z.object({
   loanedAt: z.string().date().optional().or(z.literal("")),
   format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
 }).superRefine((item, context) => {
-  if (item.type === "movie" && item.status === "reading") {
-    context.addIssue({ code: "custom", message: "Movies cannot have Reading status.", path: ["status"] })
+  if (item.type !== "book" && item.status === "reading") {
+    context.addIssue({ code: "custom", message: "Only books can have Reading status.", path: ["status"] })
   }
   if (item.status === "borrowed" && !item.borrower?.trim()) {
     context.addIssue({ code: "custom", message: "Borrowed items need a borrower.", path: ["borrower"] })
@@ -34,7 +34,7 @@ const itemInput = z.object({
   if (item.type === "book" && ["blu-ray", "dvd"].includes(item.format ?? "")) {
     context.addIssue({ code: "custom", message: "Choose a book format.", path: ["format"] })
   }
-  if (item.type === "movie" && ["hardcover", "paperback"].includes(item.format ?? "")) {
+  if ((item.type === "movie" || item.type === "tv") && ["hardcover", "paperback"].includes(item.format ?? "")) {
     context.addIssue({ code: "custom", message: "Choose a movie format.", path: ["format"] })
   }
 })
@@ -88,14 +88,14 @@ export const importItems = createServerFn({ method: "POST" })
 
 export type LookupResult = {
   id: string
-  type: "book" | "movie"
+  type: "book" | "movie" | "tv"
   title: string
   creator: string
   year: number | null
   coverImageUrl: string
 }
 
-export async function lookupCollection(data: { query: string; type: "book" | "movie" }): Promise<LookupResult[]> {
+export async function lookupCollection(data: { query: string; type: "book" | "movie" | "tv" }): Promise<LookupResult[]> {
   if (data.type === "book") {
     const url = new URL("https://openlibrary.org/search.json")
     url.searchParams.set("q", data.query); url.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i"); url.searchParams.set("limit", "6")
@@ -106,12 +106,12 @@ export async function lookupCollection(data: { query: string; type: "book" | "mo
   }
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
-  const url = new URL("https://api.themoviedb.org/3/search/movie")
+  const url = new URL(`https://api.themoviedb.org/3/search/${data.type === "tv" ? "tv" : "movie"}`)
   url.searchParams.set("query", data.query); url.searchParams.set("include_adult", "false"); url.searchParams.set("language", "en-US"); url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
   if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
-  const body = (await response.json()) as { results?: Array<{ id: number; title?: string; release_date?: string; poster_path?: string | null }> }
-  return (body.results ?? []).flatMap((movie) => movie.title ? [{ id: String(movie.id), type: "movie" as const, title: movie.title, creator: "Director unavailable", year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : null, coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "" }] : [])
+  const body = (await response.json()) as { results?: Array<{ id: number; title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null }> }
+  return (body.results ?? []).flatMap((movie) => (movie.title ?? movie.name) ? [{ id: String(movie.id), type: data.type, title: movie.title ?? movie.name!, creator: data.type === "tv" ? "Creator unavailable" : "Director unavailable", year: (movie.release_date ?? movie.first_air_date) ? Number((movie.release_date ?? movie.first_air_date)!.slice(0, 4)) : null, coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "" }] : [])
 }
 
 export const getCoverOptions = createServerFn({ method: "GET" })

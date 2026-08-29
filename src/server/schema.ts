@@ -1,8 +1,8 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-export const itemTypes = ["book", "movie"] as const
+export const itemTypes = ["book", "movie", "tv"] as const
 export type ItemType = (typeof itemTypes)[number]
-export const itemStatuses = ["owned", "borrowed", "reading"] as const
+export const itemStatuses = ["owned", "borrowed", "reading", "watching"] as const
 export type ItemStatus = (typeof itemStatuses)[number]
 
 export const items = sqliteTable("items", {

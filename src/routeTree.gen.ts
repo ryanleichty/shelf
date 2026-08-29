@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BooksRouteImport } from './routes/books'
 import { Route as MoviesRouteImport } from './routes/movies'
+import { Route as TvRouteImport } from './routes/tv'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminIdRouteImport } from './routes/admin/$id'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
@@ -34,6 +35,11 @@ const BooksRoute = BooksRouteImport.update({
 const MoviesRoute = MoviesRouteImport.update({
   id: '/movies',
   path: '/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvRoute = TvRouteImport.update({
+  id: '/tv',
+  path: '/tv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
   '/movies': typeof MoviesRoute
+  '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
   '/movies': typeof MoviesRoute
+  '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/books': typeof BooksRoute
   '/movies': typeof MoviesRoute
+  '/tv': typeof TvRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/books'
     | '/movies'
+    | '/tv'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/books'
     | '/movies'
+    | '/tv'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/books'
     | '/movies'
+    | '/tv'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BooksRoute: typeof BooksRoute
   MoviesRoute: typeof MoviesRoute
+  TvRoute: typeof TvRoute
   AdminIdRoute: typeof AdminIdRoute
   AdminImportRoute: typeof AdminImportRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/movies'
       fullPath: '/movies'
       preLoaderRoute: typeof MoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv': {
+      id: '/tv'
+      path: '/tv'
+      fullPath: '/tv'
+      preLoaderRoute: typeof TvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -270,6 +290,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BooksRoute: BooksRoute,
   MoviesRoute: MoviesRoute,
+  TvRoute: TvRoute,
   AdminIdRoute: AdminIdRoute,
   AdminImportRoute: AdminImportRoute,
   AdminLoginRoute: AdminLoginRoute,

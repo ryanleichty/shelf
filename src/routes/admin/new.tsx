@@ -4,7 +4,7 @@ import { ItemForm } from "@/components/item-form"
 import { getAdminStatus } from "@/server/items"
 
 export const Route = createFileRoute("/admin/new")({
-  validateSearch: z.object({ type: z.enum(["book", "movie"]).optional() }),
+  validateSearch: z.object({ type: z.enum(["book", "movie", "tv"]).optional() }),
   beforeLoad: async () => {
     if (!(await getAdminStatus())) throw redirect({ to: "/admin/login" })
   },

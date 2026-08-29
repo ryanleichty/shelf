@@ -14,13 +14,13 @@ import {
 } from "@/server/items"
 import type { Item } from "@/server/schema"
 
-export function ItemForm({ item, initialType }: { item?: Item; initialType?: "book" | "movie" }) {
+export function ItemForm({ item, initialType }: { item?: Item; initialType?: "book" | "movie" | "tv" }) {
   const router = useRouter()
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
-  const [type, setType] = useState<"book" | "movie">(item?.type ?? initialType ?? "book")
-  const [status, setStatus] = useState<"" | "borrowed" | "reading">(
-    item?.status === "reading" || item?.status === "borrowed" ? item.status : "",
+  const [type, setType] = useState<"book" | "movie" | "tv">(item?.type ?? initialType ?? "book")
+  const [status, setStatus] = useState<"" | "borrowed" | "reading" | "watching">(
+    item?.status === "reading" || item?.status === "borrowed" || item?.status === "watching" ? item.status : "",
   )
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
@@ -85,7 +85,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "slug") setSlugWasAutoFilled(false)
   }
-  function changeType(nextType: "book" | "movie") {
+  function changeType(nextType: "book" | "movie" | "tv") {
     setType(nextType)
     setQuery("")
     setResults([])
@@ -93,7 +93,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     setSelected(false)
     setCoversLoading(false)
     updateValue("format", "")
-    if (nextType === "movie" && status === "reading") setStatus("")
+    if ((nextType === "movie" || nextType === "tv") && status === "reading") setStatus("")
   }
 
   async function choose(result: LookupResult) {
@@ -146,7 +146,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
   return (
     <form className="item-form" onSubmit={submit}>
       <Tabs onValueChange={(value) => changeType(value as "book" | "movie")} value={type}>
-        <TabsList aria-label="Item type"><TabsTrigger value="book">Book</TabsTrigger><TabsTrigger value="movie">Movie</TabsTrigger></TabsList>
+        <TabsList aria-label="Item type"><TabsTrigger value="book">Book</TabsTrigger><TabsTrigger value="movie">Movie</TabsTrigger><TabsTrigger value="tv">TV</TabsTrigger></TabsList>
       </Tabs>
       <section className="collection-search">
         <div className="lookup-heading"><span>Find a {type}</span><small>Search fills the form; review before saving.</small></div>
@@ -165,7 +165,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
         <Field label="Title" name="title" onChange={(event) => updateValue("title", event.target.value)} required value={values.title} />
         <Field label={type === "movie" ? "Director" : "Author / creator"} name="creator" onChange={(event) => updateValue("creator", event.target.value)} required value={values.creator} />
         <Field hint="Lowercase words separated by hyphens." label="Slug" name="slug" onChange={(event) => updateValue("slug", event.target.value)} required value={values.slug} />
-        <label className="field"><span>Status</span><select name="status" onChange={(event) => { const nextStatus = event.target.value as "" | "borrowed" | "reading"; setStatus(nextStatus); if (nextStatus !== "borrowed") setValues((current) => ({ ...current, borrower: "", loanedAt: "" })) }} value={status}><option value="">Unspecified</option>{type === "book" && <option value="reading">Reading</option>}<option value="borrowed">Borrowed</option></select></label>
+        <label className="field"><span>Status</span><select name="status" onChange={(event) => { const nextStatus = event.target.value as "" | "borrowed" | "reading" | "watching"; setStatus(nextStatus); if (nextStatus !== "borrowed") setValues((current) => ({ ...current, borrower: "", loanedAt: "" })) }} value={status}><option value="">Unspecified</option>{type === "book" && <option value="reading">Reading</option>}{type === "tv" && <option value="watching">Watching</option>}<option value="borrowed">Borrowed</option></select></label>
         <Field label="Year" min="0" name="year" onChange={(event) => updateValue("year", event.target.value)} required type="number" value={values.year} />
         <label className="field"><span>Format</span><select name="format" onChange={(event) => updateValue("format", event.target.value)} value={values.format}><option value="">Unspecified</option>{type === "book" ? <><option value="hardcover">Hardcover</option><option value="paperback">Paperback</option></> : <><option value="blu-ray">Blu-ray</option><option value="dvd">DVD</option></>}<option value="other">Other</option></select></label>
         <Field disabled={coversLoading && Boolean(type === "book" ? values.openLibraryKey : values.tmdbId)} label="Cover image URL" name="coverImageUrl" onChange={(event) => updateValue("coverImageUrl", event.target.value)} type="url" value={values.coverImageUrl} />

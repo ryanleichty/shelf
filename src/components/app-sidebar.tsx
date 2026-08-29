@@ -1,7 +1,7 @@
 "use client"
 
 import { Link, useRouter } from "@tanstack/react-router"
-import { BookOpenIcon, LogInIcon, LogOutIcon, SearchIcon, FilmIcon } from "lucide-react"
+import { BookOpenIcon, LogInIcon, LogOutIcon, SearchIcon, FilmIcon, TvIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getAdminStatus, logout } from "@/server/items"
 import { CatalogCommand } from "@/components/catalog-command"
@@ -13,6 +13,7 @@ import {
 const navigation = [
   { title: "Books", to: "/books", icon: BookOpenIcon },
   { title: "Movies", to: "/movies", icon: FilmIcon },
+  { title: "TV", to: "/tv", icon: TvIcon },
 ] as const
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
