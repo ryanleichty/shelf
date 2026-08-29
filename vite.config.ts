@@ -12,6 +12,11 @@ const config = defineConfig({
         find: /^use-sync-external-store\/shim(?:\/index\.js)?$/,
         replacement: "react",
       },
+      {
+        find: /^use-sync-external-store\/shim\/with-selector(?:\.js)?$/,
+        replacement:
+          "/workspace/src/lib/use-sync-external-store-with-selector.ts",
+      },
     ],
     tsconfigPaths: true,
   },
