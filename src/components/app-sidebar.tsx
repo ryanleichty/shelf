@@ -1,7 +1,7 @@
 "use client"
 
 import { Link, useRouter } from "@tanstack/react-router"
-import { BookOpenIcon, LogInIcon, LogOutIcon, SearchIcon, FilmIcon, TvIcon } from "lucide-react"
+import { BookOpenIcon, FilmIcon, HouseIcon, LogInIcon, LogOutIcon, SearchIcon, TvIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getAdminStatus, logout } from "@/server/items"
 import { CatalogCommand } from "@/components/catalog-command"
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar"
 
 const navigation = [
+  { title: "Home", to: "/", icon: HouseIcon },
   { title: "Books", to: "/books", icon: BookOpenIcon },
   { title: "Movies", to: "/movies", icon: FilmIcon },
   { title: "TV", to: "/tv", icon: TvIcon },
@@ -24,13 +25,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   async function signOut() {
     await logout()
     setAdmin(false)
-    await router.navigate({ to: "/books" })
+    await router.navigate({ to: "/" })
   }
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu><SidebarMenuItem>
-          <SidebarMenuButton render={<Link to="/books" />} size="lg" tooltip="Shelf">
+          <SidebarMenuButton render={<Link to="/" />} size="lg" tooltip="Shelf">
             <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">S</div>
             <div className="grid flex-1 text-left text-sm leading-tight"><span className="truncate font-semibold">Shelf</span><span className="truncate text-xs">Ryan Leichty’s collection</span></div>
           </SidebarMenuButton>

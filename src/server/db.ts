@@ -80,8 +80,41 @@ export function ensureDatabase() {
       await getClient().execute(
         "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
       )
-    if (!isEphemeral) return
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS lists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS list_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL,
+        added_at TEXT NOT NULL,
+        UNIQUE(list_id, item_id)
+      )
+    `)
     const now = new Date().toISOString()
+    await getClient().execute({
+      sql: `
+        INSERT INTO lists (slug, name, created_at)
+        VALUES (?, ?, ?), (?, ?, ?)
+        ON CONFLICT(slug) DO NOTHING
+      `,
+      args: [
+        "watchlist",
+        "Watchlist",
+        now,
+        "reading-list",
+        "Reading list",
+        now,
+      ],
+    })
+    if (!isEphemeral) return
     const count = await getClient().execute("SELECT COUNT(*) AS count FROM items")
     if (Number(count.rows[0]?.count ?? 0) === 0) {
       await db

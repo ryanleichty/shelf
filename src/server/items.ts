@@ -10,6 +10,8 @@ import {
   itemEditions,
   itemStatuses,
   itemTypes,
+  listItems,
+  lists,
   type Item,
 } from "./schema"
 
@@ -791,6 +793,105 @@ export const getItems = createServerFn({ method: "GET" })
       .orderBy(asc(items.title))
   })
 
+const listMembershipInput = z.object({
+  itemId: z.number().int(),
+  listSlug: z.string().min(1).max(120),
+})
+
+export const addItemToList = createServerFn({ method: "POST" })
+  .validator(listMembershipInput)
+  .handler(async ({ data }) => {
+    requireAdmin()
+    await ensureDatabase()
+    const [list] = await db
+      .select()
+      .from(lists)
+      .where(eq(lists.slug, data.listSlug))
+      .limit(1)
+    if (!list) throw new Error("List not found.")
+    await db
+      .insert(listItems)
+      .values({
+        listId: list.id,
+        itemId: data.itemId,
+        position: Date.now(),
+        addedAt: new Date().toISOString(),
+      })
+      .onConflictDoNothing()
+    return { ok: true }
+  })
+
+export const removeItemFromList = createServerFn({ method: "POST" })
+  .validator(listMembershipInput)
+  .handler(async ({ data }) => {
+    requireAdmin()
+    await ensureDatabase()
+    const [list] = await db
+      .select()
+      .from(lists)
+      .where(eq(lists.slug, data.listSlug))
+      .limit(1)
+    if (!list) return { ok: true }
+    await db
+      .delete(listItems)
+      .where(and(eq(listItems.listId, list.id), eq(listItems.itemId, data.itemId)))
+    return { ok: true }
+  })
+
+export const getHomeRows = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await ensureDatabase()
+    const allItems = await db.select().from(items).orderBy(asc(items.title))
+    const memberships = await db
+      .select({
+        listSlug: lists.slug,
+        itemId: listItems.itemId,
+        position: listItems.position,
+      })
+      .from(listItems)
+      .innerJoin(lists, eq(listItems.listId, lists.id))
+      .orderBy(asc(listItems.position))
+
+    const rows: Array<{ title: string; items: Item[] }> = []
+    for (const [slug, title, allowedTypes] of [
+      ["watchlist", "Watchlist", ["movie", "tv"]],
+      ["reading-list", "Reading list", ["book"]],
+    ] as const) {
+      const itemIds = new Set(
+        memberships
+          .filter(
+            (membership) =>
+              membership.listSlug === slug &&
+              allowedTypes.includes(
+                allItems.find((item) => item.id === membership.itemId)?.type ??
+                  "book"
+              )
+          )
+          .map((membership) => membership.itemId)
+      )
+      const rowItems = allItems.filter((item) => itemIds.has(item.id))
+      if (rowItems.length) rows.push({ title, items: rowItems })
+    }
+
+    const genres = new Map<string, Item[]>()
+    for (const item of allItems) {
+      for (const genre of item.genres) {
+        const name = genre.trim()
+        if (!name) continue
+        genres.set(name, [...(genres.get(name) ?? []), item])
+      }
+    }
+    return [
+      ...rows,
+      ...[...genres.entries()]
+        .sort(([leftName, leftItems], [rightName, rightItems]) =>
+          rightItems.length - leftItems.length || leftName.localeCompare(rightName)
+        )
+        .map(([title, rowItems]) => ({ title, items: rowItems })),
+    ]
+  }
+)
+
 export const getItemBySlug = createServerFn({ method: "GET" })
   .validator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
@@ -799,7 +900,30 @@ export const getItemBySlug = createServerFn({ method: "GET" })
       .select()
       .from(items)
       .where(eq(items.slug, data.slug))
-    return item ?? null
+    if (!item) return null
+    const listSlug = item.type === "book" ? "reading-list" : "watchlist"
+    const [list] = await db
+      .select()
+      .from(lists)
+      .where(eq(lists.slug, listSlug))
+      .limit(1)
+    const [membership] = list
+      ? await db
+          .select({ id: listItems.id })
+          .from(listItems)
+          .where(
+            and(eq(listItems.listId, list.id), eq(listItems.itemId, item.id))
+          )
+          .limit(1)
+      : []
+    return {
+      ...item,
+      targetList: {
+        slug: listSlug,
+        name: list?.name ?? (item.type === "book" ? "Reading list" : "Watchlist"),
+        containsItem: Boolean(membership),
+      },
+    }
   })
 
 export const getItemById = createServerFn({ method: "GET" })
@@ -878,6 +1002,7 @@ export const deleteItem = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin()
     await ensureDatabase()
+    await db.delete(listItems).where(eq(listItems.itemId, data.id))
     await db.delete(items).where(eq(items.id, data.id))
     return { ok: true }
   })

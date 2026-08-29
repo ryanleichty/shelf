@@ -21,6 +21,7 @@ await client.execute(`
     loaned_at TEXT,
     format TEXT,
     edition TEXT,
+    genres TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT '',
     acquired_at TEXT,
     created_at TEXT NOT NULL,
@@ -51,5 +52,44 @@ if (!columns.rows.some((column) => column.name === "format")) {
 if (!columns.rows.some((column) => column.name === "edition")) {
   await client.execute("ALTER TABLE items ADD COLUMN edition TEXT")
 }
+if (!columns.rows.some((column) => column.name === "genres")) {
+  await client.execute(
+    "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
+  )
+}
+const now = new Date().toISOString()
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS lists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS list_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    added_at TEXT NOT NULL,
+    UNIQUE(list_id, item_id)
+  )
+`)
+await client.execute({
+  sql: `
+    INSERT INTO lists (slug, name, created_at)
+    VALUES (?, ?, ?), (?, ?, ?)
+    ON CONFLICT(slug) DO NOTHING
+  `,
+  args: [
+    "watchlist",
+    "Watchlist",
+    now,
+    "reading-list",
+    "Reading list",
+    now,
+  ],
+})
 
 console.log("Database is ready.")
