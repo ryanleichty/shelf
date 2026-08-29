@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router"
 import { BookmarkIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
@@ -27,7 +28,7 @@ export function ItemListToggle({
   initiallyInList: boolean
 }) {
   const router = useRouter()
-  const [admin, setAdmin] = useState(false)
+  const [admin, setAdmin] = useState<boolean | undefined>(undefined)
   const [inList, setInList] = useState(initiallyInList)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -37,6 +38,14 @@ export function ItemListToggle({
       .then(setAdmin)
       .catch(() => setAdmin(false))
   }, [])
+
+  if (admin === undefined) {
+    return (
+      <div className="mt-4">
+        <Skeleton className="size-8 rounded-lg" />
+      </div>
+    )
+  }
 
   if (!admin) return null
 
