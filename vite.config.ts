@@ -7,7 +7,12 @@ import { nitro } from "nitro/vite"
 
 const config = defineConfig({
   resolve: {
-    alias: [{ find: "use-sync-external-store/shim", replacement: "react" }],
+    alias: [
+      {
+        find: /^use-sync-external-store\/shim(?:\/index\.js)?$/,
+        replacement: "react",
+      },
+    ],
     tsconfigPaths: true,
   },
   plugins: [devtools(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
