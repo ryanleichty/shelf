@@ -28,7 +28,9 @@ export function ItemListToggle({
   const [error, setError] = useState("")
 
   useEffect(() => {
-    getAdminStatus().then(setAdmin).catch(() => setAdmin(false))
+    getAdminStatus()
+      .then(setAdmin)
+      .catch(() => setAdmin(false))
   }, [])
 
   if (!admin) return null
