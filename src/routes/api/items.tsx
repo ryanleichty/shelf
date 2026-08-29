@@ -152,9 +152,21 @@ export const Route = createFileRoute("/api/items")({
               skipped.push({ query: input.query, reason: "Already on Shelf" })
               continue
             }
+            const providerResult =
+              pinnedId
+                ? top
+                : await getCollectionResultById({
+                    type: input.type,
+                    id: providerId,
+                  })
             const resolved = {
-              ...top,
-              slug: await uniqueSlug(slugify(top.title), input.edition),
+              ...providerResult,
+              creator:
+                providerResult.creator === "Unknown author"
+                  ? top.creator
+                  : providerResult.creator,
+              coverImageUrl: providerResult.coverImageUrl || top.coverImageUrl,
+              slug: await uniqueSlug(slugify(providerResult.title), input.edition),
             }
             if (body.data.dryRun) {
               added.push({ title: resolved.title, slug: resolved.slug })

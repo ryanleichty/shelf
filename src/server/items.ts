@@ -159,10 +159,18 @@ export const importItems = createServerFn({ method: "POST" })
           skipped.push({ query, reason: "No match found" })
           continue
         }
-        const resolved =
-          data.type !== "book"
-            ? await getCollectionResultById({ type: data.type, id: match.id })
-            : { ...match, slug: slugify(match.title) }
+        const providerResult = await getCollectionResultById({
+          type: data.type,
+          id: match.id,
+        })
+        const resolved = {
+          ...providerResult,
+          creator:
+            providerResult.creator === "Unknown author"
+              ? match.creator
+              : providerResult.creator,
+          coverImageUrl: providerResult.coverImageUrl || match.coverImageUrl,
+        }
         if (
           await itemExists({
             type: data.type,
