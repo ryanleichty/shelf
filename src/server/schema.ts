@@ -19,6 +19,7 @@ export const items = sqliteTable("items", {
   borrower: text("borrower"),
   loanedAt: text("loaned_at"),
   format: text("format"),
+  genres: text("genres", { mode: "json" }).$type<string[]>().notNull().default([]),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),

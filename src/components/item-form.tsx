@@ -36,6 +36,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
     year: item?.year ? String(item.year) : "", coverImageUrl: item?.coverImageUrl ?? "",
     openLibraryKey: item?.openLibraryKey ?? "", tmdbId: item?.tmdbId ?? "",
     borrower: item?.borrower ?? "", loanedAt: item?.loanedAt ?? "", format: item?.format ?? "",
+    genres: item?.genres ?? [],
   })
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export function ItemForm({ item, initialType }: { item?: Item; initialType?: "bo
           openLibraryKey: values.openLibraryKey, tmdbId: values.tmdbId,
           borrower: values.borrower, loanedAt: values.loanedAt,
           format: values.format as ItemInput["format"],
+          genres: values.genres,
         } satisfies ItemInput,
       })
       await router.navigate({ to: "/item/$slug", params: { slug: result.slug } })

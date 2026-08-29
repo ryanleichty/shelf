@@ -35,6 +35,7 @@ export function ensureDatabase() {
         borrower TEXT,
         loaned_at TEXT,
         format TEXT,
+        genres TEXT NOT NULL DEFAULT '[]',
         notes TEXT NOT NULL DEFAULT '',
         acquired_at TEXT,
         created_at TEXT NOT NULL,
@@ -60,6 +61,7 @@ export function ensureDatabase() {
     if (!columns.rows.some((column) => column.name === "format")) {
       await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
     }
+    if (!columns.rows.some((column) => column.name === "genres")) await client.execute("ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'")
     if (!isEphemeral) return
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")

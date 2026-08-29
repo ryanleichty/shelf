@@ -1,0 +1,1 @@
+ALTER TABLE `items` ADD `genres` text DEFAULT '[]' NOT NULL;

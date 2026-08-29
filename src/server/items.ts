@@ -21,6 +21,7 @@ const itemInput = z.object({
   borrower: z.string().max(120).optional().or(z.literal("")),
   loanedAt: z.string().date().optional().or(z.literal("")),
   format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
+  genres: z.array(z.string().max(60)).max(20).default([]),
 }).superRefine((item, context) => {
   if (item.type !== "book" && item.status === "reading") {
     context.addIssue({ code: "custom", message: "Only books can have Reading status.", path: ["status"] })
