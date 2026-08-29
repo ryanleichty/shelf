@@ -1,51 +1,122 @@
-import { and, asc, eq, like, or } from "drizzle-orm"
+import { and, asc, eq, isNull, like, or } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { db, ensureDatabase } from "./db"
 import { isAgentToken, requireAdmin } from "./auth"
 import { storeCover } from "./covers"
-import { items, itemEditions, itemStatuses, itemTypes, type Item } from "./schema"
+import {
+  items,
+  itemEditions,
+  itemStatuses,
+  itemTypes,
+  type Item,
+} from "./schema"
 
-export const bookGenreOptions = ["Fiction", "Nonfiction", "Science Fiction", "Fantasy", "Mystery", "Romance", "History", "Biography", "Young Adult", "Poetry", "Comics"] as const
-export const screenGenreOptions = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Romance", "Science Fiction", "Thriller", "War", "Western"] as const
+export const bookGenreOptions = [
+  "Fiction",
+  "Nonfiction",
+  "Science Fiction",
+  "Fantasy",
+  "Mystery",
+  "Romance",
+  "History",
+  "Biography",
+  "Young Adult",
+  "Poetry",
+  "Comics",
+] as const
+export const screenGenreOptions = [
+  "Action",
+  "Adventure",
+  "Animation",
+  "Comedy",
+  "Crime",
+  "Documentary",
+  "Drama",
+  "Family",
+  "Fantasy",
+  "History",
+  "Horror",
+  "Mystery",
+  "Romance",
+  "Science Fiction",
+  "Thriller",
+  "War",
+  "Western",
+] as const
 
-const itemInput = z.object({
-  id: z.number().int().optional(),
-  slug: z.string().min(1).max(120),
-  type: z.enum(itemTypes),
-  status: z.enum(itemStatuses).default("owned"),
-  title: z.string().min(1).max(240),
-  creator: z.string().min(1).max(240),
-  year: z.number().int().min(0).max(3000),
-  coverImageUrl: z.string().url().optional().or(z.literal("")),
-  openLibraryKey: z.string().max(120).optional().or(z.literal("")),
-  tmdbId: z.string().max(40).optional().or(z.literal("")),
-  borrower: z.string().max(120).optional().or(z.literal("")),
-  loanedAt: z.string().date().optional().or(z.literal("")),
-  format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
-  edition: z.enum(itemEditions).optional().or(z.literal("")),
-  genres: z.array(z.string().max(60)).max(20).default([]),
-}).superRefine((item, context) => {
-  if (item.type !== "book" && item.status === "reading") {
-    context.addIssue({ code: "custom", message: "Only books can have Reading status.", path: ["status"] })
-  }
-  if (item.status === "borrowed" && !item.borrower?.trim()) {
-    context.addIssue({ code: "custom", message: "Borrowed items need a borrower.", path: ["borrower"] })
-  }
-  if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
-    context.addIssue({ code: "custom", message: "Loan details only apply to borrowed items.", path: ["status"] })
-  }
-  if (item.type === "book" && ["blu-ray", "dvd"].includes(item.format ?? "")) {
-    context.addIssue({ code: "custom", message: "Choose a book format.", path: ["format"] })
-  }
-  if ((item.type === "movie" || item.type === "tv") && ["hardcover", "paperback"].includes(item.format ?? "")) {
-    context.addIssue({ code: "custom", message: "Choose a movie format.", path: ["format"] })
-  }
-  if (item.type === "book" && item.edition) {
-    context.addIssue({ code: "custom", message: "Only movies and TV shows can have an edition.", path: ["edition"] })
-  }
-})
+const itemInput = z
+  .object({
+    id: z.number().int().optional(),
+    slug: z.string().min(1).max(120),
+    type: z.enum(itemTypes),
+    status: z.enum(itemStatuses).default("owned"),
+    title: z.string().min(1).max(240),
+    creator: z.string().min(1).max(240),
+    year: z.number().int().min(0).max(3000),
+    coverImageUrl: z.string().url().optional().or(z.literal("")),
+    openLibraryKey: z.string().max(120).optional().or(z.literal("")),
+    tmdbId: z.string().max(40).optional().or(z.literal("")),
+    borrower: z.string().max(120).optional().or(z.literal("")),
+    loanedAt: z.string().date().optional().or(z.literal("")),
+    format: z
+      .enum(["hardcover", "paperback", "blu-ray", "dvd", "other"])
+      .optional()
+      .or(z.literal("")),
+    edition: z.enum(itemEditions).optional().or(z.literal("")),
+    genres: z.array(z.string().max(60)).max(20).default([]),
+  })
+  .superRefine((item, context) => {
+    if (item.type !== "book" && item.status === "reading") {
+      context.addIssue({
+        code: "custom",
+        message: "Only books can have Reading status.",
+        path: ["status"],
+      })
+    }
+    if (item.status === "borrowed" && !item.borrower?.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: "Borrowed items need a borrower.",
+        path: ["borrower"],
+      })
+    }
+    if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
+      context.addIssue({
+        code: "custom",
+        message: "Loan details only apply to borrowed items.",
+        path: ["status"],
+      })
+    }
+    if (
+      item.type === "book" &&
+      ["blu-ray", "dvd"].includes(item.format ?? "")
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a book format.",
+        path: ["format"],
+      })
+    }
+    if (
+      (item.type === "movie" || item.type === "tv") &&
+      ["hardcover", "paperback"].includes(item.format ?? "")
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a movie format.",
+        path: ["format"],
+      })
+    }
+    if (item.type === "book" && item.edition) {
+      context.addIssue({
+        code: "custom",
+        message: "Only movies and TV shows can have an edition.",
+        path: ["edition"],
+      })
+    }
+  })
 
 export type ItemInput = z.infer<typeof itemInput>
 
@@ -55,12 +126,17 @@ const lookupInput = z.object({
 })
 
 export const importItems = createServerFn({ method: "POST" })
-  .validator(z.object({
-    type: z.enum(itemTypes),
-    format: z.enum(["hardcover", "paperback", "blu-ray", "dvd", "other"]).optional().or(z.literal("")),
-    edition: z.enum(itemEditions).optional().or(z.literal("")),
-    queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
-  }))
+  .validator(
+    z.object({
+      type: z.enum(itemTypes),
+      format: z
+        .enum(["hardcover", "paperback", "blu-ray", "dvd", "other"])
+        .optional()
+        .or(z.literal("")),
+      edition: z.enum(itemEditions).optional().or(z.literal("")),
+      queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
+    })
+  )
   .handler(async ({ data }) => {
     if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
     await ensureDatabase()
@@ -71,26 +147,52 @@ export const importItems = createServerFn({ method: "POST" })
       try {
         const matches = await lookupCollection({ type: data.type, query })
         const match = matches[0]
-        if (!match) { skipped.push({ query, reason: "No match found" }); continue }
-        const resolved = data.type !== "book"
-          ? await getCollectionResultById({ type: data.type, id: match.id })
-          : { ...match, slug: slugify(match.title) }
-        if (await itemExists({ type: data.type, title: resolved.title, year: resolved.year ?? 0, providerId: match.id, edition: data.edition })) {
-          skipped.push({ query, reason: "Already on Shelf" }); continue
+        if (!match) {
+          skipped.push({ query, reason: "No match found" })
+          continue
+        }
+        const resolved =
+          data.type !== "book"
+            ? await getCollectionResultById({ type: data.type, id: match.id })
+            : { ...match, slug: slugify(match.title) }
+        if (
+          await itemExists({
+            type: data.type,
+            title: resolved.title,
+            year: resolved.year ?? 0,
+            providerId: match.id,
+            edition: data.edition,
+          })
+        ) {
+          skipped.push({ query, reason: "Already on Shelf" })
+          continue
         }
         const slug = await uniqueSlug(resolved.slug, data.edition)
         const now = new Date().toISOString()
         await db.insert(items).values({
-          slug, type: data.type, status: "owned", title: resolved.title,
-          creator: resolved.creator, year: resolved.year ?? 0,
-          coverImageUrl: (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
+          slug,
+          type: data.type,
+          status: "owned",
+          title: resolved.title,
+          creator: resolved.creator,
+          year: resolved.year ?? 0,
+          coverImageUrl:
+            (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
           openLibraryKey: data.type === "book" ? match.id : null,
           tmdbId: data.type === "book" ? null : match.id,
-          format: data.format || null, edition: normalizeEdition(data.edition), notes: "", acquiredAt: null, createdAt: now, updatedAt: now,
+          format: data.format || null,
+          edition: normalizeEdition(data.edition),
+          notes: "",
+          acquiredAt: null,
+          createdAt: now,
+          updatedAt: now,
         })
         added.push({ title: resolved.title, slug })
       } catch (cause) {
-        failed.push({ query, reason: cause instanceof Error ? cause.message : "Import failed" })
+        failed.push({
+          query,
+          reason: cause instanceof Error ? cause.message : "Import failed",
+        })
       }
     }
     return { added, skipped, failed }
@@ -106,65 +208,183 @@ export type LookupResult = {
   genres: string[]
 }
 
-export async function lookupCollection(data: { query: string; type: "book" | "movie" | "tv" }): Promise<LookupResult[]> {
+export async function lookupCollection(data: {
+  query: string
+  type: "book" | "movie" | "tv"
+}): Promise<LookupResult[]> {
   if (data.type === "book") {
     const url = new URL("https://openlibrary.org/search.json")
-    url.searchParams.set("q", data.query); url.searchParams.set("fields", "key,title,author_name,first_publish_year,cover_i"); url.searchParams.set("limit", "6")
-    const response = await fetch(url, { headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" } })
-    if (!response.ok) throw new Error("Open Library could not complete that search.")
-    const body = (await response.json()) as { docs?: Array<{ key?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; subject?: string[] }> }
-    return (body.docs ?? []).flatMap((book) => book.key && book.title ? [{ id: book.key, type: "book" as const, title: book.title, creator: book.author_name?.[0] ?? "Unknown author", year: book.first_publish_year ?? null, coverImageUrl: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : "", genres: curatedBookGenres(book.subject) }] : [])
+    url.searchParams.set("q", data.query)
+    url.searchParams.set(
+      "fields",
+      "key,title,author_name,first_publish_year,cover_i"
+    )
+    url.searchParams.set("limit", "6")
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+    })
+    if (!response.ok)
+      throw new Error("Open Library could not complete that search.")
+    const body = (await response.json()) as {
+      docs?: Array<{
+        key?: string
+        title?: string
+        author_name?: string[]
+        first_publish_year?: number
+        cover_i?: number
+        subject?: string[]
+      }>
+    }
+    return (body.docs ?? []).flatMap((book) =>
+      book.key && book.title
+        ? [
+            {
+              id: book.key,
+              type: "book" as const,
+              title: book.title,
+              creator: book.author_name?.[0] ?? "Unknown author",
+              year: book.first_publish_year ?? null,
+              coverImageUrl: book.cover_i
+                ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
+                : "",
+              genres: curatedBookGenres(book.subject),
+            },
+          ]
+        : []
+    )
   }
   const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) throw new Error("Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
-  const url = new URL(`https://api.themoviedb.org/3/search/${data.type === "tv" ? "tv" : "movie"}`)
-  url.searchParams.set("query", data.query); url.searchParams.set("include_adult", "false"); url.searchParams.set("language", "en-US"); url.searchParams.set("api_key", apiKey)
+  if (!apiKey)
+    throw new Error(
+      "Movie search needs TMDB_API_KEY. Add a free TMDB API key to your environment."
+    )
+  const url = new URL(
+    `https://api.themoviedb.org/3/search/${data.type === "tv" ? "tv" : "movie"}`
+  )
+  url.searchParams.set("query", data.query)
+  url.searchParams.set("include_adult", "false")
+  url.searchParams.set("language", "en-US")
+  url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
-  if (!response.ok) throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
-  const body = (await response.json()) as { results?: Array<{ id: number; title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null; genre_ids?: number[] }> }
-  return (body.results ?? []).flatMap((movie) => (movie.title ?? movie.name) ? [{ id: String(movie.id), type: data.type, title: movie.title ?? movie.name!, creator: data.type === "tv" ? "Creator unavailable" : "Director unavailable", year: (movie.release_date ?? movie.first_air_date) ? Number((movie.release_date ?? movie.first_air_date)!.slice(0, 4)) : null, coverImageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "", genres: [] }] : [])
+  if (!response.ok)
+    throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
+  const body = (await response.json()) as {
+    results?: Array<{
+      id: number
+      title?: string
+      name?: string
+      release_date?: string
+      first_air_date?: string
+      poster_path?: string | null
+      genre_ids?: number[]
+    }>
+  }
+  return (body.results ?? []).flatMap((movie) =>
+    (movie.title ?? movie.name)
+      ? [
+          {
+            id: String(movie.id),
+            type: data.type,
+            title: movie.title ?? movie.name!,
+            creator:
+              data.type === "tv"
+                ? "Creator unavailable"
+                : "Director unavailable",
+            year:
+              (movie.release_date ?? movie.first_air_date)
+                ? Number(
+                    (movie.release_date ?? movie.first_air_date)!.slice(0, 4)
+                  )
+                : null,
+            coverImageUrl: movie.poster_path
+              ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+              : "",
+            genres: [],
+          },
+        ]
+      : []
+  )
 }
 
 export const getCoverOptions = createServerFn({ method: "GET" })
-  .validator(z.object({
-    type: z.enum(itemTypes),
-    openLibraryKey: z.string().optional(),
-    tmdbId: z.string().optional(),
-  }))
+  .validator(
+    z.object({
+      type: z.enum(itemTypes),
+      openLibraryKey: z.string().optional(),
+      tmdbId: z.string().optional(),
+    })
+  )
   .handler(async ({ data }): Promise<string[]> => {
     requireAdmin()
     if (data.type === "book" && data.openLibraryKey) {
       const workId = data.openLibraryKey.replace(/^\/?works\//, "")
-      const response = await fetch(`https://openlibrary.org/works/${workId}/editions.json?limit=100`, {
-        headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-      })
-      if (!response.ok) throw new Error("Open Library could not load edition covers.")
+      const response = await fetch(
+        `https://openlibrary.org/works/${workId}/editions.json?limit=100`,
+        {
+          headers: {
+            "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
+          },
+        }
+      )
+      if (!response.ok)
+        throw new Error("Open Library could not load edition covers.")
       const body = (await response.json()) as {
-        entries?: Array<{ covers?: number[]; languages?: Array<{ key?: string }> }>
+        entries?: Array<{
+          covers?: number[]
+          languages?: Array<{ key?: string }>
+        }>
       }
       const editions = body.entries ?? []
-      const allCovers = [...new Set(editions.flatMap((edition) => edition.covers ?? []))]
-      const englishCovers = [...new Set(editions
-        .filter((edition) => edition.languages?.some((language) => language.key?.endsWith("/eng")))
-        .flatMap((edition) => edition.covers ?? []))]
-      const covers = (englishCovers.length ? englishCovers : allCovers).slice(0, 18)
-      return covers.map((id) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`)
+      const allCovers = [
+        ...new Set(editions.flatMap((edition) => edition.covers ?? [])),
+      ]
+      const englishCovers = [
+        ...new Set(
+          editions
+            .filter((edition) =>
+              edition.languages?.some((language) =>
+                language.key?.endsWith("/eng")
+              )
+            )
+            .flatMap((edition) => edition.covers ?? [])
+        ),
+      ]
+      const covers = (englishCovers.length ? englishCovers : allCovers).slice(
+        0,
+        18
+      )
+      return covers.map(
+        (id) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`
+      )
     }
     if ((data.type === "movie" || data.type === "tv") && data.tmdbId) {
       const apiKey = process.env.TMDB_API_KEY
       if (!apiKey) throw new Error("Movie covers need TMDB_API_KEY.")
       const postersFor = async (includeImageLanguage?: string) => {
-        const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/images`)
+        const url = new URL(
+          `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/images`
+        )
         url.searchParams.set("api_key", apiKey)
-        if (includeImageLanguage) url.searchParams.set("include_image_language", includeImageLanguage)
+        if (includeImageLanguage)
+          url.searchParams.set("include_image_language", includeImageLanguage)
         const response = await fetch(url)
         if (!response.ok) throw new Error("TMDB could not load poster options.")
-        const body = (await response.json()) as { posters?: Array<{ file_path?: string }> }
+        const body = (await response.json()) as {
+          posters?: Array<{ file_path?: string }>
+        }
         return body.posters ?? []
       }
       let posters = await postersFor("en,null")
       if (!posters.length) posters = await postersFor()
-      return [...new Set(posters.flatMap((poster) => poster.file_path ? [`https://image.tmdb.org/t/p/w500${poster.file_path}`] : []))].slice(0, 18)
+      return [
+        ...new Set(
+          posters.flatMap((poster) =>
+            poster.file_path
+              ? [`https://image.tmdb.org/t/p/w500${poster.file_path}`]
+              : []
+          )
+        ),
+      ].slice(0, 18)
     }
     return []
   })
@@ -179,7 +399,14 @@ const slugify = (title: string) =>
 
 const normalizeEdition = (edition?: string | null) => edition?.trim() || null
 
-export async function itemExists({ id, type, title, year, providerId, edition }: {
+export async function itemExists({
+  id,
+  type,
+  title,
+  year,
+  providerId,
+  edition,
+}: {
   id?: number
   type: Item["type"]
   title: string
@@ -187,33 +414,62 @@ export async function itemExists({ id, type, title, year, providerId, edition }:
   providerId?: string | null
   edition?: string | null
 }) {
-  const editionWhere = normalizeEdition(edition) ? eq(items.edition, normalizeEdition(edition)!) : or(eq(items.edition, null), eq(items.edition, ""))
-  const candidates = await db.select({
-    id: items.id, title: items.title, year: items.year, tmdbId: items.tmdbId, openLibraryKey: items.openLibraryKey,
-  }).from(items).where(and(eq(items.type, type), editionWhere))
-  return candidates.some((item) =>
-    item.id !== id && (
-      providerId
+  const editionWhere = normalizeEdition(edition)
+    ? eq(items.edition, normalizeEdition(edition)!)
+    : or(isNull(items.edition), eq(items.edition, ""))
+  const candidates = await db
+    .select({
+      id: items.id,
+      title: items.title,
+      year: items.year,
+      tmdbId: items.tmdbId,
+      openLibraryKey: items.openLibraryKey,
+    })
+    .from(items)
+    .where(and(eq(items.type, type), editionWhere))
+  return candidates.some(
+    (item) =>
+      item.id !== id &&
+      (providerId
         ? (type === "book" ? item.openLibraryKey : item.tmdbId) === providerId
-        : normalizeTitle(item.title) === normalizeTitle(title) && item.year === year
-    ),
+        : normalizeTitle(item.title) === normalizeTitle(title) &&
+          item.year === year)
   )
 }
 
-export async function uniqueSlug(baseSlug: string, edition?: string | null, excludeId?: number) {
-  const base = await db.select({ id: items.id }).from(items).where(eq(items.slug, baseSlug)).limit(1)
+export async function uniqueSlug(
+  baseSlug: string,
+  edition?: string | null,
+  excludeId?: number
+) {
+  const base = await db
+    .select({ id: items.id })
+    .from(items)
+    .where(eq(items.slug, baseSlug))
+    .limit(1)
   if (!base.length || base[0].id === excludeId) return baseSlug
-  const preferred = normalizeEdition(edition) ? `${baseSlug}-${normalizeEdition(edition)}` : baseSlug
-  const existing = await db.select({ id: items.id }).from(items).where(eq(items.slug, preferred)).limit(1)
+  const preferred = normalizeEdition(edition)
+    ? `${baseSlug}-${normalizeEdition(edition)}`
+    : baseSlug
+  const existing = await db
+    .select({ id: items.id })
+    .from(items)
+    .where(eq(items.slug, preferred))
+    .limit(1)
   if (!existing.length || existing[0].id === excludeId) return preferred
   for (let suffix = 2; ; suffix++) {
     const slug = `${preferred}-${suffix}`
-    const collision = await db.select({ id: items.id }).from(items).where(eq(items.slug, slug)).limit(1)
+    const collision = await db
+      .select({ id: items.id })
+      .from(items)
+      .where(eq(items.slug, slug))
+      .limit(1)
     if (!collision.length || collision[0].id === excludeId) return slug
   }
 }
 
-export const normalizeTitle = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "")
+export const normalizeTitle = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
@@ -229,39 +485,82 @@ export const getCollectionResult = createServerFn({ method: "GET" })
     return getCollectionResultById(data)
   })
 
-async function getCollectionResultById(data: { id: string; type: "book" | "movie" | "tv" }): Promise<LookupResult & { slug: string }> {
+async function getCollectionResultById(data: {
+  id: string
+  type: "book" | "movie" | "tv"
+}): Promise<LookupResult & { slug: string }> {
   if (data.type === "book") {
     const response = await fetch(`https://openlibrary.org${data.id}.json`, {
       headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
     })
     if (!response.ok) throw new Error("Open Library could not load that book.")
-    const book = (await response.json()) as { title?: string; first_publish_date?: string; subjects?: string[] }
+    const book = (await response.json()) as {
+      title?: string
+      first_publish_date?: string
+      subjects?: string[]
+    }
     const title = book.title ?? "Untitled"
-    return { id: data.id, type: "book", title, creator: "Unknown author", year: yearFromDate(book.first_publish_date), coverImageUrl: "", genres: curatedBookGenres(book.subjects), slug: slugify(title) }
+    return {
+      id: data.id,
+      type: "book",
+      title,
+      creator: "Unknown author",
+      year: yearFromDate(book.first_publish_date),
+      coverImageUrl: "",
+      genres: curatedBookGenres(book.subjects),
+      slug: slugify(title),
+    }
   }
 
   const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) throw new Error("TMDB lookup needs TMDB_API_KEY. Add a free TMDB API key to your environment.")
+  if (!apiKey)
+    throw new Error(
+      "TMDB lookup needs TMDB_API_KEY. Add a free TMDB API key to your environment."
+    )
   const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.id}`)
   url.searchParams.set("append_to_response", "credits")
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
-  if (!response.ok) throw new Error(`TMDB could not load that ${data.type}. Check TMDB_API_KEY.`)
+  if (!response.ok)
+    throw new Error(
+      `TMDB could not load that ${data.type}. Check TMDB_API_KEY.`
+    )
   const result = (await response.json()) as {
-    title?: string; name?: string; release_date?: string; first_air_date?: string; poster_path?: string | null
+    title?: string
+    name?: string
+    release_date?: string
+    first_air_date?: string
+    poster_path?: string | null
     genres?: Array<{ name?: string }>
     created_by?: Array<{ name?: string }>
     credits?: { crew?: Array<{ job?: string; name?: string }> }
   }
-  const title = data.type === "tv" ? result.name ?? "Untitled" : result.title ?? "Untitled"
-  const creator = data.type === "tv"
-    ? result.created_by?.[0]?.name ?? result.credits?.crew?.find((person) => person.job === "Creator" || person.job === "Director")?.name ?? "Creator unavailable"
-    : result.credits?.crew?.find((person) => person.job === "Director")?.name ?? "Director unavailable"
+  const title =
+    data.type === "tv"
+      ? (result.name ?? "Untitled")
+      : (result.title ?? "Untitled")
+  const creator =
+    data.type === "tv"
+      ? (result.created_by?.[0]?.name ??
+        result.credits?.crew?.find(
+          (person) => person.job === "Creator" || person.job === "Director"
+        )?.name ??
+        "Creator unavailable")
+      : (result.credits?.crew?.find((person) => person.job === "Director")
+          ?.name ?? "Director unavailable")
   return {
-    id: data.id, type: data.type, title, creator,
-    year: yearFromDate(data.type === "tv" ? result.first_air_date : result.release_date),
-    coverImageUrl: result.poster_path ? `https://image.tmdb.org/t/p/w500${result.poster_path}` : "",
-    genres: result.genres?.flatMap((genre) => genre.name ? [genre.name] : []) ?? [],
+    id: data.id,
+    type: data.type,
+    title,
+    creator,
+    year: yearFromDate(
+      data.type === "tv" ? result.first_air_date : result.release_date
+    ),
+    coverImageUrl: result.poster_path
+      ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
+      : "",
+    genres:
+      result.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ?? [],
     slug: slugify(title),
   }
 }
@@ -277,24 +576,47 @@ export type ProviderSyncResult = {
   itemId: number
   slug: string
   skipped?: string
-  changes?: Partial<Record<keyof SyncedFields, { before: string | number | string[]; after: string | number | string[] }>>
+  changes?: Partial<
+    Record<
+      keyof SyncedFields,
+      { before: string | number | string[]; after: string | number | string[] }
+    >
+  >
 }
 
-export async function syncItemFromProvider(item: Item, dryRun = false): Promise<ProviderSyncResult> {
+export async function syncItemFromProvider(
+  item: Item,
+  dryRun = false
+): Promise<ProviderSyncResult> {
   const providerId = item.type === "book" ? item.openLibraryKey : item.tmdbId
-  if (!providerId) return { itemId: item.id, slug: item.slug, skipped: `Missing ${item.type === "book" ? "Open Library key" : "TMDB ID"}.` }
+  if (!providerId)
+    return {
+      itemId: item.id,
+      slug: item.slug,
+      skipped: `Missing ${item.type === "book" ? "Open Library key" : "TMDB ID"}.`,
+    }
 
-  const metadata = item.type === "book"
-    ? await getBookSyncMetadata(providerId)
-    : await getTmdbSyncMetadata(item.type, providerId)
+  const metadata =
+    item.type === "book"
+      ? await getBookSyncMetadata(providerId)
+      : await getTmdbSyncMetadata(item.type, providerId)
 
   const changes = changedFields(item, metadata)
-  if (!Object.keys(changes).length) return { itemId: item.id, slug: item.slug, skipped: "Already up to date." }
+  if (!Object.keys(changes).length)
+    return { itemId: item.id, slug: item.slug, skipped: "Already up to date." }
   if (!dryRun) {
-    await db.update(items).set({
-      ...Object.fromEntries(Object.entries(changes).map(([field, change]) => [field, change.after])),
-      updatedAt: new Date().toISOString(),
-    }).where(eq(items.id, item.id))
+    await db
+      .update(items)
+      .set({
+        ...Object.fromEntries(
+          Object.entries(changes).map(([field, change]) => [
+            field,
+            change.after,
+          ])
+        ),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(items.id, item.id))
   }
   return { itemId: item.id, slug: item.slug, changes }
 }
@@ -309,51 +631,97 @@ export const syncItem = createServerFn({ method: "POST" })
     return syncItemFromProvider(item)
   })
 
-async function getTmdbSyncMetadata(type: "movie" | "tv", tmdbId: string): Promise<SyncedFields> {
+async function getTmdbSyncMetadata(
+  type: "movie" | "tv",
+  tmdbId: string
+): Promise<SyncedFields> {
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) throw new Error("TMDB sync needs TMDB_API_KEY.")
   const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
   url.searchParams.set("append_to_response", "credits")
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
-  if (response.status === 404) throw new Error(`Provider 404: TMDB ${type} ${tmdbId} was not found.`)
+  if (response.status === 404)
+    throw new Error(`Provider 404: TMDB ${type} ${tmdbId} was not found.`)
   if (!response.ok) throw new Error(`TMDB could not load ${type} ${tmdbId}.`)
   const result = (await response.json()) as {
-    title?: string; name?: string; release_date?: string; first_air_date?: string
+    title?: string
+    name?: string
+    release_date?: string
+    first_air_date?: string
     genres?: Array<{ name?: string }>
     created_by?: Array<{ name?: string }>
     credits?: { crew?: Array<{ job?: string; name?: string }> }
   }
-  const creator = type === "tv"
-    ? result.created_by?.[0]?.name ?? result.credits?.crew?.find((person) => person.job === "Creator" || person.job === "Director")?.name
-    : result.credits?.crew?.find((person) => person.job === "Director")?.name
+  const creator =
+    type === "tv"
+      ? (result.created_by?.[0]?.name ??
+        result.credits?.crew?.find(
+          (person) => person.job === "Creator" || person.job === "Director"
+        )?.name)
+      : result.credits?.crew?.find((person) => person.job === "Director")?.name
   return {
-    ...(type === "tv" ? result.name ? { title: result.name } : {} : result.title ? { title: result.title } : {}),
+    ...(type === "tv"
+      ? result.name
+        ? { title: result.name }
+        : {}
+      : result.title
+        ? { title: result.title }
+        : {}),
     ...(creator ? { creator } : {}),
-    ...(yearFromDate(type === "tv" ? result.first_air_date : result.release_date) !== null ? { year: yearFromDate(type === "tv" ? result.first_air_date : result.release_date)! } : {}),
-    genres: result.genres?.flatMap((genre) => genre.name ? [genre.name] : []) ?? [],
+    ...(yearFromDate(
+      type === "tv" ? result.first_air_date : result.release_date
+    ) !== null
+      ? {
+          year: yearFromDate(
+            type === "tv" ? result.first_air_date : result.release_date
+          )!,
+        }
+      : {}),
+    genres:
+      result.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ?? [],
   }
 }
 
-async function getBookSyncMetadata(openLibraryKey: string): Promise<SyncedFields> {
-  const response = await fetch(`https://openlibrary.org${openLibraryKey}.json`, {
-    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-  })
-  if (response.status === 404) throw new Error(`Provider 404: Open Library work ${openLibraryKey} was not found.`)
-  if (!response.ok) throw new Error(`Open Library could not load ${openLibraryKey}.`)
+async function getBookSyncMetadata(
+  openLibraryKey: string
+): Promise<SyncedFields> {
+  const response = await fetch(
+    `https://openlibrary.org${openLibraryKey}.json`,
+    {
+      headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+    }
+  )
+  if (response.status === 404)
+    throw new Error(
+      `Provider 404: Open Library work ${openLibraryKey} was not found.`
+    )
+  if (!response.ok)
+    throw new Error(`Open Library could not load ${openLibraryKey}.`)
   const book = (await response.json()) as {
-    title?: string; first_publish_date?: string; subjects?: string[]
+    title?: string
+    first_publish_date?: string
+    subjects?: string[]
     authors?: Array<{ author?: { key?: string }; name?: string }>
   }
-  const authorNames = (await Promise.all((book.authors ?? []).map(async (author) => {
-    if (author.name) return author.name
-    if (!author.author?.key) return undefined
-    const authorResponse = await fetch(`https://openlibrary.org${author.author.key}.json`, {
-      headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-    })
-    if (!authorResponse.ok) return undefined
-    return ((await authorResponse.json()) as { name?: string }).name
-  }))).flatMap((name) => name ? [name] : [])
+  const authorNames = (
+    await Promise.all(
+      (book.authors ?? []).map(async (author) => {
+        if (author.name) return author.name
+        if (!author.author?.key) return undefined
+        const authorResponse = await fetch(
+          `https://openlibrary.org${author.author.key}.json`,
+          {
+            headers: {
+              "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
+            },
+          }
+        )
+        if (!authorResponse.ok) return undefined
+        return ((await authorResponse.json()) as { name?: string }).name
+      })
+    )
+  ).flatMap((name) => (name ? [name] : []))
   const year = yearFromDate(book.first_publish_date)
   return {
     ...(book.title ? { title: book.title } : {}),
@@ -363,20 +731,28 @@ async function getBookSyncMetadata(openLibraryKey: string): Promise<SyncedFields
   }
 }
 
-function changedFields(item: Item, metadata: SyncedFields): NonNullable<ProviderSyncResult["changes"]> {
+function changedFields(
+  item: Item,
+  metadata: SyncedFields
+): NonNullable<ProviderSyncResult["changes"]> {
   const changes: NonNullable<ProviderSyncResult["changes"]> = {}
   for (const field of ["title", "creator", "year", "genres"] as const) {
     const next = metadata[field]
     if (next === undefined) continue
     const previous = item[field]
-    if (JSON.stringify(previous) !== JSON.stringify(next)) changes[field] = { before: previous, after: next }
+    if (JSON.stringify(previous) !== JSON.stringify(next))
+      changes[field] = { before: previous, after: next }
   }
   return changes
 }
 
 function curatedBookGenres(subjects?: string[]) {
-  const subjectSet = new Set((subjects ?? []).map((subject) => subject.toLocaleLowerCase()))
-  return bookGenreOptions.filter((genre) => subjectSet.has(genre.toLocaleLowerCase()))
+  const subjectSet = new Set(
+    (subjects ?? []).map((subject) => subject.toLocaleLowerCase())
+  )
+  return bookGenreOptions.filter((genre) =>
+    subjectSet.has(genre.toLocaleLowerCase())
+  )
 }
 
 function yearFromDate(value?: string) {
@@ -391,7 +767,7 @@ export const getItems = createServerFn({ method: "GET" })
         type: z.enum(itemTypes).optional(),
         query: z.string().max(100).optional(),
       })
-      .optional(),
+      .optional()
   )
   .handler(async ({ data }) => {
     await ensureDatabase()
@@ -412,7 +788,10 @@ export const getItemBySlug = createServerFn({ method: "GET" })
   .validator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
     await ensureDatabase()
-    const [item] = await db.select().from(items).where(eq(items.slug, data.slug))
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.slug, data.slug))
     return item ?? null
   })
 
@@ -425,10 +804,12 @@ export const getItemById = createServerFn({ method: "GET" })
     return item ?? null
   })
 
-export const getAdminStatus = createServerFn({ method: "GET" }).handler(async () => {
-  const { isAdmin } = await import("./auth")
-  return isAdmin()
-})
+export const getAdminStatus = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { isAdmin } = await import("./auth")
+    return isAdmin()
+  }
+)
 
 export const saveItem = createServerFn({ method: "POST" })
   .validator(itemInput)
@@ -451,13 +832,30 @@ export const saveItem = createServerFn({ method: "POST" })
       updatedAt: now,
     }
     if (data.id) {
-      if (await itemExists({ id: data.id, type: data.type, title: data.title, year: data.year, providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId, edition: data.edition })) {
+      if (
+        await itemExists({
+          id: data.id,
+          type: data.type,
+          title: data.title,
+          year: data.year,
+          providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId,
+          edition: data.edition,
+        })
+      ) {
         throw new Error("This edition is already on your shelf.")
       }
       await db.update(items).set(values).where(eq(items.id, data.id))
       return { id: data.id, slug: data.slug }
     }
-    if (await itemExists({ type: data.type, title: data.title, year: data.year, providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId, edition: data.edition })) {
+    if (
+      await itemExists({
+        type: data.type,
+        title: data.title,
+        year: data.year,
+        providerId: data.type === "book" ? data.openLibraryKey : data.tmdbId,
+        edition: data.edition,
+      })
+    ) {
       throw new Error("This edition is already on your shelf.")
     }
     values.slug = await uniqueSlug(data.slug, data.edition)
@@ -482,9 +880,14 @@ export const login = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { startAdminSession, verifyPassword } = await import("./auth")
     if (!process.env.ADMIN_PASSWORD) {
-      return { ok: false, error: "Admin access is not configured. Set ADMIN_PASSWORD to enable it." }
+      return {
+        ok: false,
+        error:
+          "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
+      }
     }
-    if (!verifyPassword(data.password)) return { ok: false, error: "That password doesn’t open this shelf." }
+    if (!verifyPassword(data.password))
+      return { ok: false, error: "That password doesn’t open this shelf." }
     startAdminSession()
     return { ok: true, error: "" }
   })
