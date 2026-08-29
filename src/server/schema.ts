@@ -2,8 +2,15 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 export const itemTypes = ["book", "movie", "tv"] as const
 export type ItemType = (typeof itemTypes)[number]
-export const itemStatuses = ["owned", "borrowed", "reading", "watching"] as const
+export const itemStatuses = [
+  "owned",
+  "borrowed",
+  "reading",
+  "watching",
+] as const
 export type ItemStatus = (typeof itemStatuses)[number]
+export const itemEditions = ["theatrical", "extended", "director-cut"] as const
+export type ItemEdition = (typeof itemEditions)[number]
 
 export const items = sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -19,7 +26,11 @@ export const items = sqliteTable("items", {
   borrower: text("borrower"),
   loanedAt: text("loaned_at"),
   format: text("format"),
-  genres: text("genres", { mode: "json" }).$type<string[]>().notNull().default([]),
+  edition: text("edition"),
+  genres: text("genres", { mode: "json" })
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),

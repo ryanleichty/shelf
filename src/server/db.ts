@@ -35,6 +35,7 @@ export function ensureDatabase() {
         borrower TEXT,
         loaned_at TEXT,
         format TEXT,
+        edition TEXT,
         genres TEXT NOT NULL DEFAULT '[]',
         notes TEXT NOT NULL DEFAULT '',
         acquired_at TEXT,
@@ -44,7 +45,9 @@ export function ensureDatabase() {
     `)
     const columns = await client.execute("PRAGMA table_info(items)")
     if (!columns.rows.some((column) => column.name === "status")) {
-      await client.execute("ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
+      await client.execute(
+        "ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'"
+      )
     }
     if (!columns.rows.some((column) => column.name === "open_library_key")) {
       await client.execute("ALTER TABLE items ADD COLUMN open_library_key TEXT")
@@ -61,25 +64,40 @@ export function ensureDatabase() {
     if (!columns.rows.some((column) => column.name === "format")) {
       await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
     }
-    if (!columns.rows.some((column) => column.name === "genres")) await client.execute("ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'")
+    if (!columns.rows.some((column) => column.name === "edition")) {
+      await client.execute("ALTER TABLE items ADD COLUMN edition TEXT")
+    }
+    if (!columns.rows.some((column) => column.name === "genres"))
+      await client.execute(
+        "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
+      )
     if (!isEphemeral) return
     const now = new Date().toISOString()
     const count = await client.execute("SELECT COUNT(*) AS count FROM items")
     if (Number(count.rows[0]?.count ?? 0) === 0) {
-      await db.insert(schema.items).values(
-        sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now })),
-      )
+      await db
+        .insert(schema.items)
+        .values(
+          sampleItems.map((item) => ({
+            ...item,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        )
       return
     }
-    await Promise.all(sampleItems.map((item) =>
-      db.update(schema.items)
-        .set({
-          status: item.status,
-          coverImageUrl: item.coverImageUrl,
-          updatedAt: now,
-        })
-        .where(eq(schema.items.slug, item.slug)),
-    ))
+    await Promise.all(
+      sampleItems.map((item) =>
+        db
+          .update(schema.items)
+          .set({
+            status: item.status,
+            coverImageUrl: item.coverImageUrl,
+            updatedAt: now,
+          })
+          .where(eq(schema.items.slug, item.slug))
+      )
+    )
   })()
   return setupPromise
 }
