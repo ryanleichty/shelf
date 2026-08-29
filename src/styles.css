@@ -85,6 +85,14 @@
 .lookup-results strong, .lookup-results small { @apply block text-sm; }.lookup-results small { @apply text-xs text-muted-foreground; }
 .form-footer { @apply flex justify-end gap-2; }.form-error { @apply text-sm text-destructive; }
 
+.home-carousel {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 1rem;
+  padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+  scroll-padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+}
+
 @media (pointer: coarse) {
   .home-carousel-controls { display: none; }
 }

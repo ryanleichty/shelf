@@ -5,22 +5,27 @@ import type { Item } from "@/server/schema"
 export function CoverTile({
   item,
   className = "",
+  variant = "default",
 }: {
   item: Item
   className?: string
+  variant?: "default" | "carousel"
 }) {
   const accessibleName = item.creator
     ? `${item.title} by ${item.creator}`
     : item.title
+  const isCarouselTile = variant === "carousel"
 
   return (
     <Link
       aria-label={accessibleName}
-      className={`group block ${className}`}
+      className={`group block ${isCarouselTile ? "relative z-0 hover:z-10 focus-visible:z-10 focus-visible:outline-none" : ""} ${className}`}
       params={{ slug: item.slug }}
       to="/item/$slug"
     >
-      <div className="relative aspect-[2/3] overflow-hidden rounded-lg border bg-muted shadow-sm transition-[border-color,transform] group-hover:-translate-y-0.5 group-hover:border-foreground/30">
+      <div
+        className={`relative aspect-[2/3] overflow-hidden rounded-lg border bg-muted shadow-sm transition-[border-color,transform] ${isCarouselTile ? "duration-200 ease-out group-hover:scale-110 group-hover:shadow-[0_0_0_4px_white] group-focus-visible:scale-110 group-focus-visible:shadow-[0_0_0_4px_white] motion-reduce:transition-none motion-reduce:group-hover:scale-100 motion-reduce:group-focus-visible:scale-100" : "group-hover:-translate-y-0.5 group-hover:border-foreground/30"}`}
+      >
         {item.coverImageUrl ? (
           <img
             alt={item.title}

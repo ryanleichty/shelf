@@ -10,33 +10,24 @@ import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import type { Item } from "@/server/schema"
 
-export function HomeCarousel({
-  id,
-  items,
-}: {
-  id: string
-  items: Item[]
-}) {
+export function HomeCarousel({ id, items }: { id: string; items: Item[] }) {
   return (
     <div className="relative">
-      <BlossomCarousel
-        className="snap-x snap-mandatory pr-4"
-        id={id}
-      >
+      <BlossomCarousel className="home-carousel snap-x snap-mandatory" id={id}>
         {items.map((item) => (
           <div
-            className="mr-3 w-28 snap-start whitespace-normal sm:w-36"
+            className="relative z-0 mr-3 w-28 snap-start whitespace-normal hover:z-10 focus-within:z-10 sm:w-36"
             data-blossom-slide
             key={item.id}
           >
-            <CoverTile className="w-full" item={item} />
+            <CoverTile className="w-full" item={item} variant="carousel" />
           </div>
         ))}
       </BlossomCarousel>
-      <div className="home-carousel-controls absolute top-1/2 right-2 left-2 hidden -translate-y-1/2 justify-between md:flex">
+      <div className="home-carousel-controls pointer-events-none absolute top-1/2 right-2 left-2 z-20 hidden -translate-y-1/2 justify-between md:flex">
         <Button
           aria-label="Previous titles"
-          className="bg-background/90 shadow-sm"
+          className="pointer-events-auto bg-background/90 shadow-sm"
           render={<BlossomPrev for={id} />}
           size="icon"
           variant="outline"
@@ -45,7 +36,7 @@ export function HomeCarousel({
         </Button>
         <Button
           aria-label="Next titles"
-          className="bg-background/90 shadow-sm"
+          className="pointer-events-auto bg-background/90 shadow-sm"
           render={<BlossomNext for={id} />}
           size="icon"
           variant="outline"
