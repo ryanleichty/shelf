@@ -99,7 +99,7 @@ function ItemDetail() {
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>
-              {item.type} · {item.year}
+              {item.type} · <ItemYearLink type={item.type} year={item.year} />
             </span>
             {item.status !== "owned" && (
               <Badge variant="outline">
@@ -228,6 +228,35 @@ function FormatIcon({ format }: { format: string }) {
   if (format === "blu-ray") return <BluRayIcon />
   if (format === "dvd") return <DvdIcon />
   return <BookOpenIcon aria-hidden="true" className="size-4 shrink-0" />
+}
+
+function ItemYearLink({
+  type,
+  year,
+}: {
+  type: "book" | "movie" | "tv"
+  year: number
+}) {
+  const yearParam = String(year).padStart(4, "0")
+  const className = "underline-offset-4 hover:text-foreground hover:underline"
+
+  if (type === "movie")
+    return (
+      <Link className={className} params={{ year: yearParam }} to="/movies/year/$year">
+        {year}
+      </Link>
+    )
+  if (type === "tv")
+    return (
+      <Link className={className} params={{ year: yearParam }} to="/tv/year/$year">
+        {year}
+      </Link>
+    )
+  return (
+    <Link className={className} params={{ year: yearParam }} to="/books/year/$year">
+      {year}
+    </Link>
+  )
 }
 
 function slugify(value: string) {
