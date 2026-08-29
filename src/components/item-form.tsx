@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -80,6 +81,7 @@ export function ItemForm({
     format: item?.format ?? "",
     edition: item?.edition ?? "",
     genres: item?.genres ?? [],
+    description: item?.description ?? "",
   })
   const genreOptions = type === "book" ? bookGenreOptions : screenGenreOptions
 
@@ -181,6 +183,7 @@ export function ItemForm({
           result.coverImageUrl,
         slug: !current.slug || slugWasAutoFilled ? resolved.slug : current.slug,
         genres: resolved.genres,
+        description: resolved.description ?? "",
         openLibraryKey: result.type === "book" ? result.id : "",
         tmdbId: result.type === "book" ? "" : result.id,
       }))
@@ -217,6 +220,7 @@ export function ItemForm({
           format: values.format as ItemInput["format"],
           edition: values.edition as ItemInput["edition"],
           genres: values.genres,
+          description: values.description,
         } satisfies ItemInput,
       })
       await router.navigate({
@@ -435,6 +439,18 @@ export function ItemForm({
               </ComboboxList>
             </ComboboxContent>
           </Combobox>
+        </Field>
+        <Field className="sm:col-span-2">
+          <FieldLabel htmlFor="description">Description</FieldLabel>
+          <Textarea
+            id="description"
+            name="description"
+            onChange={(event) => updateValue("description", event.target.value)}
+            placeholder="A short overview of this title…"
+            rows={5}
+            value={values.description}
+          />
+          <FieldDescription>Provider syncs may refresh this overview.</FieldDescription>
         </Field>
         <Field>
           <FieldLabel htmlFor="coverImageUrl">Cover image URL</FieldLabel>

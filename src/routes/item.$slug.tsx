@@ -106,11 +106,30 @@ function ItemDetail() {
           {item.genres.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {item.genres.map((genre) => (
-                <Badge key={genre} variant="secondary">
+                <Badge key={genre} render={<Link params={{ slug: slugify(genre) }} to="/genre/$slug" />} variant="secondary">
                   {genre}
                 </Badge>
               ))}
             </div>
+          )}
+          {item.keywords.length > 0 && (
+            <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {item.keywords.map((keyword) => (
+                <Link
+                  className="hover:text-foreground hover:underline"
+                  key={keyword}
+                  params={{ slug: slugify(keyword) }}
+                  to="/keyword/$slug"
+                >
+                  {keyword}
+                </Link>
+              ))}
+            </p>
+          )}
+          {item.description && (
+            <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
+              {item.description}
+            </p>
           )}
           <div className="mt-6 space-y-2 text-sm text-muted-foreground">
             {(item.format || item.edition) && (
@@ -146,4 +165,13 @@ function editionLabel(edition: string) {
   return edition === "director-cut"
     ? "Director's Cut"
     : edition[0].toUpperCase() + edition.slice(1)
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
 }

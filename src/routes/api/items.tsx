@@ -2,13 +2,14 @@ import { createFileRoute } from "@tanstack/react-router"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
-import { db, ensureDatabase } from "@/server/db"
+import { db, ensureDatabase, refreshSearchIndex } from "@/server/db"
 import {
   getCollectionResultById,
   itemExists,
   lookupCollection,
   normalizeTitle,
   normalizeOpenLibraryWorkKey,
+  upsertTags,
   uniqueSlug,
 } from "@/server/items"
 import { storeCover } from "@/server/covers"
@@ -151,9 +152,21 @@ export const Route = createFileRoute("/api/items")({
               skipped.push({ query: input.query, reason: "Already on Shelf" })
               continue
             }
+            const providerResult =
+              pinnedId
+                ? top
+                : await getCollectionResultById({
+                    type: input.type,
+                    id: providerId,
+                  })
             const resolved = {
-              ...top,
-              slug: await uniqueSlug(slugify(top.title), input.edition),
+              ...providerResult,
+              creator:
+                providerResult.creator === "Unknown author"
+                  ? top.creator
+                  : providerResult.creator,
+              coverImageUrl: providerResult.coverImageUrl || top.coverImageUrl,
+              slug: await uniqueSlug(slugify(providerResult.title), input.edition),
             }
             if (body.data.dryRun) {
               added.push({ title: resolved.title, slug: resolved.slug })
@@ -171,6 +184,7 @@ export const Route = createFileRoute("/api/items")({
                 year: resolved.year ?? 0,
                 format: input.format || null,
                 edition: input.edition || null,
+                description: resolved.description || null,
                 coverImageUrl:
                   (await storeCover(resolved.coverImageUrl, resolved.slug)) ||
                   null,
@@ -181,6 +195,9 @@ export const Route = createFileRoute("/api/items")({
                 updatedAt: now,
               })
               .returning({ id: items.id, title: items.title, slug: items.slug })
+            await upsertTags(created.id, "genre", resolved.genres)
+            await upsertTags(created.id, "keyword", resolved.keywords ?? [])
+            await refreshSearchIndex()
             added.push(created)
           } catch (error) {
             failed.push({

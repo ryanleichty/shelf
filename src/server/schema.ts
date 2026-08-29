@@ -27,15 +27,60 @@ export const items = sqliteTable("items", {
   loanedAt: text("loaned_at"),
   format: text("format"),
   edition: text("edition"),
-  genres: text("genres", { mode: "json" })
-    .$type<string[]>()
-    .notNull()
-    .default([]),
+  description: text("description"),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
+
+export const genres = sqliteTable("genres", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+})
+
+export const itemGenres = sqliteTable(
+  "item_genres",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    genreId: integer("genre_id")
+      .notNull()
+      .references(() => genres.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("item_genres_item_id_genre_id_unique").on(
+      table.itemId,
+      table.genreId
+    ),
+  ]
+)
+
+export const keywords = sqliteTable("keywords", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+})
+
+export const itemKeywords = sqliteTable(
+  "item_keywords",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    keywordId: integer("keyword_id")
+      .notNull()
+      .references(() => keywords.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("item_keywords_item_id_keyword_id_unique").on(
+      table.itemId,
+      table.keywordId
+    ),
+  ]
+)
 
 export const lists = sqliteTable("lists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -65,4 +110,5 @@ export const listItems = sqliteTable(
   ]
 )
 
-export type Item = typeof items.$inferSelect
+export type ItemRecord = typeof items.$inferSelect
+export type Item = ItemRecord & { genres: string[]; keywords: string[] }

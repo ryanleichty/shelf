@@ -1,5 +1,4 @@
 import { Search } from "lucide-react"
-import { useMemo, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { CoverTile } from "@/components/cover-tile"
 import type { Item } from "@/server/schema"
@@ -7,22 +6,15 @@ import type { Item } from "@/server/schema"
 export function Catalog({
   items,
   type,
+  query,
+  onQueryChange,
 }: {
   items: Item[]
   type: Item["type"]
+  query?: string
+  onQueryChange?: (query: string) => void
 }) {
-  const [query, setQuery] = useState("")
-  const visibleItems = useMemo(
-    () =>
-      items.filter(
-        (item) =>
-          item.type === type &&
-          `${item.title} ${item.creator}`
-            .toLowerCase()
-            .includes(query.toLowerCase())
-      ),
-    [items, query, type]
-  )
+  const visibleItems = items.filter((item) => item.type === type)
 
   return (
     <>
@@ -36,9 +28,9 @@ export function Catalog({
           <span className="sr-only">Search the collection</span>
           <Input
             className="pl-8"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => onQueryChange?.(event.target.value)}
             placeholder="Search the shelf"
-            value={query}
+            value={query ?? ""}
           />
         </label>
       </div>

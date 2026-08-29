@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { HomeCarousel } from "@/components/home-carousel"
 import { getHomeRows } from "@/server/items"
 
@@ -20,7 +20,19 @@ function Home() {
           {rows.map((row, index) => (
             <section key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
-                <h2 className="text-xl font-semibold tracking-tight">{row.title}</h2>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  {row.slug ? (
+                    <Link
+                      className="hover:underline"
+                      params={{ slug: row.slug }}
+                      to="/genre/$slug"
+                    >
+                      {row.title}
+                    </Link>
+                  ) : (
+                    row.title
+                  )}
+                </h2>
               </div>
               <div className="pl-4">
                 <HomeCarousel
