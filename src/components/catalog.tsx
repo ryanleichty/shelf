@@ -113,7 +113,11 @@ export function Catalog({
 }
 
 function statusLabel(status: Exclude<Item["status"], "owned">) {
-  return status === "reading" ? "Reading" : "Borrowed"
+  return status === "reading"
+    ? "Reading"
+    : status === "watching"
+      ? "Watching"
+      : "Borrowed"
 }
 
 function editionLabel(edition: string) {

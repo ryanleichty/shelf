@@ -430,10 +430,10 @@ export async function itemExists({
   return candidates.some(
     (item) =>
       item.id !== id &&
-      (providerId
-        ? (type === "book" ? item.openLibraryKey : item.tmdbId) === providerId
-        : normalizeTitle(item.title) === normalizeTitle(title) &&
-          item.year === year)
+      ((providerId &&
+        (type === "book" ? item.openLibraryKey : item.tmdbId) === providerId) ||
+        (normalizeTitle(item.title) === normalizeTitle(title) &&
+          item.year === year))
   )
 }
 
