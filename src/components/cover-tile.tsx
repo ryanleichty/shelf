@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
+import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
 import { cn } from "@/lib/utils"
-import { getSignedInStatus } from "@/server/items"
 import type { Item } from "@/server/schema"
 
 export function CoverTile({
@@ -23,7 +22,7 @@ export function CoverTile({
     ? `${item.title} by ${item.creator}`
     : item.title
   const isCarouselTile = variant === "carousel"
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
+  const { signedIn } = useSignedInStatus()
   const systemList =
     item.type === "book"
       ? {
@@ -36,12 +35,6 @@ export function CoverTile({
           name: "Watchlist",
           containsItem: item.isInSystemList,
         }
-
-  useEffect(() => {
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
-  }, [])
 
   return (
     <div
@@ -94,7 +87,7 @@ export function CoverTile({
       </Link>
       {signedIn && (
         <SystemListToggle
-          className="absolute top-2 right-2 origin-top-right opacity-0 transition-[opacity,scale] group-focus-within:scale-105 group-focus-within:opacity-100 group-hover:scale-105 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
+          className="pointer-events-none absolute top-2 right-2 origin-top-right opacity-0 transition-[opacity,scale] group-focus-within:pointer-events-auto group-focus-within:scale-105 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
           itemId={item.id}
           list={systemList}
         />

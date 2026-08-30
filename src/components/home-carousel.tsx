@@ -43,7 +43,7 @@ export function HomeCarousel({
         <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-20 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Previous titles"
-            className="ml-2"
+            className="ml-2 bg-background/90 shadow-sm"
             render={<BlossomPrev for={id} />}
             size="icon"
             variant="outline"
@@ -54,7 +54,7 @@ export function HomeCarousel({
         <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-20 items-center justify-end opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Next titles"
-            className="mr-2"
+            className="mr-2 bg-background/90 shadow-sm"
             render={<BlossomNext for={id} />}
             size="icon"
             variant="outline"

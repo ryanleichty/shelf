@@ -70,7 +70,7 @@ export function SystemListToggle({
             disabled={pending}
             onClick={() => void toggle()}
             size={showLabel ? "default" : "icon"}
-            variant="outline"
+            variant={showLabel && containsItem ? "default" : "outline"}
           >
             <BookmarkIcon
               data-icon={showLabel ? "inline-start" : undefined}
