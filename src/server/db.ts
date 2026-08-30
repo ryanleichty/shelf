@@ -91,6 +91,12 @@ export function ensureDatabase() {
       )
     if (!columns.rows.some((column) => column.name === "description"))
       await getClient().execute("ALTER TABLE items ADD COLUMN description TEXT")
+    if (!columns.rows.some((column) => column.name === "certification"))
+      await getClient().execute(
+        "ALTER TABLE items ADD COLUMN certification TEXT"
+      )
+    if (!columns.rows.some((column) => column.name === "runtime"))
+      await getClient().execute("ALTER TABLE items ADD COLUMN runtime INTEGER")
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,

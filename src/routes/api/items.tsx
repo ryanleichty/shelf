@@ -29,6 +29,8 @@ const output = {
   year: items.year,
   format: items.format,
   edition: items.edition,
+  certification: items.certification,
+  runtime: items.runtime,
   tmdbId: items.tmdbId,
   openLibraryKey: items.openLibraryKey,
   coverImageUrl: items.coverImageUrl,
@@ -189,6 +191,8 @@ export const Route = createFileRoute("/api/items")({
                 format: input.format || null,
                 edition: input.edition || null,
                 description: resolved.description || null,
+                certification: resolved.certification ?? null,
+                runtime: resolved.runtime ?? null,
                 coverImageUrl:
                   (await storeCover(resolved.coverImageUrl, resolved.slug)) ||
                   null,
