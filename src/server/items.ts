@@ -82,7 +82,10 @@ const itemInput = z
     type: z.enum(itemTypes),
     status: z.enum(itemStatuses).default("owned"),
     title: z.string().min(1).max(240),
-    creator: z.string().min(1).max(240),
+    creator: z.string().max(240).optional().default(""),
+    authors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
+    directors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
+    actors: z.array(z.string().trim().min(1).max(240)).max(100).default([]),
     year: z.number().int().min(0).max(3000),
     coverImageUrl: z.string().url().optional().or(z.literal("")),
     openLibraryKey: z.string().max(120).optional().or(z.literal("")),
@@ -99,6 +102,14 @@ const itemInput = z
     description: z.string().max(10000).optional().or(z.literal("")),
   })
   .superRefine((item, context) => {
+    const primaryPeople = item.type === "book" ? item.authors : item.directors
+    if (!primaryPeople.length && !item.creator.trim()) {
+      context.addIssue({
+        code: "custom",
+        message: `Add at least one ${item.type === "book" ? "author" : "director"}.`,
+        path: [item.type === "book" ? "authors" : "directors"],
+      })
+    }
     if (item.type !== "book" && item.status === "reading") {
       context.addIssue({
         code: "custom",
@@ -150,6 +161,12 @@ const itemInput = z
   })
 
 export type ItemInput = z.infer<typeof itemInput>
+
+export type PersonOptions = {
+  authors: string[]
+  directors: string[]
+  actors: string[]
+}
 
 const lookupInput = z.object({
   query: z.string().trim().min(2).max(160),
@@ -540,12 +557,12 @@ function parseCreatorNames(creator: string) {
 async function replaceItemCreators(
   itemId: number,
   type: Item["type"],
-  creator: string
+  creators: string | string[]
 ) {
   await upsertTags(
     itemId,
     type === "book" ? "author" : "director",
-    parseCreatorNames(creator)
+    typeof creators === "string" ? parseCreatorNames(creators) : creators
   )
 }
 
@@ -1643,6 +1660,29 @@ export const getItems = createServerFn({ method: "GET" })
     return enrichItems(records)
   })
 
+export const getPersonOptions = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PersonOptions> => {
+    await requireSignedIn()
+    await ensureDatabase()
+    const [authorRows, directorRows, actorRows] = await Promise.all([
+      db
+        .select({ name: authors.name })
+        .from(authors)
+        .orderBy(asc(authors.name)),
+      db
+        .select({ name: directors.name })
+        .from(directors)
+        .orderBy(asc(directors.name)),
+      db.select({ name: actors.name }).from(actors).orderBy(asc(actors.name)),
+    ])
+    return {
+      authors: authorRows.map((author) => author.name),
+      directors: directorRows.map((director) => director.name),
+      actors: actorRows.map((actor) => actor.name),
+    }
+  }
+)
+
 export const getItemsForYearBrowse = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
@@ -2152,12 +2192,25 @@ export const saveItem = createServerFn({ method: "POST" })
     await ensureDatabase()
     const now = new Date().toISOString()
     const coverImageUrl = await storeCover(data.coverImageUrl ?? "", data.slug)
+    const primaryPeople =
+      data.type === "book"
+        ? data.authors.length
+          ? data.authors
+          : parseCreatorNames(data.creator)
+        : data.directors.length
+          ? data.directors
+          : parseCreatorNames(data.creator)
+    const creator = primaryPeople[0]
+    if (!creator)
+      throw new Error(
+        `Add at least one ${data.type === "book" ? "author" : "director"}.`
+      )
     const values = {
       slug: data.slug,
       type: data.type,
       status: data.status,
       title: data.title,
-      creator: data.creator,
+      creator,
       year: data.year,
       coverImageUrl: coverImageUrl || null,
       openLibraryKey: data.openLibraryKey || null,
@@ -2187,7 +2240,8 @@ export const saveItem = createServerFn({ method: "POST" })
       }
       await db.update(items).set(values).where(eq(items.id, data.id))
       await replaceItemTags(data.id, { genres: data.genres })
-      await replaceItemCreators(data.id, data.type, data.creator)
+      await replaceItemCreators(data.id, data.type, primaryPeople)
+      if (data.type !== "book") await replaceItemCast(data.id, data.actors)
       return { id: data.id, slug: data.slug }
     }
     if (
@@ -2207,7 +2261,8 @@ export const saveItem = createServerFn({ method: "POST" })
       .values({ ...values, createdAt: now })
       .returning({ id: items.id, slug: items.slug })
     await replaceItemTags(item.id, { genres: data.genres })
-    await replaceItemCreators(item.id, data.type, data.creator)
+    await replaceItemCreators(item.id, data.type, primaryPeople)
+    if (data.type !== "book") await replaceItemCast(item.id, data.actors)
     return item
   })
 

@@ -48,6 +48,7 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
@@ -55,6 +56,7 @@ import {
 import {
   getCollectionResult,
   getCoverOptions,
+  getPersonOptions,
   resolveBarcode,
   saveItem,
   searchCollection,
@@ -62,8 +64,28 @@ import {
   screenGenreOptions,
   type ItemInput,
   type LookupResult,
+  type PersonOptions,
 } from "@/server/items"
 import type { Item } from "@/server/schema"
+
+function namesFromCreator(creator: string) {
+  return creator
+    .split(/,|\s+and\s+|\s+&\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
+
+function peopleItems(options: string[], selected: string[], query: string) {
+  const people = [...new Set([...options, ...selected])]
+  const name = query.trim()
+  return name &&
+    !people.some(
+      (person) =>
+        person.localeCompare(name, undefined, { sensitivity: "accent" }) === 0
+    )
+    ? [...people, name]
+    : people
+}
 
 export function ItemForm({
   item,
@@ -107,9 +129,20 @@ export function ItemForm({
     Boolean(item?.openLibraryKey || item?.tmdbId)
   )
   const [slugWasAutoFilled, setSlugWasAutoFilled] = useState(false)
+  const [authorQuery, setAuthorQuery] = useState("")
+  const [directorQuery, setDirectorQuery] = useState("")
+  const [castQuery, setCastQuery] = useState("")
+  const [peopleOptions, setPeopleOptions] = useState<PersonOptions>({
+    authors: [],
+    directors: [],
+    actors: [],
+  })
   const [values, setValues] = useState({
     title: item?.title ?? "",
-    creator: item?.creator ?? "",
+    author: item?.authors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
+    director:
+      item?.directors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
+    actors: item?.actors ?? [],
     slug: item?.slug ?? "",
     year: item?.year ? String(item.year) : "",
     coverImageUrl: item?.coverImageUrl ?? "",
@@ -124,6 +157,20 @@ export function ItemForm({
     barcode: item?.barcode ?? "",
   })
   const genreOptions = type === "book" ? bookGenreOptions : screenGenreOptions
+
+  useEffect(() => {
+    let cancelled = false
+    getPersonOptions()
+      .then((options) => {
+        if (!cancelled) setPeopleOptions(options)
+      })
+      .catch(() => {
+        // Existing people are optional suggestions; new names can still be added.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (query.trim().length < 2) {
@@ -212,13 +259,23 @@ export function ItemForm({
       const resolved = await getCollectionResult({
         data: { id: result.id, type: result.type },
       })
+      const creator =
+        resolved.creator === "Unknown author"
+          ? result.creator
+          : resolved.creator
       setValues((current) => ({
         ...current,
         title: resolved.title,
-        creator:
-          resolved.creator === "Unknown author"
-            ? result.creator
-            : resolved.creator,
+        author:
+          resolved.type === "book"
+            ? (namesFromCreator(creator)[0] ?? "")
+            : current.author,
+        director:
+          resolved.type === "book"
+            ? current.director
+            : (namesFromCreator(creator)[0] ?? ""),
+        actors:
+          resolved.type === "book" ? current.actors : (resolved.cast ?? []),
         year: resolved.year ? String(resolved.year) : "",
         coverImageUrl:
           current.coverImageUrl ||
@@ -283,7 +340,10 @@ export function ItemForm({
           slug: values.slug,
           type,
           status: status === "unspecified" ? "owned" : status,
-          creator: values.creator,
+          creator: type === "book" ? values.author : values.director,
+          authors: values.author ? [values.author] : [],
+          directors: values.director ? [values.director] : [],
+          actors: values.actors,
           year: Number(values.year),
           coverImageUrl: values.coverImageUrl,
           openLibraryKey: values.openLibraryKey,
@@ -466,18 +526,136 @@ export function ItemForm({
             value={values.title}
           />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="creator">
-            {type === "movie" ? "Director" : "Author / creator"}
-          </FieldLabel>
-          <Input
-            id="creator"
-            name="creator"
-            onChange={(event) => updateValue("creator", event.target.value)}
-            required
-            value={values.creator}
-          />
-        </Field>
+        {type === "book" ? (
+          <Field>
+            <FieldLabel htmlFor="authors">Authors</FieldLabel>
+            <Combobox
+              inputValue={authorQuery}
+              items={peopleItems(
+                peopleOptions.authors,
+                values.author ? [values.author] : [],
+                authorQuery
+              )}
+              onInputValueChange={setAuthorQuery}
+              onValueChange={(author) =>
+                setValues((current) => ({ ...current, author: author ?? "" }))
+              }
+              value={values.author}
+            >
+              <ComboboxInput
+                id="authors"
+                placeholder="Select or add an author…"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No authors found.</ComboboxEmpty>
+                <ComboboxList>
+                  {(author) => (
+                    <ComboboxItem key={author} value={author}>
+                      {author === authorQuery.trim() &&
+                      !peopleOptions.authors.some(
+                        (person) =>
+                          person.localeCompare(author, undefined, {
+                            sensitivity: "accent",
+                          }) === 0
+                      )
+                        ? `Create "${author}"`
+                        : author}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+          </Field>
+        ) : (
+          <>
+            <Field>
+              <FieldLabel htmlFor="directors">Directors</FieldLabel>
+              <Combobox
+                inputValue={directorQuery}
+                items={peopleItems(
+                  peopleOptions.directors,
+                  values.director ? [values.director] : [],
+                  directorQuery
+                )}
+                onInputValueChange={setDirectorQuery}
+                onValueChange={(director) =>
+                  setValues((current) => ({
+                    ...current,
+                    director: director ?? "",
+                  }))
+                }
+                value={values.director}
+              >
+                <ComboboxInput
+                  id="directors"
+                  placeholder="Select or add a director…"
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>No directors found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(director) => (
+                      <ComboboxItem key={director} value={director}>
+                        {director === directorQuery.trim() &&
+                        !peopleOptions.directors.some(
+                          (person) =>
+                            person.localeCompare(director, undefined, {
+                              sensitivity: "accent",
+                            }) === 0
+                        )
+                          ? `Create "${director}"`
+                          : director}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="cast">Cast</FieldLabel>
+              <Combobox
+                inputValue={castQuery}
+                items={peopleItems(
+                  peopleOptions.actors,
+                  values.actors,
+                  castQuery
+                )}
+                multiple
+                onInputValueChange={setCastQuery}
+                onValueChange={(actors) =>
+                  setValues((current) => ({ ...current, actors }))
+                }
+                value={values.actors}
+              >
+                <ComboboxChips>
+                  <ComboboxValue>
+                    {values.actors.map((actor) => (
+                      <ComboboxChip key={actor}>{actor}</ComboboxChip>
+                    ))}
+                  </ComboboxValue>
+                  <ComboboxChipsInput id="cast" placeholder="Add cast…" />
+                </ComboboxChips>
+                <ComboboxContent>
+                  <ComboboxEmpty>No cast members found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(actor) => (
+                      <ComboboxItem key={actor} value={actor}>
+                        {actor === castQuery.trim() &&
+                        !peopleOptions.actors.some(
+                          (person) =>
+                            person.localeCompare(actor, undefined, {
+                              sensitivity: "accent",
+                            }) === 0
+                        )
+                          ? `Create "${actor}"`
+                          : actor}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </Field>
+          </>
+        )}
         <Field>
           <FieldLabel htmlFor="slug">Slug</FieldLabel>
           <Input
