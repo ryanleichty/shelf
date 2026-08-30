@@ -30,6 +30,7 @@ import { Route as AdminNewRouteImport } from './routes/admin/new'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminImportRouteImport } from './routes/admin/import'
 import { Route as AdminIdRouteImport } from './routes/admin/$id'
+import { Route as ActorSlugRouteImport } from './routes/actor.$slug'
 import { Route as TvYearYearRouteImport } from './routes/tv_.year.$year'
 import { Route as TvListSlugRouteImport } from './routes/tv_.list.$slug'
 import { Route as TvDecadeDecadeRouteImport } from './routes/tv_.decade.$decade'
@@ -147,6 +148,11 @@ const AdminIdRoute = AdminIdRouteImport.update({
   path: '/admin/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActorSlugRoute = ActorSlugRouteImport.update({
+  id: '/actor/$slug',
+  path: '/actor/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TvYearYearRoute = TvYearYearRouteImport.update({
   id: '/tv_/year/$year',
   path: '/tv/year/$year',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/tv': typeof TvRoute
+  '/actor/$slug': typeof ActorSlugRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/tv': typeof TvRoute
+  '/actor/$slug': typeof ActorSlugRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/tv': typeof TvRoute
+  '/actor/$slug': typeof ActorSlugRoute
   '/admin/$id': typeof AdminIdRoute
   '/admin/import': typeof AdminImportRoute
   '/admin/login': typeof AdminLoginRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/settings'
     | '/tv'
+    | '/actor/$slug'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/settings'
     | '/tv'
+    | '/actor/$slug'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/movies'
     | '/settings'
     | '/tv'
+    | '/actor/$slug'
     | '/admin/$id'
     | '/admin/import'
     | '/admin/login'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   MoviesRoute: typeof MoviesRoute
   SettingsRoute: typeof SettingsRoute
   TvRoute: typeof TvRoute
+  ActorSlugRoute: typeof ActorSlugRoute
   AdminIdRoute: typeof AdminIdRoute
   AdminImportRoute: typeof AdminImportRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -593,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/actor/$slug': {
+      id: '/actor/$slug'
+      path: '/actor/$slug'
+      fullPath: '/actor/$slug'
+      preLoaderRoute: typeof ActorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tv_/year/$year': {
       id: '/tv_/year/$year'
       path: '/tv/year/$year'
@@ -694,6 +714,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoviesRoute: MoviesRoute,
   SettingsRoute: SettingsRoute,
   TvRoute: TvRoute,
+  ActorSlugRoute: ActorSlugRoute,
   AdminIdRoute: AdminIdRoute,
   AdminImportRoute: AdminImportRoute,
   AdminLoginRoute: AdminLoginRoute,
