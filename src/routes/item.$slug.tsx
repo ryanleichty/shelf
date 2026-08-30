@@ -281,22 +281,24 @@ function ItemDetail() {
             </div>
           </div>
         </article>
-        {similarItems.length > 0 && (
-          <section className="mt-12" aria-labelledby="also-on-the-shelf">
-            <h2
-              className="mb-4 text-xl font-semibold tracking-tight"
-              id="also-on-the-shelf"
-            >
-              Also on the shelf
-            </h2>
-            <HomeCarousel
-              contained
-              id={`also-on-the-shelf-${item.id}`}
-              items={similarItems}
-            />
-          </section>
-        )}
       </div>
+      {similarItems.length > 0 && (
+        <section
+          className="item-shelf-carousel container mx-auto mt-12 max-w-5xl px-4"
+          aria-labelledby="also-on-the-shelf"
+        >
+          <h2
+            className="mb-4 text-xl font-semibold tracking-tight"
+            id="also-on-the-shelf"
+          >
+            Also on the shelf
+          </h2>
+          <HomeCarousel
+            id={`also-on-the-shelf-${item.id}`}
+            items={similarItems}
+          />
+        </section>
+      )}
     </main>
   )
 }
