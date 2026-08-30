@@ -273,6 +273,7 @@ function ItemDetail() {
               Also on the shelf
             </h2>
             <HomeCarousel
+              contained
               id={`also-on-the-shelf-${item.id}`}
               items={similarItems}
             />

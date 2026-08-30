@@ -298,5 +298,6 @@ export type Item = ItemRecord & {
   authors: string[]
   directors: string[]
   actors: string[]
+  isInSystemList: boolean
   collection?: Collection
 }

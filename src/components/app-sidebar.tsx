@@ -14,7 +14,8 @@ import {
   TvIcon,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { getSignedInStatus, logout } from "@/server/items"
+import { useSignedInStatus } from "@/components/signed-in-status"
+import { logout } from "@/server/items"
 import { getSidebarLists } from "@/server/lists"
 import { CatalogCommand } from "@/components/catalog-command"
 import {
@@ -64,7 +65,7 @@ const catalogNavigation = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const router = useRouter()
-  const [signedIn, setSignedIn] = useState(false)
+  const { signedIn, setSignedIn } = useSignedInStatus()
   const [listPlacements, setListPlacements] = useState<
     Array<{ slug: string; name: string; type: "book" | "movie" | "tv" }>
   >([])
@@ -90,9 +91,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )
       )
       .catch(() => setListPlacements([]))
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
   }, [])
   useEffect(() => {
     const currentParent = catalogNavigation.find(

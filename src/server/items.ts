@@ -872,6 +872,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     directorRows,
     actorRows,
     collectionRows,
+    systemListMembershipRows,
   ] = await Promise.all([
     db
       .select({ itemId: itemGenres.itemId, name: genres.name })
@@ -915,6 +916,11 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
       .from(itemCollections)
       .innerJoin(collections, eq(itemCollections.collectionId, collections.id))
       .where(inArray(itemCollections.itemId, itemIds)),
+    db
+      .select({ itemId: listItems.itemId, slug: lists.slug })
+      .from(listItems)
+      .innerJoin(lists, eq(listItems.listId, lists.id))
+      .where(and(inArray(listItems.itemId, itemIds), eq(lists.system, true))),
   ])
   const namesById = (rows: Array<{ itemId: number; name: string }>) => {
     const grouped = new Map<number, Array<{ itemId: number; name: string }>>()
@@ -930,6 +936,18 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   const collectionsByItem = new Map<number, Collection>(
     collectionRows.map(({ itemId, ...collection }) => [itemId, collection])
   )
+  const itemTypesById = new Map(records.map((item) => [item.id, item.type]))
+  const systemListItemIds = new Set(
+    systemListMembershipRows.flatMap(({ itemId, slug }) =>
+      (
+        itemTypesById.get(itemId) === "book"
+          ? slug === "reading-list"
+          : slug === "watchlist"
+      )
+        ? [itemId]
+        : []
+    )
+  )
   return records.map((item) => ({
     ...item,
     genres: (genreNames.get(item.id) ?? []).map((tag) => tag.name),
@@ -937,6 +955,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     authors: (authorNames.get(item.id) ?? []).map((person) => person.name),
     directors: (directorNames.get(item.id) ?? []).map((person) => person.name),
     actors: (actorNames.get(item.id) ?? []).map((person) => person.name),
+    isInSystemList: systemListItemIds.has(item.id),
     ...(item.type === "movie" && collectionsByItem.has(item.id)
       ? { collection: collectionsByItem.get(item.id) }
       : {}),

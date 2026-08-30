@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
-import { BookmarkIcon, ListPlusIcon } from "lucide-react"
+import { ListPlusIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CreateListDialog } from "@/components/create-list-dialog"
 import {
@@ -17,10 +17,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  SystemListToggle,
+  type SystemListOption,
+} from "@/components/system-list-toggle"
 import { getSignedInStatus } from "@/server/items"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
@@ -35,7 +34,7 @@ export function ItemListMenu({
   itemId: number
   itemType: "book" | "movie" | "tv"
   lists: ListOption[]
-  systemList: ListOption | null
+  systemList: SystemListOption | null
 }) {
   const router = useRouter()
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
@@ -82,44 +81,18 @@ export function ItemListMenu({
     }
   }
 
-  async function toggleBookmark() {
-    if (!bookmark) return
-    setError("")
-    try {
-      if (bookmark.containsItem)
-        await removeItemFromList({ data: { itemId, listSlug: bookmark.slug } })
-      else await addItemToList({ data: { itemId, listSlug: bookmark.slug } })
-      setBookmark({ ...bookmark, containsItem: !bookmark.containsItem })
-      await router.invalidate()
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : `Could not update ${bookmark.name}.`
-      )
-    }
-  }
-
   return (
     <div className="mt-4 flex items-center gap-2">
       {bookmark && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                onClick={() => void toggleBookmark()}
-                variant={bookmark.containsItem ? "default" : "outline"}
-              >
-                <BookmarkIcon
-                  data-icon="inline-start"
-                  fill={bookmark.containsItem ? "currentColor" : "none"}
-                />
-                {bookmark.name}
-              </Button>
-            }
-          />
-          <TooltipContent>{bookmark.name}</TooltipContent>
-        </Tooltip>
+        <SystemListToggle
+          itemId={itemId}
+          list={bookmark}
+          onError={setError}
+          onMembershipChange={(containsItem) =>
+            setBookmark({ ...bookmark, containsItem })
+          }
+          showLabel
+        />
       )}
       {customLists.length > 0 && (
         <DropdownMenu>

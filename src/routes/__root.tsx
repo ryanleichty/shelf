@@ -10,6 +10,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 
 import appCss from "../styles.css?url"
 import { AppSidebar } from "@/components/app-sidebar"
+import { SignedInStatusProvider } from "@/components/signed-in-status"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -70,7 +71,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TooltipProvider>
-          <ShelfShell>{children}</ShelfShell>
+          <SignedInStatusProvider>
+            <ShelfShell>{children}</ShelfShell>
+          </SignedInStatusProvider>
         </TooltipProvider>
         <TanStackDevtools
           config={{
