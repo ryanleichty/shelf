@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { db, ensureDatabase, refreshSearchIndex } from "./db"
-import { isAgentToken, requireSignedIn } from "./auth"
+import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
 import {
   items,
@@ -139,7 +139,7 @@ const lookupInput = z.object({
 })
 
 export const importItems = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     z.object({
       type: z.enum(itemTypes),
       format: z
@@ -339,7 +339,7 @@ export async function lookupCollection(data: {
 }
 
 export const getCoverOptions = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       type: z.enum(itemTypes),
       openLibraryKey: z.string().optional(),
@@ -655,9 +655,9 @@ type CheckResult =
   | { status: "not-owned"; title?: string; year?: number; format?: string }
 
 export const checkBarcode = createServerFn({ method: "POST" })
-  .validator(z.object({ code: barcodeInput }))
+  .inputValidator(z.object({ code: barcodeInput }))
   .handler(async ({ data }): Promise<CheckResult> => {
-    requireAdmin()
+    await requireAdmin()
     await ensureDatabase()
 
     const stored = await itemForBarcode(data.code)
@@ -756,7 +756,7 @@ async function saveBarcode(itemId: number, barcode: string) {
 }
 
 export const searchCollection = createServerFn({ method: "GET" })
-  .validator(lookupInput)
+  .inputValidator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {
     if (!isAgentToken(getRequestHeader("authorization")))
       await requireSignedIn()
@@ -764,7 +764,7 @@ export const searchCollection = createServerFn({ method: "GET" })
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
-  .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
+  .inputValidator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
     if (!isAgentToken(getRequestHeader("authorization")))
       await requireSignedIn()
@@ -961,7 +961,7 @@ export async function syncItemFromProvider(
 }
 
 export const syncItem = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.number().int() }))
+  .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1131,7 +1131,7 @@ function yearFromDate(value?: string) {
 }
 
 export const getItems = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z
       .object({
         type: z.enum(itemTypes).optional(),
@@ -1165,7 +1165,7 @@ export const getItems = createServerFn({ method: "GET" })
   })
 
 export const getItemsForYearBrowse = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       type: z.enum(itemTypes),
       startYear: z.number().int().min(0).max(9999),
@@ -1199,7 +1199,7 @@ export const getItemsForYearBrowse = createServerFn({ method: "GET" })
   })
 
 export const getItemsByTag = createServerFn({ method: "GET" })
-  .validator(z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() }))
+  .inputValidator(z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() }))
   .handler(async ({ data }) => {
     await ensureDatabase()
     const tagTable = data.kind === "genre" ? genres : keywords
@@ -1245,7 +1245,7 @@ export const getItemsByTag = createServerFn({ method: "GET" })
   })
 
 export const getItemsByPerson = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({ kind: z.enum(["author", "director"]), slug: z.string() })
   )
   .handler(async ({ data }) => {
@@ -1297,7 +1297,7 @@ const namedLists: Array<{
 ]
 
 export const getItemsByList = createServerFn({ method: "GET" })
-  .validator(
+  .inputValidator(
     z.object({
       listSlug: z.string(),
       type: z.enum(itemTypes),
@@ -1350,7 +1350,7 @@ const listMembershipInput = z.object({
 })
 
 export const addItemToList = createServerFn({ method: "POST" })
-  .validator(listMembershipInput)
+  .inputValidator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1373,7 +1373,7 @@ export const addItemToList = createServerFn({ method: "POST" })
   })
 
 export const removeItemFromList = createServerFn({ method: "POST" })
-  .validator(listMembershipInput)
+  .inputValidator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1447,7 +1447,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
 )
 
 export const getItemBySlug = createServerFn({ method: "GET" })
-  .validator(z.object({ slug: z.string() }))
+  .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
     await ensureDatabase()
     const [item] = await enrichItems(
@@ -1481,7 +1481,7 @@ export const getItemBySlug = createServerFn({ method: "GET" })
   })
 
 export const getItemById = createServerFn({ method: "GET" })
-  .validator(z.object({ id: z.number().int() }))
+  .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1518,7 +1518,7 @@ export const getLoginMode = createServerFn({ method: "GET" }).handler(
 )
 
 export const saveItem = createServerFn({ method: "POST" })
-  .validator(itemInput)
+  .inputValidator(itemInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1583,7 +1583,7 @@ export const saveItem = createServerFn({ method: "POST" })
   })
 
 export const deleteItem = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.number().int() }))
+  .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -1593,7 +1593,7 @@ export const deleteItem = createServerFn({ method: "POST" })
   })
 
 export const login = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     z.object({
       email: z.string().email().optional().or(z.literal("")),
       password: z.string().min(1),
