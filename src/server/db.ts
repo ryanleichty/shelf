@@ -171,6 +171,22 @@ export function ensureDatabase() {
       )
     `)
     await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS collections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        tmdb_collection_id TEXT UNIQUE,
+        overview TEXT
+      )
+    `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS item_collections (
+        item_id INTEGER NOT NULL UNIQUE REFERENCES items(id) ON DELETE CASCADE,
+        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+        UNIQUE(item_id, collection_id)
+      )
+    `)
+    await getClient().execute(`
       CREATE VIRTUAL TABLE IF NOT EXISTS item_search USING fts5(
         title, creator, description, genres, keywords
       )

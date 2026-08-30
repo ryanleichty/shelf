@@ -164,6 +164,21 @@ function ItemDetail() {
               ))}
             </div>
           )}
+          {item.type === "movie" && item.collection && (
+            <div className="mt-4">
+              <Badge
+                render={
+                  <Link
+                    params={{ slug: item.collection.slug }}
+                    to="/collection/$slug"
+                  />
+                }
+                variant="secondary"
+              >
+                {item.collection.name}
+              </Badge>
+            </div>
+          )}
           {item.description && (
             <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
               {item.description}

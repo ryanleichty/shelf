@@ -8,7 +8,12 @@ import type { Item } from "@/server/schema"
 
 type HomeRow =
   | { title: string; kind: "recent"; items: Item[] }
-  | { title: string; kind: "list"; slug: string; items: Item[] }
+  | {
+      title: string
+      kind: "list" | "collection"
+      slug: string
+      items: Item[]
+    }
 
 export function TypeHome({
   addLabel,
@@ -43,16 +48,18 @@ export function TypeHome({
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
                 <h2 className="text-xl font-semibold tracking-tight">
-                  {row.kind === "list" ? (
+                  {row.kind === "list" || row.kind === "collection" ? (
                     <Link
                       className="hover:underline"
                       params={{ slug: row.slug }}
                       to={
-                        type === "book"
-                          ? "/books/list/$slug"
-                          : type === "movie"
-                            ? "/movies/list/$slug"
-                            : "/tv/list/$slug"
+                        row.kind === "collection"
+                          ? "/collection/$slug"
+                          : type === "book"
+                            ? "/books/list/$slug"
+                            : type === "movie"
+                              ? "/movies/list/$slug"
+                              : "/tv/list/$slug"
                       }
                     >
                       {row.title}

@@ -167,6 +167,33 @@ export const itemDirectors = sqliteTable(
   ]
 )
 
+export const collections = sqliteTable("collections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  tmdbCollectionId: text("tmdb_collection_id").unique(),
+  overview: text("overview"),
+})
+
+export const itemCollections = sqliteTable(
+  "item_collections",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    collectionId: integer("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    uniqueIndex("item_collections_item_id_unique").on(table.itemId),
+    uniqueIndex("item_collections_item_id_collection_id_unique").on(
+      table.itemId,
+      table.collectionId
+    ),
+  ]
+)
+
 export const lists = sqliteTable("lists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
@@ -217,9 +244,11 @@ export const listItems = sqliteTable(
 )
 
 export type ItemRecord = typeof items.$inferSelect
+export type Collection = typeof collections.$inferSelect
 export type Item = ItemRecord & {
   genres: string[]
   keywords: string[]
   authors: string[]
   directors: string[]
+  collection?: Collection
 }

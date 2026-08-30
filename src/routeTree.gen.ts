@@ -22,6 +22,7 @@ import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
 import { Route as DirectorSlugRouteImport } from './routes/director.$slug'
+import { Route as CollectionSlugRouteImport } from './routes/collection.$slug'
 import { Route as BooksAllRouteImport } from './routes/books_.all'
 import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
@@ -104,6 +105,11 @@ const GenreSlugRoute = GenreSlugRouteImport.update({
 const DirectorSlugRoute = DirectorSlugRouteImport.update({
   id: '/director/$slug',
   path: '/director/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionSlugRoute = CollectionSlugRouteImport.update({
+  id: '/collection/$slug',
+  path: '/collection/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BooksAllRoute = BooksAllRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
   '/books/all': typeof BooksAllRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
   '/books/all': typeof BooksAllRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
   '/books_/all': typeof BooksAllRoute
+  '/collection/$slug': typeof CollectionSlugRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/author/$slug'
     | '/books/all'
+    | '/collection/$slug'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/author/$slug'
     | '/books/all'
+    | '/collection/$slug'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/items'
     | '/author/$slug'
     | '/books_/all'
+    | '/collection/$slug'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
@@ -413,6 +425,7 @@ export interface RootRouteChildren {
   ApiItemsRoute: typeof ApiItemsRouteWithChildren
   AuthorSlugRoute: typeof AuthorSlugRoute
   BooksAllRoute: typeof BooksAllRoute
+  CollectionSlugRoute: typeof CollectionSlugRoute
   DirectorSlugRoute: typeof DirectorSlugRoute
   GenreSlugRoute: typeof GenreSlugRoute
   ItemSlugRoute: typeof ItemSlugRoute
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/director/$slug'
       fullPath: '/director/$slug'
       preLoaderRoute: typeof DirectorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collection/$slug': {
+      id: '/collection/$slug'
+      path: '/collection/$slug'
+      fullPath: '/collection/$slug'
+      preLoaderRoute: typeof CollectionSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/books_/all': {
@@ -681,6 +701,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiItemsRoute: ApiItemsRouteWithChildren,
   AuthorSlugRoute: AuthorSlugRoute,
   BooksAllRoute: BooksAllRoute,
+  CollectionSlugRoute: CollectionSlugRoute,
   DirectorSlugRoute: DirectorSlugRoute,
   GenreSlugRoute: GenreSlugRoute,
   ItemSlugRoute: ItemSlugRoute,
