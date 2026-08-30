@@ -220,12 +220,34 @@ await client.execute(`
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
+    source_slug TEXT NOT NULL DEFAULT '',
     type TEXT NOT NULL,
     position INTEGER NOT NULL,
     visible INTEGER NOT NULL DEFAULT 1,
     UNIQUE(list_id, type)
   )
 `)
+const placementColumns = await client.execute(
+  "PRAGMA table_info(list_placements)"
+)
+const needsCatalogPlacementDefaults = !placementColumns.rows.some(
+  (column) => column.name === "source_slug"
+)
+if (needsCatalogPlacementDefaults) {
+  await client.execute(
+    "ALTER TABLE list_placements ADD COLUMN source_slug TEXT"
+  )
+  await client.execute(`
+    UPDATE list_placements
+    SET source_slug = CASE
+      WHEN kind = 'recent' THEN 'recent'
+      ELSE coalesce((SELECT slug FROM lists WHERE lists.id = list_placements.list_id), '')
+    END
+  `)
+}
+await client.execute(
+  "CREATE UNIQUE INDEX IF NOT EXISTS list_placements_type_kind_source_slug_unique ON list_placements(type, kind, source_slug)"
+)
 await client.execute({
   sql: `
     INSERT INTO lists (slug, name, system, created_at)
@@ -241,8 +263,8 @@ for (const [slug, type] of [
 ] as const) {
   await client.execute({
     sql: `
-      INSERT INTO list_placements (list_id, kind, type, position, visible)
-      SELECT id, 'list', ?, 1, 1 FROM lists WHERE slug = ?
+      INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
+      SELECT id, 'list', slug, ?, 1, 1 FROM lists WHERE slug = ?
       ON CONFLICT(list_id, type) DO NOTHING
     `,
     args: [type, slug],
@@ -251,14 +273,31 @@ for (const [slug, type] of [
 for (const type of ["book", "movie", "tv"]) {
   await client.execute({
     sql: `
-      INSERT INTO list_placements (list_id, kind, type, position, visible)
-      SELECT NULL, 'recent', ?, 0, 1
+      INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
+      SELECT NULL, 'recent', 'recent', ?, 0, 1
       WHERE NOT EXISTS (
         SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
       )
     `,
     args: [type, type],
   })
+}
+if (needsCatalogPlacementDefaults) {
+  await client.execute(`
+    INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
+    SELECT NULL, 'genre', slug, type,
+      max_position + ROW_NUMBER() OVER (PARTITION BY type ORDER BY name, slug), 1
+    FROM (
+      SELECT DISTINCT genres.slug, genres.name, items.type,
+        COALESCE((
+          SELECT MAX(position) FROM list_placements AS placements
+          WHERE placements.type = items.type
+        ), -1) AS max_position
+      FROM item_genres
+      INNER JOIN genres ON item_genres.genre_id = genres.id
+      INNER JOIN items ON item_genres.item_id = items.id
+    )
+  `)
 }
 
 console.log("Database is ready.")

@@ -69,7 +69,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getSignedInStatus } from "@/server/items"
 import { ListsSettings } from "@/components/lists-settings"
 import { PeopleSettings } from "@/components/people-settings"
-import { getListPlacements } from "@/server/lists"
+import { getCatalogPlacementOptions, getListPlacements } from "@/server/lists"
 import { getPeople } from "@/server/people"
 import { deleteUser, getSettings, saveProfile, saveUser } from "@/server/users"
 
@@ -78,13 +78,15 @@ export const Route = createFileRoute("/settings")({
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
   loader: async () => {
-    const [settings, placements] = await Promise.all([
+    const [settings, placements, catalogOptions] = await Promise.all([
       getSettings(),
       getListPlacements(),
+      getCatalogPlacementOptions(),
     ])
     return {
       settings,
       placements,
+      catalogOptions,
     }
   },
   pendingComponent: SettingsPending,
@@ -103,7 +105,7 @@ type UserForm = {
 }
 
 function Settings() {
-  const { settings: data, placements } = Route.useLoaderData()
+  const { settings: data, placements, catalogOptions } = Route.useLoaderData()
   const router = useRouter()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -286,6 +288,7 @@ function Settings() {
         </TabsContent>
         <TabsContent value="lists">
           <ListsSettings
+            catalogOptions={catalogOptions}
             onChange={() => router.invalidate()}
             placements={placements}
           />
