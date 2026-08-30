@@ -1116,7 +1116,14 @@ export type ProviderSyncResult = {
     Record<
       keyof SyncedFields,
       {
-        before: string | number | string[] | CollectionInput | null | undefined
+        before:
+          | string
+          | number
+          | string[]
+          | Collection
+          | CollectionInput
+          | null
+          | undefined
         after: string | number | string[] | CollectionInput | null | undefined
       }
     >
