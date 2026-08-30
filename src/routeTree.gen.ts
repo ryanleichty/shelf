@@ -9,53 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as BooksRouteImport } from './routes/books'
-import { Route as CheckRouteImport } from './routes/check'
-import { Route as MoviesRouteImport } from './routes/movies'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TvRouteImport } from './routes/tv'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as MoviesRouteImport } from './routes/movies'
+import { Route as CheckRouteImport } from './routes/check'
+import { Route as BooksRouteImport } from './routes/books'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as AdminIdRouteImport } from './routes/admin/$id'
-import { Route as AdminImportRouteImport } from './routes/admin/import'
-import { Route as AdminLoginRouteImport } from './routes/admin/login'
-import { Route as AdminNewRouteImport } from './routes/admin/new'
-import { Route as ApiItemsRouteImport } from './routes/api/items'
-import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
-import { Route as DirectorSlugRouteImport } from './routes/director.$slug'
-import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
-import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
-import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
-import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
-import { Route as BooksDecadeDecadeRouteImport } from './routes/books_.decade.$decade'
-import { Route as BooksListSlugRouteImport } from './routes/books_.list.$slug'
-import { Route as BooksYearYearRouteImport } from './routes/books_.year.$year'
-import { Route as MoviesDecadeDecadeRouteImport } from './routes/movies_.decade.$decade'
-import { Route as MoviesListSlugRouteImport } from './routes/movies_.list.$slug'
-import { Route as MoviesYearYearRouteImport } from './routes/movies_.year.$year'
-import { Route as TvDecadeDecadeRouteImport } from './routes/tv_.decade.$decade'
-import { Route as TvListSlugRouteImport } from './routes/tv_.list.$slug'
+import { Route as ItemSlugRouteImport } from './routes/item.$slug'
+import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
+import { Route as DirectorSlugRouteImport } from './routes/director.$slug'
+import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
+import { Route as ApiItemsRouteImport } from './routes/api/items'
+import { Route as AdminNewRouteImport } from './routes/admin/new'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AdminImportRouteImport } from './routes/admin/import'
+import { Route as AdminIdRouteImport } from './routes/admin/$id'
 import { Route as TvYearYearRouteImport } from './routes/tv_.year.$year'
+import { Route as TvListSlugRouteImport } from './routes/tv_.list.$slug'
+import { Route as TvDecadeDecadeRouteImport } from './routes/tv_.decade.$decade'
+import { Route as MoviesYearYearRouteImport } from './routes/movies_.year.$year'
+import { Route as MoviesListSlugRouteImport } from './routes/movies_.list.$slug'
+import { Route as MoviesDecadeDecadeRouteImport } from './routes/movies_.decade.$decade'
+import { Route as BooksYearYearRouteImport } from './routes/books_.year.$year'
+import { Route as BooksListSlugRouteImport } from './routes/books_.list.$slug'
+import { Route as BooksDecadeDecadeRouteImport } from './routes/books_.decade.$decade'
+import { Route as ApiItemsSyncRouteImport } from './routes/api/items/sync'
+import { Route as ApiItemsIdRouteImport } from './routes/api/items.$id'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BooksRoute = BooksRouteImport.update({
-  id: '/books',
-  path: '/books',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CheckRoute = CheckRouteImport.update({
-  id: '/check',
-  path: '/check',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MoviesRoute = MoviesRouteImport.update({
-  id: '/movies',
-  path: '/movies',
+const TvRoute = TvRouteImport.update({
+  id: '/tv',
+  path: '/tv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -63,9 +48,24 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TvRoute = TvRouteImport.update({
-  id: '/tv',
-  path: '/tv',
+const MoviesRoute = MoviesRouteImport.update({
+  id: '/movies',
+  path: '/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckRoute = CheckRouteImport.update({
+  id: '/check',
+  path: '/check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksRoute = BooksRouteImport.update({
+  id: '/books',
+  path: '/books',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -73,44 +73,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIdRoute = AdminIdRouteImport.update({
-  id: '/admin/$id',
-  path: '/admin/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminImportRoute = AdminImportRouteImport.update({
-  id: '/admin/import',
-  path: '/admin/import',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin/login',
-  path: '/admin/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminNewRoute = AdminNewRouteImport.update({
-  id: '/admin/new',
-  path: '/admin/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiItemsRoute = ApiItemsRouteImport.update({
-  id: '/api/items',
-  path: '/api/items',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthorSlugRoute = AuthorSlugRouteImport.update({
-  id: '/author/$slug',
-  path: '/author/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DirectorSlugRoute = DirectorSlugRouteImport.update({
-  id: '/director/$slug',
-  path: '/director/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GenreSlugRoute = GenreSlugRouteImport.update({
-  id: '/genre/$slug',
-  path: '/genre/$slug',
+const KeywordSlugRoute = KeywordSlugRouteImport.update({
+  id: '/keyword/$slug',
+  path: '/keyword/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ItemSlugRoute = ItemSlugRouteImport.update({
@@ -118,54 +83,49 @@ const ItemSlugRoute = ItemSlugRouteImport.update({
   path: '/item/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KeywordSlugRoute = KeywordSlugRouteImport.update({
-  id: '/keyword/$slug',
-  path: '/keyword/$slug',
+const GenreSlugRoute = GenreSlugRouteImport.update({
+  id: '/genre/$slug',
+  path: '/genre/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiItemsIdRoute = ApiItemsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ApiItemsRoute,
-} as any)
-const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
-  id: '/sync',
-  path: '/sync',
-  getParentRoute: () => ApiItemsRoute,
-} as any)
-const BooksDecadeDecadeRoute = BooksDecadeDecadeRouteImport.update({
-  id: '/books_/decade/$decade',
-  path: '/books/decade/$decade',
+const DirectorSlugRoute = DirectorSlugRouteImport.update({
+  id: '/director/$slug',
+  path: '/director/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BooksListSlugRoute = BooksListSlugRouteImport.update({
-  id: '/books_/list/$slug',
-  path: '/books/list/$slug',
+const AuthorSlugRoute = AuthorSlugRouteImport.update({
+  id: '/author/$slug',
+  path: '/author/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BooksYearYearRoute = BooksYearYearRouteImport.update({
-  id: '/books_/year/$year',
-  path: '/books/year/$year',
+const ApiItemsRoute = ApiItemsRouteImport.update({
+  id: '/api/items',
+  path: '/api/items',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MoviesDecadeDecadeRoute = MoviesDecadeDecadeRouteImport.update({
-  id: '/movies_/decade/$decade',
-  path: '/movies/decade/$decade',
+const AdminNewRoute = AdminNewRouteImport.update({
+  id: '/admin/new',
+  path: '/admin/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
-  id: '/movies_/list/$slug',
-  path: '/movies/list/$slug',
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MoviesYearYearRoute = MoviesYearYearRouteImport.update({
-  id: '/movies_/year/$year',
-  path: '/movies/year/$year',
+const AdminImportRoute = AdminImportRouteImport.update({
+  id: '/admin/import',
+  path: '/admin/import',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TvDecadeDecadeRoute = TvDecadeDecadeRouteImport.update({
-  id: '/tv_/decade/$decade',
-  path: '/tv/decade/$decade',
+const AdminIdRoute = AdminIdRouteImport.update({
+  id: '/admin/$id',
+  path: '/admin/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TvYearYearRoute = TvYearYearRouteImport.update({
+  id: '/tv_/year/$year',
+  path: '/tv/year/$year',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TvListSlugRoute = TvListSlugRouteImport.update({
@@ -173,10 +133,50 @@ const TvListSlugRoute = TvListSlugRouteImport.update({
   path: '/tv/list/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TvYearYearRoute = TvYearYearRouteImport.update({
-  id: '/tv_/year/$year',
-  path: '/tv/year/$year',
+const TvDecadeDecadeRoute = TvDecadeDecadeRouteImport.update({
+  id: '/tv_/decade/$decade',
+  path: '/tv/decade/$decade',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesYearYearRoute = MoviesYearYearRouteImport.update({
+  id: '/movies_/year/$year',
+  path: '/movies/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesListSlugRoute = MoviesListSlugRouteImport.update({
+  id: '/movies_/list/$slug',
+  path: '/movies/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesDecadeDecadeRoute = MoviesDecadeDecadeRouteImport.update({
+  id: '/movies_/decade/$decade',
+  path: '/movies/decade/$decade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksYearYearRoute = BooksYearYearRouteImport.update({
+  id: '/books_/year/$year',
+  path: '/books/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksListSlugRoute = BooksListSlugRouteImport.update({
+  id: '/books_/list/$slug',
+  path: '/books/list/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksDecadeDecadeRoute = BooksDecadeDecadeRouteImport.update({
+  id: '/books_/decade/$decade',
+  path: '/books/decade/$decade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiItemsSyncRoute = ApiItemsSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => ApiItemsRoute,
+} as any)
+const ApiItemsIdRoute = ApiItemsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiItemsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -196,7 +196,7 @@ export interface FileRoutesByFullPath {
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
-  '/admin/': typeof AdminIndexRoute
+  '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
   '/books/decade/$decade': typeof BooksDecadeDecadeRoute
@@ -289,7 +289,7 @@ export interface FileRouteTypes {
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
-    | '/admin/'
+    | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
     | '/books/decade/$decade'
@@ -394,32 +394,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/books': {
-      id: '/books'
-      path: '/books'
-      fullPath: '/books'
-      preLoaderRoute: typeof BooksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/check': {
-      id: '/check'
-      path: '/check'
-      fullPath: '/check'
-      preLoaderRoute: typeof CheckRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/movies': {
-      id: '/movies'
-      path: '/movies'
-      fullPath: '/movies'
-      preLoaderRoute: typeof MoviesRouteImport
+    '/tv': {
+      id: '/tv'
+      path: '/tv'
+      fullPath: '/tv'
+      preLoaderRoute: typeof TvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -429,81 +408,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tv': {
-      id: '/tv'
-      path: '/tv'
-      fullPath: '/tv'
-      preLoaderRoute: typeof TvRouteImport
+    '/movies': {
+      id: '/movies'
+      path: '/movies'
+      fullPath: '/movies'
+      preLoaderRoute: typeof MoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check': {
+      id: '/check'
+      path: '/check'
+      fullPath: '/check'
+      preLoaderRoute: typeof CheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books': {
+      id: '/books'
+      path: '/books'
+      fullPath: '/books'
+      preLoaderRoute: typeof BooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
-      fullPath: '/admin/'
+      fullPath: '/admin'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/$id': {
-      id: '/admin/$id'
-      path: '/admin/$id'
-      fullPath: '/admin/$id'
-      preLoaderRoute: typeof AdminIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/import': {
-      id: '/admin/import'
-      path: '/admin/import'
-      fullPath: '/admin/import'
-      preLoaderRoute: typeof AdminImportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/admin/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/new': {
-      id: '/admin/new'
-      path: '/admin/new'
-      fullPath: '/admin/new'
-      preLoaderRoute: typeof AdminNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/items': {
-      id: '/api/items'
-      path: '/api/items'
-      fullPath: '/api/items'
-      preLoaderRoute: typeof ApiItemsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/author/$slug': {
-      id: '/author/$slug'
-      path: '/author/$slug'
-      fullPath: '/author/$slug'
-      preLoaderRoute: typeof AuthorSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/director/$slug': {
-      id: '/director/$slug'
-      path: '/director/$slug'
-      fullPath: '/director/$slug'
-      preLoaderRoute: typeof DirectorSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/genre/$slug': {
-      id: '/genre/$slug'
-      path: '/genre/$slug'
-      fullPath: '/genre/$slug'
-      preLoaderRoute: typeof GenreSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/item/$slug': {
-      id: '/item/$slug'
-      path: '/item/$slug'
-      fullPath: '/item/$slug'
-      preLoaderRoute: typeof ItemSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/keyword/$slug': {
@@ -513,67 +450,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KeywordSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/items/$id': {
-      id: '/api/items/$id'
-      path: '/$id'
-      fullPath: '/api/items/$id'
-      preLoaderRoute: typeof ApiItemsIdRouteImport
-      parentRoute: typeof ApiItemsRoute
-    }
-    '/api/items/sync': {
-      id: '/api/items/sync'
-      path: '/sync'
-      fullPath: '/api/items/sync'
-      preLoaderRoute: typeof ApiItemsSyncRouteImport
-      parentRoute: typeof ApiItemsRoute
-    }
-    '/books_/decade/$decade': {
-      id: '/books_/decade/$decade'
-      path: '/books/decade/$decade'
-      fullPath: '/books/decade/$decade'
-      preLoaderRoute: typeof BooksDecadeDecadeRouteImport
+    '/item/$slug': {
+      id: '/item/$slug'
+      path: '/item/$slug'
+      fullPath: '/item/$slug'
+      preLoaderRoute: typeof ItemSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/books_/list/$slug': {
-      id: '/books_/list/$slug'
-      path: '/books/list/$slug'
-      fullPath: '/books/list/$slug'
-      preLoaderRoute: typeof BooksListSlugRouteImport
+    '/genre/$slug': {
+      id: '/genre/$slug'
+      path: '/genre/$slug'
+      fullPath: '/genre/$slug'
+      preLoaderRoute: typeof GenreSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/books_/year/$year': {
-      id: '/books_/year/$year'
-      path: '/books/year/$year'
-      fullPath: '/books/year/$year'
-      preLoaderRoute: typeof BooksYearYearRouteImport
+    '/director/$slug': {
+      id: '/director/$slug'
+      path: '/director/$slug'
+      fullPath: '/director/$slug'
+      preLoaderRoute: typeof DirectorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/movies_/decade/$decade': {
-      id: '/movies_/decade/$decade'
-      path: '/movies/decade/$decade'
-      fullPath: '/movies/decade/$decade'
-      preLoaderRoute: typeof MoviesDecadeDecadeRouteImport
+    '/author/$slug': {
+      id: '/author/$slug'
+      path: '/author/$slug'
+      fullPath: '/author/$slug'
+      preLoaderRoute: typeof AuthorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/movies_/list/$slug': {
-      id: '/movies_/list/$slug'
-      path: '/movies/list/$slug'
-      fullPath: '/movies/list/$slug'
-      preLoaderRoute: typeof MoviesListSlugRouteImport
+    '/api/items': {
+      id: '/api/items'
+      path: '/api/items'
+      fullPath: '/api/items'
+      preLoaderRoute: typeof ApiItemsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/movies_/year/$year': {
-      id: '/movies_/year/$year'
-      path: '/movies/year/$year'
-      fullPath: '/movies/year/$year'
-      preLoaderRoute: typeof MoviesYearYearRouteImport
+    '/admin/new': {
+      id: '/admin/new'
+      path: '/admin/new'
+      fullPath: '/admin/new'
+      preLoaderRoute: typeof AdminNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tv_/decade/$decade': {
-      id: '/tv_/decade/$decade'
-      path: '/tv/decade/$decade'
-      fullPath: '/tv/decade/$decade'
-      preLoaderRoute: typeof TvDecadeDecadeRouteImport
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/import': {
+      id: '/admin/import'
+      path: '/admin/import'
+      fullPath: '/admin/import'
+      preLoaderRoute: typeof AdminImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/$id': {
+      id: '/admin/$id'
+      path: '/admin/$id'
+      fullPath: '/admin/$id'
+      preLoaderRoute: typeof AdminIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tv_/year/$year': {
+      id: '/tv_/year/$year'
+      path: '/tv/year/$year'
+      fullPath: '/tv/year/$year'
+      preLoaderRoute: typeof TvYearYearRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tv_/list/$slug': {
@@ -583,12 +527,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TvListSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tv_/year/$year': {
-      id: '/tv_/year/$year'
-      path: '/tv/year/$year'
-      fullPath: '/tv/year/$year'
-      preLoaderRoute: typeof TvYearYearRouteImport
+    '/tv_/decade/$decade': {
+      id: '/tv_/decade/$decade'
+      path: '/tv/decade/$decade'
+      fullPath: '/tv/decade/$decade'
+      preLoaderRoute: typeof TvDecadeDecadeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/movies_/year/$year': {
+      id: '/movies_/year/$year'
+      path: '/movies/year/$year'
+      fullPath: '/movies/year/$year'
+      preLoaderRoute: typeof MoviesYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movies_/list/$slug': {
+      id: '/movies_/list/$slug'
+      path: '/movies/list/$slug'
+      fullPath: '/movies/list/$slug'
+      preLoaderRoute: typeof MoviesListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movies_/decade/$decade': {
+      id: '/movies_/decade/$decade'
+      path: '/movies/decade/$decade'
+      fullPath: '/movies/decade/$decade'
+      preLoaderRoute: typeof MoviesDecadeDecadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books_/year/$year': {
+      id: '/books_/year/$year'
+      path: '/books/year/$year'
+      fullPath: '/books/year/$year'
+      preLoaderRoute: typeof BooksYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books_/list/$slug': {
+      id: '/books_/list/$slug'
+      path: '/books/list/$slug'
+      fullPath: '/books/list/$slug'
+      preLoaderRoute: typeof BooksListSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books_/decade/$decade': {
+      id: '/books_/decade/$decade'
+      path: '/books/decade/$decade'
+      fullPath: '/books/decade/$decade'
+      preLoaderRoute: typeof BooksDecadeDecadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/items/sync': {
+      id: '/api/items/sync'
+      path: '/sync'
+      fullPath: '/api/items/sync'
+      preLoaderRoute: typeof ApiItemsSyncRouteImport
+      parentRoute: typeof ApiItemsRoute
+    }
+    '/api/items/$id': {
+      id: '/api/items/$id'
+      path: '/$id'
+      fullPath: '/api/items/$id'
+      preLoaderRoute: typeof ApiItemsIdRouteImport
+      parentRoute: typeof ApiItemsRoute
     }
   }
 }

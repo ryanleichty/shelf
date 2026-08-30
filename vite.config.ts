@@ -24,6 +24,15 @@ const config = defineConfig({
     ],
     tsconfigPaths: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("/src/")) return "app"
+        },
+      },
+    },
+  },
   plugins: [devtools(), tailwindcss(), tanstackStart(), nitro(), viteReact()],
 })
 

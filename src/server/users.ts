@@ -70,7 +70,7 @@ export const getSettings = createServerFn({ method: "GET" }).handler(
 )
 
 export const saveProfile = createServerFn({ method: "POST" })
-  .validator(profileInput)
+  .inputValidator(profileInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
@@ -114,7 +114,7 @@ export const saveProfile = createServerFn({ method: "POST" })
   })
 
 export const saveUser = createServerFn({ method: "POST" })
-  .validator(userInput)
+  .inputValidator(userInput)
   .handler(async ({ data }) => {
     await requireAdmin()
     await ensureDatabase()
@@ -164,7 +164,7 @@ export const saveUser = createServerFn({ method: "POST" })
   })
 
 export const deleteUser = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.number().int() }))
+  .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireAdmin()
     await ensureDatabase()
