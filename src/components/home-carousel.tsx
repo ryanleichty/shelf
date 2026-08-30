@@ -6,7 +6,7 @@ import {
   BlossomPrev,
 } from "@blossom-carousel/react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -16,17 +16,23 @@ export function HomeCarousel({
   contained = false,
   id,
   items,
+  onEmptyChange,
   systemListSlug,
 }: {
   contained?: boolean
   id: string
   items: Item[]
+  onEmptyChange?: (isEmpty: boolean) => void
   systemListSlug?: string
 }) {
   const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(() => new Set())
   const visibleItems = systemListSlug
     ? items.filter((item) => !hiddenItemIds.has(item.id))
     : items
+
+  useEffect(() => {
+    onEmptyChange?.(visibleItems.length === 0)
+  }, [onEmptyChange, visibleItems.length])
 
   function handleSystemListMembershipChange(
     itemId: number,
