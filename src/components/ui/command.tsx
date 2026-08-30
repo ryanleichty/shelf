@@ -142,11 +142,11 @@ function CommandSeparator({
   )
 }
 
-function CommandItem({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+type CommandItemProps = React.ComponentProps<typeof CommandPrimitive.Item> & {
+  "data-checked"?: boolean | "true" | "false"
+}
+
+function CommandItem({ className, children, ...props }: CommandItemProps) {
   const isChecked =
     props["data-checked"] === true || props["data-checked"] === "true"
 

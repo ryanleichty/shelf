@@ -11,8 +11,16 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { getItems } from "@/server/items"
+import { getItems, getSearchFacets } from "@/server/items"
+import type { SearchFacets } from "@/server/items"
 import type { Item } from "@/server/schema"
+
+type SearchFacet = { name: string; slug: string }
+const emptySearchFacets: SearchFacets = {
+  genres: [],
+  directors: [],
+  actors: [],
+}
 
 function CatalogCommandItem({
   item,
@@ -52,6 +60,20 @@ function CatalogCommandItem({
   )
 }
 
+function CatalogFacetCommandItem({
+  facet,
+  onSelect,
+}: {
+  facet: SearchFacet
+  onSelect: () => void
+}) {
+  return (
+    <CommandItem onSelect={onSelect} value={facet.name}>
+      <span className="min-w-0 flex-1 truncate">{facet.name}</span>
+    </CommandItem>
+  )
+}
+
 export function CatalogCommand({
   open,
   onOpenChange,
@@ -62,14 +84,31 @@ export function CatalogCommand({
   const router = useRouter()
   const [query, setQuery] = useState("")
   const [items, setItems] = useState<Item[]>([])
+  const [facets, setFacets] = useState<SearchFacets>(emptySearchFacets)
 
   useEffect(() => {
+    let active = true
     const timer = window.setTimeout(() => {
-      getItems({ data: query ? { query } : {} })
-        .then(setItems)
-        .catch(() => setItems([]))
+      const normalizedQuery = query.trim()
+      const itemSearch = getItems({
+        data: normalizedQuery ? { query: normalizedQuery } : {},
+      }).catch(() => [])
+      const facetSearch = normalizedQuery
+        ? getSearchFacets({ data: { query: normalizedQuery } }).catch(
+            () => emptySearchFacets
+          )
+        : Promise.resolve(emptySearchFacets)
+
+      Promise.all([itemSearch, facetSearch]).then(([nextItems, nextFacets]) => {
+        if (!active) return
+        setItems(nextItems)
+        setFacets(nextFacets)
+      })
     }, 150)
-    return () => window.clearTimeout(timer)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
   }, [query])
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -94,6 +133,14 @@ export function CatalogCommand({
   const select = (item: Item) => {
     onOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
+  }
+  const selectFacet = (kind: "genre" | "director" | "actor", slug: string) => {
+    onOpenChange(false)
+    if (kind === "genre")
+      router.navigate({ to: "/genre/$slug", params: { slug } })
+    else if (kind === "director")
+      router.navigate({ to: "/director/$slug", params: { slug } })
+    else router.navigate({ to: "/actor/$slug", params: { slug } })
   }
   return (
     <CommandDialog
@@ -139,6 +186,39 @@ export function CatalogCommand({
                   item={item}
                   key={item.id}
                   onSelect={() => select(item)}
+                />
+              ))}
+            </CommandGroup>
+          )}
+          {facets.genres.length > 0 && (
+            <CommandGroup heading="Genres">
+              {facets.genres.map((facet) => (
+                <CatalogFacetCommandItem
+                  facet={facet}
+                  key={facet.slug}
+                  onSelect={() => selectFacet("genre", facet.slug)}
+                />
+              ))}
+            </CommandGroup>
+          )}
+          {facets.directors.length > 0 && (
+            <CommandGroup heading="Directors">
+              {facets.directors.map((facet) => (
+                <CatalogFacetCommandItem
+                  facet={facet}
+                  key={facet.slug}
+                  onSelect={() => selectFacet("director", facet.slug)}
+                />
+              ))}
+            </CommandGroup>
+          )}
+          {facets.actors.length > 0 && (
+            <CommandGroup heading="Actors">
+              {facets.actors.map((facet) => (
+                <CatalogFacetCommandItem
+                  facet={facet}
+                  key={facet.slug}
+                  onSelect={() => selectFacet("actor", facet.slug)}
                 />
               ))}
             </CommandGroup>
