@@ -1346,7 +1346,7 @@ function changedFields(
     if (field === "collection" && item.type !== "movie") continue
     const next = metadata[field]
     if (next === undefined) continue
-    const previous = item[field]
+    const previous = field === "collection" ? item.collection ?? null : item[field]
     if (JSON.stringify(previous) !== JSON.stringify(next))
       changes[field] = { before: previous, after: next }
   }
