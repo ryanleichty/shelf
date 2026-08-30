@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react"
 import { Link, createFileRoute, redirect } from "@tanstack/react-router"
-import { Button } from "@/components/ui/button"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import { Field, FieldDescription, FieldError } from "@/components/ui/field"
 import {
@@ -10,8 +9,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
-import { checkBarcode } from "@/server/items"
-import { getAdminStatus } from "@/server/items"
+import { checkBarcode, getAdminStatus } from "@/server/items"
 
 type CheckResult = Awaited<ReturnType<typeof checkBarcode>>
 
@@ -118,7 +116,9 @@ function Check() {
             <h2 className="mt-1 truncate font-semibold">{result.item.title}</h2>
             <p className="text-sm text-muted-foreground">
               {result.item.year}
-              {result.item.format ? ` · ${formatLabel(result.item.format)}` : ""}
+              {result.item.format
+                ? ` · ${formatLabel(result.item.format)}`
+                : ""}
             </p>
             <Link
               className="mt-2 inline-block text-sm text-primary underline-offset-4 hover:underline"

@@ -62,9 +62,7 @@ export function BarcodeScanner({
     try {
       const Detector = (
         window as unknown as {
-          BarcodeDetector?: new (options: {
-            formats: string[]
-          }) => {
+          BarcodeDetector?: new (options: { formats: string[] }) => {
             detect: (
               source: HTMLVideoElement
             ) => Promise<Array<{ rawValue?: string }>>
@@ -137,7 +135,11 @@ export function BarcodeScanner({
         ) : (
           <ScanBarcodeIcon data-icon="inline-start" />
         )}
-        {starting ? "Starting camera…" : scanning ? "Stop camera" : "Scan barcode"}
+        {starting
+          ? "Starting camera…"
+          : scanning
+            ? "Stop camera"
+            : "Scan barcode"}
       </Button>
       {error && <FieldError>{error}</FieldError>}
     </div>

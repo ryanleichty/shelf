@@ -94,9 +94,10 @@ export function ItemForm({
   const [scanOpen, setScanOpen] = useState(false)
   const [barcodeCode, setBarcodeCode] = useState("")
   const [barcodeError, setBarcodeError] = useState("")
-  const [barcodeResult, setBarcodeResult] = useState<
-    Extract<Awaited<ReturnType<typeof resolveBarcode>>, { status: "owned" }> | null
-  >(null)
+  const [barcodeResult, setBarcodeResult] = useState<Extract<
+    Awaited<ReturnType<typeof resolveBarcode>>,
+    { status: "owned" }
+  > | null>(null)
   const [resolvingBarcode, setResolvingBarcode] = useState(false)
   const [selected, setSelected] = useState(false)
   const [coverOptions, setCoverOptions] = useState<string[]>([])
@@ -332,7 +333,9 @@ export function ItemForm({
                 setQuery(event.target.value)
                 setSelected(false)
               }}
-              placeholder={type === "book" ? "Search Open Library" : "Search TMDB"}
+              placeholder={
+                type === "book" ? "Search Open Library" : "Search TMDB"
+              }
               value={query}
             />
             <InputGroupAddon align="inline-end">
@@ -407,7 +410,9 @@ export function ItemForm({
             }}
           >
             <Field data-invalid={Boolean(barcodeError)}>
-              <FieldLabel htmlFor="barcode-code">Barcode, UPC, or ISBN</FieldLabel>
+              <FieldLabel htmlFor="barcode-code">
+                Barcode, UPC, or ISBN
+              </FieldLabel>
               <InputGroup>
                 <InputGroupInput
                   aria-invalid={Boolean(barcodeError)}
@@ -485,7 +490,7 @@ export function ItemForm({
           <FieldLabel htmlFor="status">Status</FieldLabel>
           <Select
             onValueChange={(value) => {
-              const nextStatus = (value ?? "unspecified") as typeof status
+              const nextStatus = value ?? "unspecified"
               setStatus(nextStatus)
               if (nextStatus !== "borrowed")
                 setValues((current) => ({
