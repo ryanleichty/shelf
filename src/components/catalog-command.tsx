@@ -32,6 +32,7 @@ export function CatalogCommand({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const books = useMemo(() => items.filter((item) => item.type === "book"), [items])
   const movies = useMemo(() => items.filter((item) => item.type === "movie"), [items])
+  const tv = useMemo(() => items.filter((item) => item.type === "tv"), [items])
   const select = (item: Item) => {
     onOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
@@ -41,8 +42,9 @@ export function CatalogCommand({ open, onOpenChange }: { open: boolean; onOpenCh
       <CommandInput onValueChange={setQuery} placeholder="Search Shelf…" value={query} />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        {books.length > 0 && <CommandGroup heading="Books">{books.map((item) => <CommandItem key={item.id} onSelect={() => select(item)} value={item.title}><span>{item.title}</span><span className="ml-auto text-xs text-muted-foreground">{item.creator}</span></CommandItem>)}</CommandGroup>}
-        {movies.length > 0 && <CommandGroup heading="Movies">{movies.map((item) => <CommandItem key={item.id} onSelect={() => select(item)} value={item.title}><span>{item.title}</span><span className="ml-auto text-xs text-muted-foreground">{item.creator}</span></CommandItem>)}</CommandGroup>}
+        {books.length > 0 && <CommandGroup heading="Books">{books.map((item) => <CommandItem key={item.id} onSelect={() => select(item)} value={item.title}><span className="min-w-0 flex-1 truncate">{item.title}</span><span className="shrink-0 text-right text-xs text-muted-foreground">{item.creator}</span></CommandItem>)}</CommandGroup>}
+        {movies.length > 0 && <CommandGroup heading="Movies">{movies.map((item) => <CommandItem key={item.id} onSelect={() => select(item)} value={item.title}><span className="min-w-0 flex-1 truncate">{item.title}</span><span className="shrink-0 text-right text-xs text-muted-foreground">{item.creator}</span></CommandItem>)}</CommandGroup>}
+        {tv.length > 0 && <CommandGroup heading="TV">{tv.map((item) => <CommandItem key={item.id} onSelect={() => select(item)} value={item.title}><span className="min-w-0 flex-1 truncate">{item.title}</span><span className="shrink-0 text-right text-xs text-muted-foreground">{item.creator}</span></CommandItem>)}</CommandGroup>}
       </CommandList>
     </Command>
   </CommandDialog>
