@@ -325,8 +325,8 @@ export const moveListPlacement = createServerFn({ method: "POST" })
     const nextIndex = index + (data.direction === "up" ? -1 : 1)
     if (index < 0 || nextIndex < 0 || nextIndex >= placements.length)
       return { ok: true }
-    const current = placements[index]!
-    const adjacent = placements[nextIndex]!
+    const current = placements[index]
+    const adjacent = placements[nextIndex]
     await db
       .update(listPlacements)
       .set({ position: adjacent.position })
