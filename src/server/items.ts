@@ -2004,6 +2004,110 @@ export const getItemBySlug = createServerFn({ method: "GET" })
     }
   })
 
+export const getSimilarOwnedItems = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ itemId: z.number().int() }))
+  .handler(async ({ data }): Promise<Item[]> => {
+    await ensureDatabase()
+    const [item] = await db
+      .select({
+        id: items.id,
+        type: items.type,
+        tmdbId: items.tmdbId,
+      })
+      .from(items)
+      .where(eq(items.id, data.itemId))
+      .limit(1)
+
+    if (
+      !item ||
+      (item.type !== "movie" && item.type !== "tv") ||
+      !item.tmdbId ||
+      !process.env.TMDB_API_KEY
+    )
+      return []
+
+    const relatedTmdbIds = await getTmdbRelatedIds(item.type, item.tmdbId)
+    if (!relatedTmdbIds.length) return []
+
+    const ownedRecords = await db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.type, item.type),
+          eq(items.status, "owned"),
+          inArray(items.tmdbId, relatedTmdbIds)
+        )
+      )
+    const ownedItems = await enrichItems(ownedRecords)
+    const itemsByTmdbId = new Map(
+      ownedItems.flatMap((ownedItem) =>
+        ownedItem.id !== item.id && ownedItem.tmdbId
+          ? [[ownedItem.tmdbId, ownedItem]]
+          : []
+      )
+    )
+
+    return relatedTmdbIds.flatMap((tmdbId) => {
+      const relatedItem = itemsByTmdbId.get(tmdbId)
+      return relatedItem ? [relatedItem] : []
+    })
+  })
+
+async function getTmdbRelatedIds(
+  type: "movie" | "tv",
+  tmdbId: string
+): Promise<string[]> {
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) return []
+
+  const results = await Promise.all(
+    ["similar", "recommendations"].map(async (kind) => {
+      try {
+        const url = new URL(
+          `https://api.themoviedb.org/3/${type}/${tmdbId}/${kind}`
+        )
+        url.searchParams.set("api_key", apiKey)
+        url.searchParams.set("language", "en-US")
+        const response = await fetch(url)
+        if (!response.ok) return []
+        return tmdbResultIds(await response.json())
+      } catch {
+        return []
+      }
+    })
+  )
+  return [...new Set(results.flat())]
+}
+
+function tmdbResultIds(body: unknown): string[] {
+  if (!isTmdbResults(body)) return []
+  return body.results.flatMap((result) =>
+    typeof result.id === "number" || typeof result.id === "string"
+      ? [String(result.id)]
+      : []
+  )
+}
+
+function isTmdbResults(
+  body: unknown
+): body is { results: Array<{ id?: string | number }> } {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "results" in body &&
+    Array.isArray(body.results) &&
+    body.results.every(
+      (result) =>
+        typeof result === "object" &&
+        result !== null &&
+        (!("id" in result) ||
+          typeof result.id === "string" ||
+          typeof result.id === "number")
+    )
+  )
+}
+
 export const getItemById = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
