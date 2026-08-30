@@ -6,6 +6,7 @@ import {
   BlossomPrev,
 } from "@blossom-carousel/react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useState } from "react"
 import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -15,11 +16,30 @@ export function HomeCarousel({
   contained = false,
   id,
   items,
+  systemListSlug,
 }: {
   contained?: boolean
   id: string
   items: Item[]
+  systemListSlug?: string
 }) {
+  const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(() => new Set())
+  const visibleItems = systemListSlug
+    ? items.filter((item) => !hiddenItemIds.has(item.id))
+    : items
+
+  function handleSystemListMembershipChange(
+    itemId: number,
+    containsItem: boolean
+  ) {
+    setHiddenItemIds((currentHiddenItemIds) => {
+      const nextHiddenItemIds = new Set(currentHiddenItemIds)
+      if (containsItem) nextHiddenItemIds.delete(itemId)
+      else nextHiddenItemIds.add(itemId)
+      return nextHiddenItemIds
+    })
+  }
+
   return (
     <div className="relative">
       <BlossomCarousel
@@ -29,13 +49,22 @@ export function HomeCarousel({
         )}
         id={id}
       >
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <div
             className="relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56"
             data-blossom-slide
             key={item.id}
           >
-            <CoverTile className="w-full" item={item} variant="carousel" />
+            <CoverTile
+              className="w-full"
+              item={item}
+              onSystemListMembershipChange={
+                systemListSlug
+                  ? handleSystemListMembershipChange
+                  : undefined
+              }
+              variant="carousel"
+            />
           </div>
         ))}
       </BlossomCarousel>
