@@ -9,9 +9,11 @@ type ScannerControls = { stop: () => void }
 export function BarcodeScanner({
   active = true,
   onDetected,
+  stopSignal,
 }: {
   active?: boolean
   onDetected: (code: string) => void
+  stopSignal?: number
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const scannerControls = useRef<ScannerControls | null>(null)
@@ -38,6 +40,9 @@ export function BarcodeScanner({
   useEffect(() => {
     if (!active) stopScanner()
   }, [active, stopScanner])
+  useEffect(() => {
+    stopScanner()
+  }, [stopSignal, stopScanner])
   useEffect(() => stopScanner, [stopScanner])
 
   const handleDetectedCode = useCallback(
@@ -58,7 +63,10 @@ export function BarcodeScanner({
     await new Promise<void>((resolve) =>
       window.requestAnimationFrame(() => resolve())
     )
-    if (!videoRef.current) return
+    if (!videoRef.current) {
+      stopScanner()
+      return
+    }
     try {
       const Detector = (
         window as unknown as {

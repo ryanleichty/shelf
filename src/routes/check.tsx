@@ -25,6 +25,7 @@ function Check() {
   const [result, setResult] = useState<CheckResult | null>(null)
   const [error, setError] = useState("")
   const [checking, setChecking] = useState(false)
+  const [scannerReset, setScannerReset] = useState(0)
 
   const submitCode = useCallback(
     async (value: string) => {
@@ -49,6 +50,7 @@ function Check() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setScannerReset((current) => current + 1)
     await submitCode(code)
   }
 
@@ -64,6 +66,7 @@ function Check() {
 
       <div className="mt-6 flex flex-col gap-5">
         <BarcodeScanner
+          stopSignal={scannerReset}
           onDetected={(value) => {
             setCode(value)
             void submitCode(value)

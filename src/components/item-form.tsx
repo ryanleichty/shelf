@@ -99,6 +99,7 @@ export function ItemForm({
     { status: "owned" }
   > | null>(null)
   const [resolvingBarcode, setResolvingBarcode] = useState(false)
+  const [scannerReset, setScannerReset] = useState(0)
   const [selected, setSelected] = useState(false)
   const [coverOptions, setCoverOptions] = useState<string[]>([])
   const [coverError, setCoverError] = useState("")
@@ -401,11 +402,13 @@ export function ItemForm({
           </DialogHeader>
           <BarcodeScanner
             active={scanOpen}
+            stopSignal={scannerReset}
             onDetected={(code) => void resolveScannedBarcode(code)}
           />
           <form
             onSubmit={(event) => {
               event.preventDefault()
+              setScannerReset((current) => current + 1)
               void resolveScannedBarcode(barcodeCode)
             }}
           >
