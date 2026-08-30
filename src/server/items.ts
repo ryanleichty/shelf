@@ -254,9 +254,17 @@ export const importItems = createServerFn({ method: "POST" })
           genres: resolved.genres,
           keywords: resolved.keywords,
         })
-        await replaceItemCreators(created.id, data.type, resolved.creator)
+        await replaceItemCreators(
+          created.id,
+          data.type,
+          resolved.creatorPeople ?? resolved.creator
+        )
         if (data.type !== "book" && resolved.cast !== undefined)
-          await replaceItemCast(created.id, resolved.cast)
+          await replaceItemCast(
+            created.id,
+            resolved.castPeople ??
+              resolved.cast.map((name) => ({ name }))
+          )
         if (data.type === "movie")
           await replaceItemCollection(created.id, resolved.collection ?? null)
         added.push({ title: resolved.title, slug })
@@ -282,9 +290,16 @@ export type LookupResult = {
   description?: string
   keywords?: string[]
   cast?: string[]
+  castPeople?: ProviderPerson[]
+  creatorPeople?: ProviderPerson[]
   collection?: CollectionInput
   certification?: string
   runtime?: number
+}
+
+type ProviderPerson = {
+  name: string
+  providerId?: string
 }
 
 type CollectionInput = {
@@ -302,7 +317,7 @@ export async function lookupCollection(data: {
     url.searchParams.set("q", data.query)
     url.searchParams.set(
       "fields",
-      "key,title,author_name,first_publish_year,cover_i"
+      "key,title,author_name,author_key,first_publish_year,cover_i"
     )
     url.searchParams.set("limit", "6")
     const response = await fetch(url, {
@@ -315,6 +330,7 @@ export async function lookupCollection(data: {
         key?: string
         title?: string
         author_name?: string[]
+        author_key?: string[]
         first_publish_year?: number
         cover_i?: number
         subject?: string[]
@@ -328,6 +344,19 @@ export async function lookupCollection(data: {
               type: "book" as const,
               title: book.title,
               creator: book.author_name?.[0] ?? "Unknown author",
+              creatorPeople:
+                book.author_name?.flatMap((name, index) =>
+                  name
+                    ? [
+                        {
+                          name,
+                          providerId: normalizeOpenLibraryAuthorKey(
+                            book.author_key?.[index]
+                          ),
+                        },
+                      ]
+                    : []
+                ) ?? [],
               year: book.first_publish_year ?? null,
               coverImageUrl: book.cover_i
                 ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
@@ -486,11 +515,7 @@ const normalizeEdition = (edition?: string | null) => edition?.trim() || null
 
 type TagKind = "genre" | "keyword" | "author" | "director"
 
-export async function upsertTags(
-  itemId: number,
-  kind: TagKind,
-  names: string[]
-) {
+export async function upsertTags(itemId: number, kind: TagKind, names: string[]) {
   const table =
     kind === "genre"
       ? genres
@@ -557,37 +582,178 @@ function parseCreatorNames(creator: string) {
 async function replaceItemCreators(
   itemId: number,
   type: Item["type"],
-  creators: string | string[]
+  creators: string | string[] | ProviderPerson[]
 ) {
-  await upsertTags(
-    itemId,
-    type === "book" ? "author" : "director",
-    typeof creators === "string" ? parseCreatorNames(creators) : creators
+  const people =
+    typeof creators === "string"
+      ? parseCreatorNames(creators).map((name) => ({ name }))
+      : creators.map((creator) =>
+          typeof creator === "string" ? { name: creator } : creator
+        )
+  const normalized = [
+    ...new Map(
+      people
+        .map((person) => ({ ...person, name: person.name.trim() }))
+        .filter((person) => person.name)
+        .map((person) => [person.providerId ?? person.name, person])
+    ).values(),
+  ]
+  const kind = type === "book" ? "author" : "director"
+  await db.delete(kind === "author" ? itemAuthors : itemDirectors).where(
+    eq(
+      kind === "author" ? itemAuthors.itemId : itemDirectors.itemId,
+      itemId
+    )
   )
+  for (const person of normalized) {
+    const id =
+      kind === "author"
+        ? await upsertAuthor(person)
+        : await upsertDirector(person)
+    if (kind === "author")
+      await db
+        .insert(itemAuthors)
+        .values({ itemId, authorId: id })
+        .onConflictDoNothing()
+    else
+      await db
+        .insert(itemDirectors)
+        .values({ itemId, directorId: id })
+        .onConflictDoNothing()
+  }
 }
 
-export async function replaceItemCast(itemId: number, names: string[]) {
+export async function replaceItemCast(itemId: number, people: ProviderPerson[]) {
   const normalized = [
-    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
+    ...new Map(
+      people
+        .map((person) => ({ ...person, name: person.name.trim() }))
+        .filter((person) => person.name)
+        .map((person) => [person.providerId ?? person.name, person])
+    ).values(),
   ]
   await db.delete(itemActors).where(eq(itemActors.itemId, itemId))
-  for (const [position, name] of normalized.entries()) {
-    const slug = slugify(name)
-    if (!slug) continue
-    await db
-      .insert(actors)
-      .values({ slug, name })
-      .onConflictDoNothing({ target: actors.slug })
-    const [actor] = await db
-      .select({ id: actors.id })
-      .from(actors)
-      .where(eq(actors.slug, slug))
-    if (!actor) continue
+  for (const [position, person] of normalized.entries()) {
+    const id = await upsertActor(person)
     await db
       .insert(itemActors)
-      .values({ itemId, actorId: actor.id, position })
+      .values({ itemId, actorId: id, position })
       .onConflictDoNothing()
   }
+}
+
+async function upsertAuthor(person: ProviderPerson) {
+  const slug = slugify(person.name)
+  if (!slug) throw new Error("Person name needs letters or numbers.")
+  const [byProvider] = person.providerId
+    ? await db
+        .select()
+        .from(authors)
+        .where(eq(authors.openLibraryKey, person.providerId))
+        .limit(1)
+    : []
+  const [bySlug] = byProvider
+    ? []
+    : await db.select().from(authors).where(eq(authors.slug, slug)).limit(1)
+  const existing = byProvider ?? bySlug
+  if (existing) {
+    await db
+      .update(authors)
+      .set({
+        name: person.providerId ? person.name : existing.name,
+        ...(person.providerId && !existing.openLibraryKey
+          ? { openLibraryKey: person.providerId }
+          : {}),
+        ...(person.providerId &&
+        existing.slug === slugify(existing.name) &&
+        existing.slug !== slug
+          ? { slug }
+          : {}),
+      })
+      .where(eq(authors.id, existing.id))
+    return existing.id
+  }
+  const [created] = await db
+    .insert(authors)
+    .values({ slug, name: person.name, openLibraryKey: person.providerId ?? null })
+    .returning({ id: authors.id })
+  return created.id
+}
+
+async function upsertDirector(person: ProviderPerson) {
+  const slug = slugify(person.name)
+  if (!slug) throw new Error("Person name needs letters or numbers.")
+  const [byProvider] = person.providerId
+    ? await db
+        .select()
+        .from(directors)
+        .where(eq(directors.tmdbPersonId, person.providerId))
+        .limit(1)
+    : []
+  const [bySlug] = byProvider
+    ? []
+    : await db.select().from(directors).where(eq(directors.slug, slug)).limit(1)
+  const existing = byProvider ?? bySlug
+  if (existing) {
+    await db
+      .update(directors)
+      .set({
+        name: person.providerId ? person.name : existing.name,
+        ...(person.providerId && !existing.tmdbPersonId
+          ? { tmdbPersonId: person.providerId }
+          : {}),
+        ...(person.providerId &&
+        existing.slug === slugify(existing.name) &&
+        existing.slug !== slug
+          ? { slug }
+          : {}),
+      })
+      .where(eq(directors.id, existing.id))
+    return existing.id
+  }
+  const [created] = await db
+    .insert(directors)
+    .values({ slug, name: person.name, tmdbPersonId: person.providerId ?? null })
+    .returning({ id: directors.id })
+  return created.id
+}
+
+async function upsertActor(person: ProviderPerson) {
+  const slug = slugify(person.name)
+  if (!slug) throw new Error("Person name needs letters or numbers.")
+  const [byProvider] = person.providerId
+    ? await db
+        .select()
+        .from(actors)
+        .where(eq(actors.tmdbPersonId, person.providerId))
+        .limit(1)
+    : []
+  const [bySlug] = byProvider
+    ? []
+    : await db.select().from(actors).where(eq(actors.slug, slug)).limit(1)
+  const existing = byProvider ?? bySlug
+  if (existing) {
+    await db
+      .update(actors)
+      .set({
+        name: person.providerId ? person.name : existing.name,
+        ...(person.providerId && !existing.tmdbPersonId
+          ? { tmdbPersonId: person.providerId }
+          : {}),
+        ...(person.providerId &&
+        existing.slug === slugify(existing.name) &&
+        existing.slug !== slug
+          ? { slug }
+          : {}),
+      })
+      .where(eq(actors.id, existing.id))
+    return existing.id
+  }
+  const [created] = await db
+    .insert(actors)
+    .values({ slug, name: person.name, tmdbPersonId: person.providerId ?? null })
+    .returning({ id: actors.id })
+  return created.id
 }
 
 async function replaceItemTags(
@@ -937,9 +1103,13 @@ async function lookupBookBarcode(isbn: string): Promise<LookupResult | null> {
   const authorName =
     author?.name ??
     (author?.key ? await lookupOpenLibraryAuthor(author.key) : "")
+  const providerId = normalizeOpenLibraryAuthorKey(author?.key)
   return {
     ...result,
     creator: authorName || result.creator,
+    creatorPeople: authorName
+      ? [{ name: authorName, providerId }]
+      : result.creatorPeople,
     year: yearFromDate(edition.publish_date) ?? result.year,
     coverImageUrl: edition.covers?.[0]
       ? `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`
@@ -1050,6 +1220,15 @@ export function normalizeOpenLibraryWorkKey(key: string) {
   return `/works/${workId}`
 }
 
+function normalizeOpenLibraryAuthorKey(key?: string) {
+  if (!key?.trim()) return undefined
+  const authorId = key
+    .trim()
+    .replace(/^\/?authors\//, "")
+    .replace(/^\//, "")
+  return `/authors/${authorId}`
+}
+
 export async function getCollectionResultById(data: {
   id: string
   type: "book" | "movie" | "tv"
@@ -1067,13 +1246,16 @@ export async function getCollectionResultById(data: {
       first_publish_date?: string
       subjects?: string[]
       description?: string | { value?: string }
+      authors?: Array<{ author?: { key?: string }; name?: string }>
     }
+    const authorPeople = await openLibraryAuthors(book.authors)
     const title = book.title ?? "Untitled"
     return {
       id,
       type: "book",
       title,
-      creator: "Unknown author",
+      creator: authorPeople[0]?.name ?? "Unknown author",
+      creatorPeople: authorPeople,
       year: yearFromDate(book.first_publish_date),
       coverImageUrl: "",
       genres: curatedBookGenres(book.subjects),
@@ -1120,13 +1302,14 @@ export async function getCollectionResultById(data: {
       name?: string
       overview?: string
     } | null
-    created_by?: Array<{ name?: string }>
+    created_by?: Array<{ id?: number; name?: string }>
     credits?: {
-      cast?: Array<{ name?: string; order?: number }>
-      crew?: Array<{ job?: string; name?: string }>
+      cast?: Array<{ id?: number; name?: string; order?: number }>
+      crew?: Array<{ id?: number; job?: string; name?: string }>
     }
     aggregate_credits?: {
       cast?: Array<{
+        id?: number
         name?: string
         order?: number
         roles?: Array<{ character?: string }>
@@ -1146,20 +1329,32 @@ export async function getCollectionResultById(data: {
     data.type === "tv"
       ? (result.name ?? "Untitled")
       : (result.title ?? "Untitled")
-  const creator =
+  const creatorPerson =
     data.type === "tv"
-      ? (result.created_by?.[0]?.name ??
+      ? (result.created_by?.[0] ??
         result.credits?.crew?.find(
           (person) => person.job === "Creator" || person.job === "Director"
-        )?.name ??
-        "Creator unavailable")
-      : (result.credits?.crew?.find((person) => person.job === "Director")
-          ?.name ?? "Director unavailable")
+        ))
+      : result.credits?.crew?.find((person) => person.job === "Director")
+  const creator = creatorPerson?.name ?? (
+    data.type === "tv" ? "Creator unavailable" : "Director unavailable"
+  )
   return {
     id: data.id,
     type: data.type,
     title,
     creator,
+    creatorPeople: creatorPerson?.name
+      ? [
+          {
+            name: creatorPerson.name,
+            providerId:
+              typeof creatorPerson.id === "number"
+                ? String(creatorPerson.id)
+                : undefined,
+          },
+        ]
+      : [],
     year: yearFromDate(
       data.type === "tv" ? result.first_air_date : result.release_date
     ),
@@ -1179,6 +1374,9 @@ export async function getCollectionResultById(data: {
       )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
     ...(tmdbCast(data.type, result) !== undefined
       ? { cast: tmdbCast(data.type, result) }
+      : {}),
+    ...(tmdbCastPeople(data.type, result) !== undefined
+      ? { castPeople: tmdbCastPeople(data.type, result) }
       : {}),
     ...(data.type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) }
@@ -1202,9 +1400,10 @@ function tmdbCollection(
 function tmdbCast(
   type: "movie" | "tv",
   result: {
-    credits?: { cast?: Array<{ name?: string; order?: number }> }
+    credits?: { cast?: Array<{ id?: number; name?: string; order?: number }> }
     aggregate_credits?: {
       cast?: Array<{
+        id?: number
         name?: string
         order?: number
         roles?: Array<{ character?: string }>
@@ -1212,19 +1411,38 @@ function tmdbCast(
     }
   }
 ): string[] | undefined {
+  return tmdbCastPeople(type, result)?.map((person) => person.name)
+}
+
+function tmdbCastPeople(
+  type: "movie" | "tv",
+  result: {
+    credits?: { cast?: Array<{ id?: number; name?: string; order?: number }> }
+    aggregate_credits?: {
+      cast?: Array<{
+        id?: number
+        name?: string
+        order?: number
+        roles?: Array<{ character?: string }>
+      }>
+    }
+  }
+): ProviderPerson[] | undefined {
   const cast =
     type === "movie" ? result.credits?.cast : result.aggregate_credits?.cast
   if (!cast) return undefined
   return cast
     .map((person, index) => ({
       name: person.name?.trim(),
+      providerId:
+        typeof person.id === "number" ? String(person.id) : undefined,
       order: person.order ?? index,
     }))
-    .filter((person): person is { name: string; order: number } =>
+    .filter((person): person is ProviderPerson & { order: number } =>
       Boolean(person.name)
     )
     .sort((a, b) => a.order - b.order)
-    .map((person) => person.name)
+    .map(({ name, providerId }) => ({ name, providerId }))
 }
 
 function tmdbScreenMetadata(
@@ -1300,6 +1518,8 @@ type SyncedFields = {
   description?: string
   keywords?: string[]
   cast?: string[]
+  castPeople?: ProviderPerson[]
+  creatorPeople?: ProviderPerson[]
   collection?: CollectionInput | null
   certification?: string | null
   runtime?: number | null
@@ -1349,12 +1569,15 @@ export async function syncItemFromProvider(
 
   const changes = changedFields(syncedItem, metadata)
   if (!Object.keys(changes).length) {
-    if (!dryRun)
+    if (!dryRun) {
       await replaceItemCreators(
         syncedItem.id,
         syncedItem.type,
-        syncedItem.creator
+        metadata.creatorPeople ?? syncedItem.creator
       )
+      if (syncedItem.type !== "book" && metadata.castPeople)
+        await replaceItemCast(syncedItem.id, metadata.castPeople)
+    }
     return {
       itemId: syncedItem.id,
       slug: syncedItem.slug,
@@ -1366,6 +1589,8 @@ export async function syncItemFromProvider(
       genres: nextGenres,
       keywords: nextKeywords,
       cast: nextCast,
+      castPeople: nextCastPeople,
+      creatorPeople: nextCreatorPeople,
       collection: nextCollection,
       ...itemFields
     } = Object.fromEntries(
@@ -1383,13 +1608,16 @@ export async function syncItemFromProvider(
       keywords: nextKeywords,
     })
     if (syncedItem.type !== "book" && nextCast !== undefined)
-      await replaceItemCast(syncedItem.id, nextCast)
+      await replaceItemCast(
+        syncedItem.id,
+        nextCastPeople ?? nextCast.map((name) => ({ name }))
+      )
     if (syncedItem.type === "movie" && nextCollection !== undefined)
       await replaceItemCollection(syncedItem.id, nextCollection)
     await replaceItemCreators(
       syncedItem.id,
       syncedItem.type,
-      itemFields.creator ?? syncedItem.creator
+      nextCreatorPeople ?? itemFields.creator ?? syncedItem.creator
     )
   }
   return { itemId: syncedItem.id, slug: syncedItem.slug, changes }
@@ -1444,13 +1672,14 @@ async function getTmdbSyncMetadata(
       name?: string
       overview?: string
     } | null
-    created_by?: Array<{ name?: string }>
+    created_by?: Array<{ id?: number; name?: string }>
     credits?: {
-      cast?: Array<{ name?: string; order?: number }>
-      crew?: Array<{ job?: string; name?: string }>
+      cast?: Array<{ id?: number; name?: string; order?: number }>
+      crew?: Array<{ id?: number; job?: string; name?: string }>
     }
     aggregate_credits?: {
       cast?: Array<{
+        id?: number
         name?: string
         order?: number
         roles?: Array<{ character?: string }>
@@ -1466,13 +1695,14 @@ async function getTmdbSyncMetadata(
       results?: Array<{ iso_3166_1?: string; rating?: string }>
     }
   }
-  const creator =
+  const creatorPerson =
     type === "tv"
-      ? (result.created_by?.[0]?.name ??
+      ? (result.created_by?.[0] ??
         result.credits?.crew?.find(
           (person) => person.job === "Creator" || person.job === "Director"
-        )?.name)
-      : result.credits?.crew?.find((person) => person.job === "Director")?.name
+        ))
+      : result.credits?.crew?.find((person) => person.job === "Director")
+  const creator = creatorPerson?.name
   const screenMetadata = tmdbScreenMetadata(type, result)
   return {
     ...(type === "tv"
@@ -1483,6 +1713,19 @@ async function getTmdbSyncMetadata(
         ? { title: result.title }
         : {}),
     ...(creator ? { creator } : {}),
+    ...(creatorPerson?.name
+      ? {
+          creatorPeople: [
+            {
+              name: creatorPerson.name,
+              providerId:
+                typeof creatorPerson.id === "number"
+                  ? String(creatorPerson.id)
+                  : undefined,
+            },
+          ],
+        }
+      : {}),
     ...(yearFromDate(
       type === "tv" ? result.first_air_date : result.release_date
     ) !== null
@@ -1502,6 +1745,9 @@ async function getTmdbSyncMetadata(
       )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
     ...(tmdbCast(type, result) !== undefined
       ? { cast: tmdbCast(type, result) }
+      : {}),
+    ...(tmdbCastPeople(type, result) !== undefined
+      ? { castPeople: tmdbCastPeople(type, result) }
       : {}),
     ...(type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) ?? null }
@@ -1536,34 +1782,42 @@ async function getBookSyncMetadata(
     description?: string | { value?: string }
     authors?: Array<{ author?: { key?: string }; name?: string }>
   }
-  const authorNames = (
-    await Promise.all(
-      (book.authors ?? []).map(async (author) => {
-        if (author.name) return author.name
-        if (!author.author?.key) return undefined
-        const authorResponse = await fetch(
-          `https://openlibrary.org${author.author.key}.json`,
-          {
-            headers: {
-              "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
-            },
-          }
-        )
-        if (!authorResponse.ok) return undefined
-        return ((await authorResponse.json()) as { name?: string }).name
-      })
-    )
-  ).flatMap((name) => (name ? [name] : []))
+  const authorPeople = await openLibraryAuthors(book.authors)
   const year = yearFromDate(book.first_publish_date)
   return {
     ...(book.title ? { title: book.title } : {}),
-    ...(authorNames.length ? { creator: authorNames.join(", ") } : {}),
+    ...(authorPeople.length
+      ? {
+          creator: authorPeople.map((author) => author.name).join(", "),
+          creatorPeople: authorPeople,
+        }
+      : {}),
     ...(year !== null ? { year } : {}),
     genres: curatedBookGenres(book.subjects),
     ...(openLibraryDescription(book.description) !== undefined
       ? { description: openLibraryDescription(book.description) }
       : {}),
   }
+}
+
+async function openLibraryAuthors(
+  authorsForWork?: Array<{ author?: { key?: string }; name?: string }>
+): Promise<ProviderPerson[]> {
+  return (
+    await Promise.all(
+      (authorsForWork ?? []).map(async (author) => {
+        const providerId = normalizeOpenLibraryAuthorKey(author.author?.key)
+        if (author.name?.trim()) return { name: author.name.trim(), providerId }
+        if (!providerId) return undefined
+        const response = await fetch(`https://openlibrary.org${providerId}.json`, {
+          headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+        })
+        if (!response.ok) return undefined
+        const name = ((await response.json()) as { name?: string }).name?.trim()
+        return name ? { name, providerId } : undefined
+      })
+    )
+  ).flatMap((person) => (person ? [person] : []))
 }
 
 function changedFields(
@@ -2241,7 +2495,8 @@ export const saveItem = createServerFn({ method: "POST" })
       await db.update(items).set(values).where(eq(items.id, data.id))
       await replaceItemTags(data.id, { genres: data.genres })
       await replaceItemCreators(data.id, data.type, primaryPeople)
-      if (data.type !== "book") await replaceItemCast(data.id, data.actors)
+      if (data.type !== "book")
+        await replaceItemCast(data.id, data.actors.map((name) => ({ name })))
       return { id: data.id, slug: data.slug }
     }
     if (
@@ -2262,7 +2517,8 @@ export const saveItem = createServerFn({ method: "POST" })
       .returning({ id: items.id, slug: items.slug })
     await replaceItemTags(item.id, { genres: data.genres })
     await replaceItemCreators(item.id, data.type, primaryPeople)
-    if (data.type !== "book") await replaceItemCast(item.id, data.actors)
+    if (data.type !== "book")
+      await replaceItemCast(item.id, data.actors.map((name) => ({ name })))
     return item
   })
 

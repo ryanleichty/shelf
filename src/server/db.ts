@@ -157,9 +157,18 @@ export function ensureDatabase() {
       CREATE TABLE IF NOT EXISTS authors (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        open_library_key TEXT UNIQUE
       )
     `)
+    const authorColumns = await getClient().execute("PRAGMA table_info(authors)")
+    if (!authorColumns.rows.some((column) => column.name === "open_library_key"))
+      await getClient().execute(
+        "ALTER TABLE authors ADD COLUMN open_library_key TEXT"
+      )
+    await getClient().execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS authors_open_library_key_unique ON authors(open_library_key)"
+    )
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS item_authors (
         item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -171,9 +180,20 @@ export function ensureDatabase() {
       CREATE TABLE IF NOT EXISTS directors (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        tmdb_person_id TEXT UNIQUE
       )
     `)
+    const directorColumns = await getClient().execute(
+      "PRAGMA table_info(directors)"
+    )
+    if (!directorColumns.rows.some((column) => column.name === "tmdb_person_id"))
+      await getClient().execute(
+        "ALTER TABLE directors ADD COLUMN tmdb_person_id TEXT"
+      )
+    await getClient().execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS directors_tmdb_person_id_unique ON directors(tmdb_person_id)"
+    )
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS item_directors (
         item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -185,9 +205,18 @@ export function ensureDatabase() {
       CREATE TABLE IF NOT EXISTS actors (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        tmdb_person_id TEXT UNIQUE
       )
     `)
+    const actorColumns = await getClient().execute("PRAGMA table_info(actors)")
+    if (!actorColumns.rows.some((column) => column.name === "tmdb_person_id"))
+      await getClient().execute(
+        "ALTER TABLE actors ADD COLUMN tmdb_person_id TEXT"
+      )
+    await getClient().execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS actors_tmdb_person_id_unique ON actors(tmdb_person_id)"
+    )
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS item_actors (
         item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,

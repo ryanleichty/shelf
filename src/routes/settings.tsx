@@ -67,17 +67,25 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getSignedInStatus } from "@/server/items"
 import { ListsSettings } from "@/components/lists-settings"
+import { PeopleSettings } from "@/components/people-settings"
 import { getListPlacements } from "@/server/lists"
+import { getPeople } from "@/server/people"
 import { deleteUser, getSettings, saveProfile, saveUser } from "@/server/users"
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
-  loader: async () => ({
-    settings: await getSettings(),
-    placements: await getListPlacements(),
-  }),
+  loader: async () => {
+    const settings = await getSettings()
+    return {
+      settings,
+      placements: await getListPlacements(),
+      people: settings.isAdmin
+        ? await getPeople()
+        : { authors: [], directors: [], actors: [] },
+    }
+  },
   component: Settings,
 })
 
@@ -91,7 +99,7 @@ type UserForm = {
 }
 
 function Settings() {
-  const { settings: data, placements } = Route.useLoaderData()
+  const { settings: data, placements, people } = Route.useLoaderData()
   const router = useRouter()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -176,6 +184,7 @@ function Settings() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="lists">Lists</TabsTrigger>
           {data.isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
+          {data.isAdmin && <TabsTrigger value="people">People</TabsTrigger>}
         </TabsList>
         <TabsContent value="profile">
           <Card>
@@ -400,6 +409,11 @@ function Settings() {
                 </AlertDialogContent>
               </AlertDialog>
             </Card>
+          </TabsContent>
+        )}
+        {data.isAdmin && (
+          <TabsContent value="people">
+            <PeopleSettings people={people} onChange={() => router.invalidate()} />
           </TabsContent>
         )}
       </Tabs>
