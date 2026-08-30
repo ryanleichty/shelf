@@ -156,10 +156,10 @@ export function ItemListMenu({
         </DropdownMenu>
       )}
       <CreateListDialog
-        defaultType={itemType}
         onCreated={router.invalidate}
         onOpenChange={setNewListOpen}
         open={newListOpen}
+        type={itemType}
       />
       {error && (
         <p className="mt-2 text-sm text-destructive" role="alert">

@@ -306,45 +306,47 @@ export const setListPlacementVisible = createServerFn({ method: "POST" })
     return { ok: true }
   })
 
-export const moveListPlacement = createServerFn({ method: "POST" })
-  .inputValidator(placementInput.extend({ direction: z.enum(["up", "down"]) }))
+export const reorderListPlacements = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      type: z.enum(itemTypes),
+      placementIds: z.array(z.number().int().positive()).max(1_000),
+    })
+  )
   .handler(async ({ data }) => {
     await requireSignedIn()
     await ensureDatabase()
     const placements = await db
       .select({
         id: listPlacements.id,
-        position: listPlacements.position,
       })
       .from(listPlacements)
       .where(eq(listPlacements.type, data.type))
       .orderBy(asc(listPlacements.position))
-    const index = placements.findIndex(
-      (placement) => placement.id === data.placementId
-    )
-    const nextIndex = index + (data.direction === "up" ? -1 : 1)
-    if (index < 0 || nextIndex < 0 || nextIndex >= placements.length)
-      return { ok: true }
-    const current = placements[index]
-    const adjacent = placements[nextIndex]
-    await db
-      .update(listPlacements)
-      .set({ position: adjacent.position })
-      .where(
-        and(
-          eq(listPlacements.id, current.id),
-          eq(listPlacements.type, data.type)
+    const storedIds = new Set(placements.map((placement) => placement.id))
+    const requestedIds = new Set(data.placementIds)
+    if (
+      storedIds.size !== requestedIds.size ||
+      storedIds.size !== data.placementIds.length ||
+      [...storedIds].some((id) => !requestedIds.has(id))
+    ) {
+      throw new Error("The list order is out of date. Refresh and try again.")
+    }
+    await db.transaction(async (tx) => {
+      await Promise.all(
+        data.placementIds.map((placementId, position) =>
+          tx
+            .update(listPlacements)
+            .set({ position })
+            .where(
+              and(
+                eq(listPlacements.id, placementId),
+                eq(listPlacements.type, data.type)
+              )
+            )
         )
       )
-    await db
-      .update(listPlacements)
-      .set({ position: current.position })
-      .where(
-        and(
-          eq(listPlacements.id, adjacent.id),
-          eq(listPlacements.type, data.type)
-        )
-      )
+    })
     return { ok: true }
   })
 
