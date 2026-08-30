@@ -3,9 +3,7 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import { EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
-import { useSignedInStatus } from "@/components/signed-in-status"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,24 +28,18 @@ export function ItemAdminActions({
   title,
   type,
   providerId,
+  signedIn,
 }: {
   id: number
   title: string
   type: "book" | "movie" | "tv"
   providerId: string | null
+  signedIn: boolean
 }) {
   const router = useRouter()
-  const { signedIn } = useSignedInStatus()
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  if (signedIn === null)
-    return (
-      <div aria-label="Loading item actions" className="flex gap-2">
-        <Skeleton aria-hidden="true" className="h-8 w-16" />
-        <Skeleton aria-hidden="true" className="size-8" />
-      </div>
-    )
   if (!signedIn) return null
   async function remove() {
     await deleteItem({ data: { id } })
@@ -73,7 +65,6 @@ export function ItemAdminActions({
     <div className="flex flex-col items-end gap-2">
       <div className="flex gap-2">
         <Button
-          className="w-16"
           render={<Link params={{ id: String(id) }} to="/admin/$id" />}
           variant="outline"
         >
