@@ -86,13 +86,14 @@ export function ListsSettings({
   const orderedPlacementsRef = useRef(placements)
   const reorderInFlight = useRef(new Set<ListType>())
   const visibilityRequestGenerations = useRef(new Map<number, number>())
+  const activeVisibilityRequests = useRef(new Set<number>())
 
   useEffect(() => {
     const nextPlacements = placements.map((placement) => {
       const optimisticPlacement = orderedPlacementsRef.current.find(
         (candidate) => candidate.id === placement.id
       )
-      return visibilityRequestGenerations.current.has(placement.id) &&
+      return activeVisibilityRequests.current.has(placement.id) &&
         optimisticPlacement
         ? { ...placement, visible: optimisticPlacement.visible }
         : placement
@@ -176,6 +177,7 @@ export function ListsSettings({
     const generation =
       (visibilityRequestGenerations.current.get(placement.id) ?? 0) + 1
     visibilityRequestGenerations.current.set(placement.id, generation)
+    activeVisibilityRequests.current.add(placement.id)
     setError("")
     const nextPlacements = orderedPlacementsRef.current.map((candidate) =>
       candidate.id === placement.id ? { ...candidate, visible } : candidate
@@ -216,7 +218,7 @@ export function ListsSettings({
         if (
           visibilityRequestGenerations.current.get(placement.id) === generation
         )
-          visibilityRequestGenerations.current.delete(placement.id)
+          activeVisibilityRequests.current.delete(placement.id)
       }
     })()
   }

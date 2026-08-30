@@ -44,6 +44,7 @@ export function ItemListMenu({
   const [newListOpen, setNewListOpen] = useState(false)
   const customListsRef = useRef(lists)
   const listRequestGenerations = useRef(new Map<string, number>())
+  const activeListRequests = useRef(new Set<string>())
 
   useEffect(() => {
     getSignedInStatus()
@@ -56,7 +57,7 @@ export function ItemListMenu({
       const optimisticList = customListsRef.current.find(
         (candidate) => candidate.slug === list.slug
       )
-      return listRequestGenerations.current.has(list.slug) && optimisticList
+      return activeListRequests.current.has(list.slug) && optimisticList
         ? { ...list, containsItem: optimisticList.containsItem }
         : list
     })
@@ -80,11 +81,12 @@ export function ItemListMenu({
     const nextContainsItem = !previousContainsItem
     const generation = (listRequestGenerations.current.get(list.slug) ?? 0) + 1
     listRequestGenerations.current.set(list.slug, generation)
+    activeListRequests.current.add(list.slug)
     setError("")
     const nextLists = customListsRef.current.map((candidate) =>
-        candidate.slug === list.slug
-          ? { ...candidate, containsItem: nextContainsItem }
-          : candidate
+      candidate.slug === list.slug
+        ? { ...candidate, containsItem: nextContainsItem }
+        : candidate
     )
     customListsRef.current = nextLists
     setCustomLists(nextLists)
@@ -97,9 +99,9 @@ export function ItemListMenu({
     } catch (cause) {
       if (listRequestGenerations.current.get(list.slug) !== generation) return
       const revertedLists = customListsRef.current.map((candidate) =>
-          candidate.slug === list.slug
-            ? { ...candidate, containsItem: previousContainsItem }
-            : candidate
+        candidate.slug === list.slug
+          ? { ...candidate, containsItem: previousContainsItem }
+          : candidate
       )
       customListsRef.current = revertedLists
       setCustomLists(revertedLists)
@@ -110,7 +112,7 @@ export function ItemListMenu({
       )
     } finally {
       if (listRequestGenerations.current.get(list.slug) === generation)
-        listRequestGenerations.current.delete(list.slug)
+        activeListRequests.current.delete(list.slug)
     }
   }
 
