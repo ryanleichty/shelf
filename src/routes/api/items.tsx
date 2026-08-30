@@ -9,6 +9,7 @@ import {
   lookupCollection,
   normalizeTitle,
   normalizeOpenLibraryWorkKey,
+  replaceItemCollection,
   upsertTags,
   uniqueSlug,
 } from "@/server/items"
@@ -152,13 +153,12 @@ export const Route = createFileRoute("/api/items")({
               skipped.push({ query: input.query, reason: "Already on Shelf" })
               continue
             }
-            const providerResult =
-              pinnedId
-                ? top
-                : await getCollectionResultById({
-                    type: input.type,
-                    id: providerId,
-                  })
+            const providerResult = pinnedId
+              ? top
+              : await getCollectionResultById({
+                  type: input.type,
+                  id: providerId,
+                })
             const resolved = {
               ...providerResult,
               creator:
@@ -166,7 +166,10 @@ export const Route = createFileRoute("/api/items")({
                   ? top.creator
                   : providerResult.creator,
               coverImageUrl: providerResult.coverImageUrl || top.coverImageUrl,
-              slug: await uniqueSlug(slugify(providerResult.title), input.edition),
+              slug: await uniqueSlug(
+                slugify(providerResult.title),
+                input.edition
+              ),
             }
             if (body.data.dryRun) {
               added.push({ title: resolved.title, slug: resolved.slug })
@@ -197,6 +200,11 @@ export const Route = createFileRoute("/api/items")({
               .returning({ id: items.id, title: items.title, slug: items.slug })
             await upsertTags(created.id, "genre", resolved.genres)
             await upsertTags(created.id, "keyword", resolved.keywords ?? [])
+            if (input.type === "movie")
+              await replaceItemCollection(
+                created.id,
+                resolved.collection ?? null
+              )
             await refreshSearchIndex()
             added.push(created)
           } catch (error) {
