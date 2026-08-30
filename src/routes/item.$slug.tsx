@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
+import { TrailerDialog } from "@/components/trailer-dialog"
 import {
   getItemBySlug,
   getSignedInStatus,
   getSimilarOwnedItems,
+  getTmdbTrailer,
 } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -19,11 +21,14 @@ export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const [similarItems, signedIn] = await Promise.all([
+    const [similarItems, signedIn, trailer] = await Promise.all([
       getSimilarOwnedItems({ data: { itemId: item.id } }),
       getSignedInStatus(),
+      (item.type === "movie" || item.type === "tv") && item.tmdbId
+        ? getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } })
+        : Promise.resolve(null),
     ])
-    return { item, similarItems, signedIn }
+    return { item, similarItems, signedIn, trailer }
   },
   head: ({ loaderData }) => {
     const item = loaderData?.item
@@ -53,7 +58,7 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const { item, similarItems, signedIn } = Route.useLoaderData()
+  const { item, similarItems, signedIn, trailer } = Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
 
@@ -194,6 +199,11 @@ function ItemDetail() {
               itemType={item.type}
               lists={item.customLists}
               systemList={item.systemList}
+              trailer={
+                trailer ? (
+                  <TrailerDialog title={item.title} trailerKey={trailer.key} />
+                ) : undefined
+              }
             />
             {item.genres.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">

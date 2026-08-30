@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { ListPlusIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,11 +30,13 @@ export function ItemListMenu({
   itemType,
   lists,
   systemList,
+  trailer,
 }: {
   itemId: number
   itemType: "book" | "movie" | "tv"
   lists: ListOption[]
   systemList: SystemListOption | null
+  trailer?: ReactNode
 }) {
   const router = useRouter()
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
@@ -68,9 +70,15 @@ export function ItemListMenu({
 
   if (signedIn === null)
     return (
-      <Skeleton aria-label="Loading list controls" className="mt-4 size-9" />
+      <div className="mt-4 flex items-center gap-2">
+        {trailer}
+        <Skeleton aria-label="Loading list controls" className="size-9" />
+      </div>
     )
-  if (!signedIn) return null
+  if (!signedIn)
+    return trailer ? (
+      <div className="mt-4 flex items-center gap-2">{trailer}</div>
+    ) : null
 
   async function toggleList(list: ListOption) {
     const currentList = customListsRef.current.find(
@@ -129,6 +137,7 @@ export function ItemListMenu({
           showLabel
         />
       )}
+      {trailer}
       {customLists.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger
