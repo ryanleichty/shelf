@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
+import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { cn } from "@/lib/utils"
 import type { Item } from "@/server/schema"
 
@@ -26,8 +27,8 @@ export function CoverTile({
   const systemList =
     item.type === "book"
       ? {
-          slug: "reading-list",
-          name: "Reading list",
+          slug: READLIST_SLUG,
+          name: READLIST_NAME,
           containsItem: item.isInSystemList,
         }
       : {

@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
+import { displayListName } from "@/lib/system-lists"
 import { requireSignedIn } from "./auth"
 import { db, ensureDatabase } from "./db"
 import {
@@ -64,7 +65,7 @@ async function uniqueListSlug(name: string) {
 export const getListPlacements = createServerFn({ method: "GET" }).handler(
   async () => {
     await ensureDatabase()
-    return db
+    const placements = await db
       .select({
         id: listPlacements.id,
         listId: listPlacements.listId,
@@ -89,6 +90,10 @@ export const getListPlacements = createServerFn({ method: "GET" }).handler(
       .from(listPlacements)
       .leftJoin(lists, eq(listPlacements.listId, lists.id))
       .orderBy(asc(listPlacements.type), asc(listPlacements.position))
+    return placements.map((placement) => ({
+      ...placement,
+      name: displayListName(placement.slug, placement.name),
+    }))
   }
 )
 
