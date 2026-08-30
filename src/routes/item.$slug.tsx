@@ -104,7 +104,7 @@ function ItemDetail() {
           />
         </div>
         <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
-          <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted">
+          <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10">
             {item.coverImageUrl ? (
               <img
                 alt={item.title}
@@ -117,10 +117,6 @@ function ItemDetail() {
                 {item.type}
               </span>
             )}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 rounded-[inherit] border"
-            />
           </div>
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
