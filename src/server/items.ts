@@ -2133,6 +2133,7 @@ export type SearchFacets = {
   genres: Array<{ name: string; slug: string }>
   directors: Array<{ name: string; slug: string }>
   actors: Array<{ name: string; slug: string }>
+  authors: Array<{ name: string; slug: string }>
 }
 
 function normalizeFacetQuery(value: string) {
@@ -2149,9 +2150,9 @@ export const getSearchFacets = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<SearchFacets> => {
     await ensureDatabase()
     const query = normalizeFacetQuery(data.query)
-    if (!query) return { genres: [], directors: [], actors: [] }
+    if (!query) return { genres: [], directors: [], actors: [], authors: [] }
 
-    const [genreRows, directorRows, actorRows] = await Promise.all([
+    const [genreRows, directorRows, actorRows, authorRows] = await Promise.all([
       db
         .select({ name: genres.name, slug: genres.slug })
         .from(genres)
@@ -2170,6 +2171,12 @@ export const getSearchFacets = createServerFn({ method: "GET" })
         .innerJoin(itemActors, eq(actors.id, itemActors.actorId))
         .groupBy(actors.id)
         .orderBy(asc(actors.name)),
+      db
+        .select({ name: authors.name, slug: authors.slug })
+        .from(authors)
+        .innerJoin(itemAuthors, eq(authors.id, itemAuthors.authorId))
+        .groupBy(authors.id)
+        .orderBy(asc(authors.name)),
     ])
     const matches = (rows: Array<{ name: string; slug: string }>) =>
       rows.filter((row) => normalizeFacetQuery(row.name).includes(query))
@@ -2178,6 +2185,7 @@ export const getSearchFacets = createServerFn({ method: "GET" })
       genres: matches(genreRows),
       directors: matches(directorRows),
       actors: matches(actorRows),
+      authors: matches(authorRows),
     }
   })
 

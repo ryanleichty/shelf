@@ -20,6 +20,7 @@ const emptySearchFacets: SearchFacets = {
   genres: [],
   directors: [],
   actors: [],
+  authors: [],
 }
 
 function CatalogCommandItem({
@@ -62,14 +63,19 @@ function CatalogCommandItem({
 
 function CatalogFacetCommandItem({
   facet,
+  kind,
   onSelect,
 }: {
   facet: SearchFacet
+  kind: "Genre" | "Director" | "Actor" | "Author"
   onSelect: () => void
 }) {
   return (
     <CommandItem onSelect={onSelect} value={facet.name}>
       <span className="min-w-0 flex-1 truncate">{facet.name}</span>
+      <span className="shrink-0 text-right text-xs text-muted-foreground">
+        {kind}
+      </span>
     </CommandItem>
   )
 }
@@ -134,13 +140,18 @@ export function CatalogCommand({
     onOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
   }
-  const selectFacet = (kind: "genre" | "director" | "actor", slug: string) => {
+  const selectFacet = (
+    kind: "genre" | "director" | "actor" | "author",
+    slug: string
+  ) => {
     onOpenChange(false)
     if (kind === "genre")
       router.navigate({ to: "/genre/$slug", params: { slug } })
     else if (kind === "director")
       router.navigate({ to: "/director/$slug", params: { slug } })
-    else router.navigate({ to: "/actor/$slug", params: { slug } })
+    else if (kind === "actor")
+      router.navigate({ to: "/actor/$slug", params: { slug } })
+    else router.navigate({ to: "/author/$slug", params: { slug } })
   }
   return (
     <CommandDialog
@@ -195,6 +206,7 @@ export function CatalogCommand({
               {facets.genres.map((facet) => (
                 <CatalogFacetCommandItem
                   facet={facet}
+                  kind="Genre"
                   key={facet.slug}
                   onSelect={() => selectFacet("genre", facet.slug)}
                 />
@@ -206,6 +218,7 @@ export function CatalogCommand({
               {facets.directors.map((facet) => (
                 <CatalogFacetCommandItem
                   facet={facet}
+                  kind="Director"
                   key={facet.slug}
                   onSelect={() => selectFacet("director", facet.slug)}
                 />
@@ -217,8 +230,21 @@ export function CatalogCommand({
               {facets.actors.map((facet) => (
                 <CatalogFacetCommandItem
                   facet={facet}
+                  kind="Actor"
                   key={facet.slug}
                   onSelect={() => selectFacet("actor", facet.slug)}
+                />
+              ))}
+            </CommandGroup>
+          )}
+          {facets.authors.length > 0 && (
+            <CommandGroup heading="Authors">
+              {facets.authors.map((facet) => (
+                <CatalogFacetCommandItem
+                  facet={facet}
+                  kind="Author"
+                  key={facet.slug}
+                  onSelect={() => selectFacet("author", facet.slug)}
                 />
               ))}
             </CommandGroup>
