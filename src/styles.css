@@ -103,6 +103,14 @@
   scroll-padding-inline: 0;
 }
 
+.item-shelf-carousel .home-carousel {
+  margin-inline: calc(50% - 50vw);
+  padding-inline-start: max(1rem, calc((100vw - 64rem) / 2 + 1rem));
+  padding-inline-end: 1rem;
+  scroll-padding-inline-start: max(1rem, calc((100vw - 64rem) / 2 + 1rem));
+  scroll-padding-inline-end: 1rem;
+}
+
 .home-carousel-controls:has([blossom-prev][disabled]):has(
     [blossom-next][disabled]
   ) {
