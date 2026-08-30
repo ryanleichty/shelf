@@ -42,7 +42,8 @@ export function ItemListMenu({
   const [bookmark, setBookmark] = useState(systemList)
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
-  const listRequestsInFlight = useRef(new Set<string>())
+  const customListsRef = useRef(lists)
+  const listRequestGenerations = useRef(new Map<string, number>())
 
   useEffect(() => {
     getSignedInStatus()
@@ -50,7 +51,18 @@ export function ItemListMenu({
       .catch(() => setSignedIn(false))
   }, [])
 
-  useEffect(() => setCustomLists(lists), [lists])
+  useEffect(() => {
+    const nextLists = lists.map((list) => {
+      const optimisticList = customListsRef.current.find(
+        (candidate) => candidate.slug === list.slug
+      )
+      return listRequestGenerations.current.has(list.slug) && optimisticList
+        ? { ...list, containsItem: optimisticList.containsItem }
+        : list
+    })
+    customListsRef.current = nextLists
+    setCustomLists(nextLists)
+  }, [lists])
   useEffect(() => setBookmark(systemList), [systemList])
 
   if (signedIn === null)
@@ -60,39 +72,45 @@ export function ItemListMenu({
   if (!signedIn) return null
 
   async function toggleList(list: ListOption) {
-    if (listRequestsInFlight.current.has(list.slug)) return
-
-    const previousContainsItem = list.containsItem
+    const currentList = customListsRef.current.find(
+      (candidate) => candidate.slug === list.slug
+    )
+    if (!currentList) return
+    const previousContainsItem = currentList.containsItem
     const nextContainsItem = !previousContainsItem
-    listRequestsInFlight.current.add(list.slug)
+    const generation = (listRequestGenerations.current.get(list.slug) ?? 0) + 1
+    listRequestGenerations.current.set(list.slug, generation)
     setError("")
-    setCustomLists((current) =>
-      current.map((candidate) =>
+    const nextLists = customListsRef.current.map((candidate) =>
         candidate.slug === list.slug
           ? { ...candidate, containsItem: nextContainsItem }
           : candidate
-      )
     )
+    customListsRef.current = nextLists
+    setCustomLists(nextLists)
     try {
       if (previousContainsItem)
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
-      void router.invalidate().catch(() => undefined)
+      if (listRequestGenerations.current.get(list.slug) !== generation) return
+      await router.invalidate()
     } catch (cause) {
-      setCustomLists((current) =>
-        current.map((candidate) =>
+      if (listRequestGenerations.current.get(list.slug) !== generation) return
+      const revertedLists = customListsRef.current.map((candidate) =>
           candidate.slug === list.slug
             ? { ...candidate, containsItem: previousContainsItem }
             : candidate
-        )
       )
+      customListsRef.current = revertedLists
+      setCustomLists(revertedLists)
       setError(
         cause instanceof Error
           ? cause.message
           : `Could not update ${list.name}.`
       )
     } finally {
-      listRequestsInFlight.current.delete(list.slug)
+      if (listRequestGenerations.current.get(list.slug) === generation)
+        listRequestGenerations.current.delete(list.slug)
     }
   }
 

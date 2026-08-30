@@ -34,25 +34,34 @@ export function SystemListToggle({
 }) {
   const router = useRouter()
   const [containsItem, setContainsItem] = useState(list.containsItem)
-  const requestInFlight = useRef(false)
+  const containsItemRef = useRef(containsItem)
+  const requestGeneration = useRef(0)
+  const activeRequestGeneration = useRef<number | null>(null)
 
-  useEffect(() => setContainsItem(list.containsItem), [list.containsItem])
+  useEffect(() => {
+    if (activeRequestGeneration.current !== null) return
+    containsItemRef.current = list.containsItem
+    setContainsItem(list.containsItem)
+  }, [list.containsItem])
 
   async function toggle() {
-    if (requestInFlight.current) return
-
-    const previousContainsItem = containsItem
+    const previousContainsItem = containsItemRef.current
     const nextContainsItem = !previousContainsItem
-    requestInFlight.current = true
+    const generation = ++requestGeneration.current
+    activeRequestGeneration.current = generation
     onError?.("")
+    containsItemRef.current = nextContainsItem
     setContainsItem(nextContainsItem)
     onMembershipChange?.(nextContainsItem)
     try {
       if (previousContainsItem)
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
-      void router.invalidate().catch(() => undefined)
+      if (generation !== requestGeneration.current) return
+      await router.invalidate()
     } catch (cause) {
+      if (generation !== requestGeneration.current) return
+      containsItemRef.current = previousContainsItem
       setContainsItem(previousContainsItem)
       onMembershipChange?.(previousContainsItem)
       onError?.(
@@ -61,7 +70,8 @@ export function SystemListToggle({
           : `Could not update ${list.name}.`
       )
     } finally {
-      requestInFlight.current = false
+      if (generation === requestGeneration.current)
+        activeRequestGeneration.current = null
     }
   }
 

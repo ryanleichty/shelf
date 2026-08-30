@@ -83,11 +83,22 @@ export function ListsSettings({
   const [busy, setBusy] = useState(false)
   const [activeType, setActiveType] = useState<ListType>("book")
   const [orderedPlacements, setOrderedPlacements] = useState(placements)
+  const orderedPlacementsRef = useRef(placements)
   const reorderInFlight = useRef(new Set<ListType>())
-  const visibilityRequestsInFlight = useRef(new Set<number>())
+  const visibilityRequestGenerations = useRef(new Map<number, number>())
 
   useEffect(() => {
-    setOrderedPlacements(placements)
+    const nextPlacements = placements.map((placement) => {
+      const optimisticPlacement = orderedPlacementsRef.current.find(
+        (candidate) => candidate.id === placement.id
+      )
+      return visibilityRequestGenerations.current.has(placement.id) &&
+        optimisticPlacement
+        ? { ...placement, visible: optimisticPlacement.visible }
+        : placement
+    })
+    orderedPlacementsRef.current = nextPlacements
+    setOrderedPlacements(nextPlacements)
   }, [placements])
 
   async function change(action: () => Promise<unknown>) {
@@ -157,16 +168,20 @@ export function ListsSettings({
   }
 
   function updateVisibility(placement: Placement, visible: boolean) {
-    if (visibilityRequestsInFlight.current.has(placement.id)) return
-
-    const previousVisible = placement.visible
-    visibilityRequestsInFlight.current.add(placement.id)
-    setError("")
-    setOrderedPlacements((current) =>
-      current.map((candidate) =>
-        candidate.id === placement.id ? { ...candidate, visible } : candidate
-      )
+    const currentPlacement = orderedPlacementsRef.current.find(
+      (candidate) => candidate.id === placement.id
     )
+    if (!currentPlacement) return
+    const previousVisible = currentPlacement.visible
+    const generation =
+      (visibilityRequestGenerations.current.get(placement.id) ?? 0) + 1
+    visibilityRequestGenerations.current.set(placement.id, generation)
+    setError("")
+    const nextPlacements = orderedPlacementsRef.current.map((candidate) =>
+      candidate.id === placement.id ? { ...candidate, visible } : candidate
+    )
+    orderedPlacementsRef.current = nextPlacements
+    setOrderedPlacements(nextPlacements)
     void (async () => {
       try {
         await setListPlacementVisible({
@@ -176,20 +191,32 @@ export function ListsSettings({
             visible,
           },
         })
-        void onChange().catch(() => undefined)
+        if (
+          visibilityRequestGenerations.current.get(placement.id) !== generation
+        )
+          return
+        await onChange()
       } catch (cause) {
+        if (
+          visibilityRequestGenerations.current.get(placement.id) !== generation
+        )
+          return
         setError(
           cause instanceof Error ? cause.message : "Couldn’t update lists."
         )
-        setOrderedPlacements((current) =>
-          current.map((candidate) =>
+        const revertedPlacements = orderedPlacementsRef.current.map(
+          (candidate) =>
             candidate.id === placement.id
               ? { ...candidate, visible: previousVisible }
               : candidate
-          )
         )
+        orderedPlacementsRef.current = revertedPlacements
+        setOrderedPlacements(revertedPlacements)
       } finally {
-        visibilityRequestsInFlight.current.delete(placement.id)
+        if (
+          visibilityRequestGenerations.current.get(placement.id) === generation
+        )
+          visibilityRequestGenerations.current.delete(placement.id)
       }
     })()
   }
