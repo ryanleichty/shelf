@@ -40,6 +40,7 @@ export function ensureDatabase() {
         cover_image_url TEXT,
         open_library_key TEXT,
         tmdb_id TEXT,
+        barcode TEXT UNIQUE,
         borrower TEXT,
         loaned_at TEXT,
         format TEXT,
@@ -66,6 +67,12 @@ export function ensureDatabase() {
     if (!columns.rows.some((column) => column.name === "tmdb_id")) {
       await getClient().execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
     }
+    if (!columns.rows.some((column) => column.name === "barcode")) {
+      await getClient().execute("ALTER TABLE items ADD COLUMN barcode TEXT")
+    }
+    await getClient().execute(
+      "CREATE UNIQUE INDEX IF NOT EXISTS items_barcode_unique ON items(barcode) WHERE barcode IS NOT NULL"
+    )
     if (!columns.rows.some((column) => column.name === "borrower")) {
       await getClient().execute("ALTER TABLE items ADD COLUMN borrower TEXT")
     }
