@@ -192,7 +192,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className={cn(
-            "h-svh min-h-0 bg-sidebar p-0 text-sidebar-foreground",
+            "!h-svh min-h-0 bg-sidebar p-0 text-sidebar-foreground",
             className
           )}
           style={
