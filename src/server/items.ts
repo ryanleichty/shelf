@@ -573,7 +573,7 @@ export async function replaceItemCollection(
           overview: collection.overview || null,
         })
         .returning({ id: collections.id })
-    )[0]!.id
+    )[0].id
 
   await db
     .insert(itemCollections)
