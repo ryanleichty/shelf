@@ -124,10 +124,21 @@ for (const row of legacyItems.rows) {
     for (const rawName of names) {
       if (typeof rawName !== "string") continue
       const name = rawName.trim()
-      const slug = name.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      const slug = name
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
       if (!slug) continue
-      await client.execute({ sql: "INSERT INTO genres (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING", args: [slug, name] })
-      await client.execute({ sql: "INSERT INTO item_genres (item_id, genre_id) SELECT ?, id FROM genres WHERE slug = ? ON CONFLICT DO NOTHING", args: [Number(row.id), slug] })
+      await client.execute({
+        sql: "INSERT INTO genres (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING",
+        args: [slug, name],
+      })
+      await client.execute({
+        sql: "INSERT INTO item_genres (item_id, genre_id) SELECT ?, id FROM genres WHERE slug = ? ON CONFLICT DO NOTHING",
+        args: [Number(row.id), slug],
+      })
     }
   } catch {
     // Ignore malformed legacy JSON.
@@ -147,9 +158,16 @@ await client.execute(`
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
+    system INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   )
 `)
+const listColumns = await client.execute("PRAGMA table_info(lists)")
+if (!listColumns.rows.some((column) => column.name === "system")) {
+  await client.execute(
+    "ALTER TABLE lists ADD COLUMN system INTEGER NOT NULL DEFAULT 0"
+  )
+}
 await client.execute(`
   CREATE TABLE IF NOT EXISTS list_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -160,20 +178,50 @@ await client.execute(`
     UNIQUE(list_id, item_id)
   )
 `)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS list_placements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    type TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    visible INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(list_id, type)
+  )
+`)
 await client.execute({
   sql: `
-    INSERT INTO lists (slug, name, created_at)
-    VALUES (?, ?, ?), (?, ?, ?)
-    ON CONFLICT(slug) DO NOTHING
+    INSERT INTO lists (slug, name, system, created_at)
+    VALUES (?, ?, 1, ?), (?, ?, 1, ?)
+    ON CONFLICT(slug) DO UPDATE SET system = 1
   `,
-  args: [
-    "watchlist",
-    "Watchlist",
-    now,
-    "reading-list",
-    "Reading list",
-    now,
-  ],
+  args: ["watchlist", "Watchlist", now, "reading-list", "Reading list", now],
 })
+for (const [slug, type] of [
+  ["reading-list", "book"],
+  ["watchlist", "movie"],
+  ["watchlist", "tv"],
+] as const) {
+  await client.execute({
+    sql: `
+      INSERT INTO list_placements (list_id, kind, type, position, visible)
+      SELECT id, 'list', ?, 1, 1 FROM lists WHERE slug = ?
+      ON CONFLICT(list_id, type) DO NOTHING
+    `,
+    args: [type, slug],
+  })
+}
+for (const type of ["book", "movie", "tv"]) {
+  await client.execute({
+    sql: `
+      INSERT INTO list_placements (list_id, kind, type, position, visible)
+      SELECT NULL, 'recent', ?, 0, 1
+      WHERE NOT EXISTS (
+        SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
+      )
+    `,
+    args: [type, type],
+  })
+}
 
 console.log("Database is ready.")

@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { getSignedInStatus, logout } from "@/server/items"
+import { getSidebarLists } from "@/server/lists"
 import { CatalogCommand } from "@/components/catalog-command"
 import {
   Collapsible,
@@ -44,28 +45,19 @@ const catalogNavigation = [
     title: "Books",
     to: "/books",
     icon: BookOpenIcon,
-    items: [
-      { title: "All", to: "/books/all" },
-      { title: "Reading list", to: "/books/list/$slug", slug: "reading-list" },
-    ],
+    type: "book",
   },
   {
     title: "Movies",
     to: "/movies",
     icon: FilmIcon,
-    items: [
-      { title: "All", to: "/movies/all" },
-      { title: "Watchlist", to: "/movies/list/$slug", slug: "watchlist" },
-    ],
+    type: "movie",
   },
   {
     title: "TV",
     to: "/tv",
     icon: TvIcon,
-    items: [
-      { title: "All", to: "/tv/all" },
-      { title: "Watchlist", to: "/tv/list/$slug", slug: "watchlist" },
-    ],
+    type: "tv",
   },
 ] as const
 
@@ -73,27 +65,50 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const router = useRouter()
   const [signedIn, setSignedIn] = useState(false)
+  const [listPlacements, setListPlacements] = useState<
+    Array<{ slug: string; name: string; type: "book" | "movie" | "tv" }>
+  >([])
   const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>(
     {}
   )
   const [searchOpen, setSearchOpen] = useState(false)
   useEffect(() => {
+    getSidebarLists()
+      .then((placements) =>
+        setListPlacements(
+          placements.flatMap((placement) =>
+            placement.slug && placement.name
+              ? [
+                  {
+                    slug: placement.slug,
+                    name: placement.name,
+                    type: placement.type,
+                  },
+                ]
+              : []
+          )
+        )
+      )
+      .catch(() => setListPlacements([]))
     getSignedInStatus()
       .then(setSignedIn)
       .catch(() => setSignedIn(false))
   }, [])
   useEffect(() => {
-    const currentParent = catalogNavigation.find((item) =>
-      item.items.some(
-        (subItem) =>
-          location.pathname ===
-          ("slug" in subItem ? `${item.to}/list/${subItem.slug}` : subItem.to)
-      )
+    const currentParent = catalogNavigation.find(
+      (item) =>
+        location.pathname === `${item.to}/all` ||
+        listPlacements
+          .filter((placement) => placement.type === item.type)
+          .some(
+            (placement) =>
+              location.pathname === `${item.to}/list/${placement.slug}`
+          )
     )
     if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
-  }, [location.pathname])
+  }, [location.pathname, listPlacements])
 
   async function signOut() {
     await logout()
@@ -156,12 +171,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {catalogNavigation.map((item) => {
-                  const isOnSubpage = item.items.some(
-                    (subItem) =>
-                      location.pathname ===
-                      ("slug" in subItem
-                        ? `${item.to}/list/${subItem.slug}`
-                        : subItem.to)
+                  const subItems = [
+                    { title: "All", to: `${item.to}/all` },
+                    ...listPlacements
+                      .filter((placement) => placement.type === item.type)
+                      .map((placement) => ({
+                        title: placement.name,
+                        to: `${item.to}/list/${placement.slug}`,
+                      })),
+                  ]
+                  const isOnSubpage = subItems.some(
+                    (subItem) => location.pathname === subItem.to
                   )
                   return (
                     <Collapsible
@@ -196,25 +216,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {item.items.map((subItem) => {
-                              const path =
-                                "slug" in subItem
-                                  ? `${item.to}/list/${subItem.slug}`
-                                  : subItem.to
+                            {subItems.map((subItem) => {
+                              const path = subItem.to
                               return (
-                                <SidebarMenuSubItem key={subItem.to}>
+                                <SidebarMenuSubItem key={path}>
                                   <SidebarMenuSubButton
                                     isActive={location.pathname === path}
-                                    render={
-                                      "slug" in subItem ? (
-                                        <Link
-                                          params={{ slug: subItem.slug }}
-                                          to={subItem.to}
-                                        />
-                                      ) : (
-                                        <Link to={subItem.to} />
-                                      )
-                                    }
+                                    render={<Link to={path} />}
                                   >
                                     <span>{subItem.title}</span>
                                   </SidebarMenuSubButton>

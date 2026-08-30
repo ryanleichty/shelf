@@ -171,8 +171,29 @@ export const lists = sqliteTable("lists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  system: integer("system", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull(),
 })
+
+export const listPlacements = sqliteTable(
+  "list_placements",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    listId: integer("list_id").references(() => lists.id, {
+      onDelete: "cascade",
+    }),
+    kind: text("kind", { enum: ["recent", "list"] }).notNull(),
+    type: text("type", { enum: itemTypes }).notNull(),
+    position: integer("position").notNull(),
+    visible: integer("visible", { mode: "boolean" }).notNull().default(true),
+  },
+  (table) => [
+    uniqueIndex("list_placements_list_id_type_unique").on(
+      table.listId,
+      table.type
+    ),
+  ]
+)
 
 export const listItems = sqliteTable(
   "list_items",

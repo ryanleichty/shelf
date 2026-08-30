@@ -6,7 +6,6 @@ import { getLastCatalogQuery } from "@/components/catalog-search"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
-import { ItemListToggle } from "@/components/item-list-toggle"
 import { getItemBySlug } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -84,6 +83,7 @@ function ItemDetail() {
           providerId={item.type === "book" ? item.openLibraryKey : item.tmdbId}
           title={item.title}
           type={item.type}
+          customLists={item.customLists}
         />
       </div>
       <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
@@ -144,12 +144,6 @@ function ItemDetail() {
                 )
               : item.creator}
           </p>
-          <ItemListToggle
-            initiallyInList={item.targetList.containsItem}
-            itemId={item.id}
-            listName={item.targetList.name}
-            listSlug={item.targetList.slug}
-          />
           {item.genres.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {item.genres.map((genre) => (
