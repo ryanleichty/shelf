@@ -39,8 +39,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const navigation = [
-  { title: "Home", to: "/", icon: HouseIcon },
+const catalogNavigation = [
   {
     title: "Books",
     to: "/books",
@@ -84,16 +83,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       .catch(() => setSignedIn(false))
   }, [])
   useEffect(() => {
-    const currentParent = navigation.find(
-      (item) =>
-        "items" in item &&
-        item.items.some(
-          (subItem) =>
-            location.pathname ===
-            ("slug" in subItem ? `${item.to}/list/${subItem.slug}` : subItem.to)
-        )
+    const currentParent = catalogNavigation.find((item) =>
+      item.items.some(
+        (subItem) =>
+          location.pathname ===
+          ("slug" in subItem ? `${item.to}/list/${subItem.slug}` : subItem.to)
+      )
     )
-    if (currentParent && "items" in currentParent) {
+    if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
   }, [location.pathname])
@@ -156,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>Catalog</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.slice(1).map((item) => {
+              {catalogNavigation.map((item) => {
                 const isOnSubpage = item.items.some(
                   (subItem) =>
                     location.pathname ===
