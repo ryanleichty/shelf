@@ -17,11 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
   SystemListToggle,
   type SystemListOption,
 } from "@/components/system-list-toggle"
