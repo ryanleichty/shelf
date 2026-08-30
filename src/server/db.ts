@@ -340,14 +340,7 @@ export function ensureDatabase() {
         VALUES (?, ?, 1, ?), (?, ?, 1, ?)
         ON CONFLICT(slug) DO UPDATE SET system = 1
       `,
-      args: [
-        "watchlist",
-        "Watchlist",
-        now,
-        READLIST_SLUG,
-        READLIST_NAME,
-        now,
-      ],
+      args: ["watchlist", "Watchlist", now, READLIST_SLUG, READLIST_NAME, now],
     })
     await getClient().execute(`
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
