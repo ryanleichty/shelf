@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { BookmarkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -34,29 +34,34 @@ export function SystemListToggle({
 }) {
   const router = useRouter()
   const [containsItem, setContainsItem] = useState(list.containsItem)
-  const [pending, setPending] = useState(false)
+  const requestInFlight = useRef(false)
 
   useEffect(() => setContainsItem(list.containsItem), [list.containsItem])
 
   async function toggle() {
-    setPending(true)
+    if (requestInFlight.current) return
+
+    const previousContainsItem = containsItem
+    const nextContainsItem = !previousContainsItem
+    requestInFlight.current = true
     onError?.("")
+    setContainsItem(nextContainsItem)
+    onMembershipChange?.(nextContainsItem)
     try {
-      if (containsItem)
+      if (previousContainsItem)
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
-      const nextContainsItem = !containsItem
-      setContainsItem(nextContainsItem)
-      onMembershipChange?.(nextContainsItem)
-      await router.invalidate()
+      void router.invalidate().catch(() => undefined)
     } catch (cause) {
+      setContainsItem(previousContainsItem)
+      onMembershipChange?.(previousContainsItem)
       onError?.(
         cause instanceof Error
           ? cause.message
           : `Could not update ${list.name}.`
       )
     } finally {
-      setPending(false)
+      requestInFlight.current = false
     }
   }
 
@@ -67,7 +72,6 @@ export function SystemListToggle({
           <Button
             aria-label={`${containsItem ? "Remove from" : "Add to"} ${list.name}`}
             className={className}
-            disabled={pending}
             onClick={() => void toggle()}
             size={showLabel ? "default" : "icon"}
             variant={showLabel && containsItem ? "default" : "outline"}
