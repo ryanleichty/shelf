@@ -645,8 +645,7 @@ const barcodeInput = z
   .max(80)
   .transform((value) => value.replace(/\s/g, "").toUpperCase())
   .refine(
-    (value) =>
-      /^\d{12,13}$/.test(value) || /^\d{9}[\dX]$/.test(value),
+    (value) => /^\d{12,13}$/.test(value) || /^\d{9}[\dX]$/.test(value),
     "Enter an EAN-13, UPC-A, ISBN-10, or ISBN-13 code."
   )
 
@@ -731,7 +730,8 @@ async function lookupDiscBarcode(barcode: string) {
     typeof body.data?.year === "number"
       ? body.data.year
       : Number(body.data?.year)
-  if (body.status !== "success" || !title || !Number.isInteger(year)) return null
+  if (body.status !== "success" || !title || !Number.isInteger(year))
+    return null
   return { title, year, format: body.data?.format }
 }
 
@@ -745,7 +745,9 @@ async function itemForDisc(title: string, year: number) {
         eq(items.year, year)
       )
     )
-  return candidates.find((item) => normalizeTitle(item.title) === normalizeTitle(title))
+  return candidates.find(
+    (item) => normalizeTitle(item.title) === normalizeTitle(title)
+  )
 }
 
 async function saveBarcode(itemId: number, barcode: string) {
@@ -1199,7 +1201,9 @@ export const getItemsForYearBrowse = createServerFn({ method: "GET" })
   })
 
 export const getItemsByTag = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() }))
+  .inputValidator(
+    z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() })
+  )
   .handler(async ({ data }) => {
     await ensureDatabase()
     const tagTable = data.kind === "genre" ? genres : keywords
@@ -1391,11 +1395,16 @@ export const removeItemFromList = createServerFn({ method: "POST" })
     return { ok: true }
   })
 
-export const getHomeRows = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const getHomeRows = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ type: z.enum(itemTypes).optional() }).optional())
+  .handler(async ({ data }) => {
     await ensureDatabase()
     const allItems = await enrichItems(
-      await db.select().from(items).orderBy(asc(items.title))
+      await db
+        .select()
+        .from(items)
+        .where(data?.type ? eq(items.type, data.type) : undefined)
+        .orderBy(asc(items.title))
     )
     const memberships = await db
       .select({
@@ -1410,6 +1419,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
     const rows: Array<{ title: string; slug?: string; items: Item[] }> = []
     const itemsById = new Map(allItems.map((item) => [item.id, item]))
     for (const { slug, title, allowedTypes } of namedLists) {
+      if (data?.type && !allowedTypes.includes(data.type)) continue
       const rowItems = memberships.flatMap((membership) => {
         const item = itemsById.get(membership.itemId)
         return membership.listSlug === slug &&
@@ -1443,8 +1453,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
           items: rowItems,
         })),
     ]
-  }
-)
+  })
 
 export const getItemBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))

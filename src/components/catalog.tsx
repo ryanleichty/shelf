@@ -11,12 +11,14 @@ export function Catalog({
   query,
   onQueryChange,
   rememberQuery = true,
+  fromAll = false,
 }: {
   items: Item[]
   type: Item["type"]
   query?: string
   onQueryChange?: (query: string) => void
   rememberQuery?: boolean
+  fromAll?: boolean
 }) {
   const [draftQuery, setDraftQuery] = useState(query ?? "")
   const visibleItems = items.filter((item) => item.type === type)
@@ -58,7 +60,7 @@ export function Catalog({
       {visibleItems.length ? (
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
           {visibleItems.map((item) => (
-            <CoverTile item={item} key={item.id} />
+            <CoverTile fromAll={fromAll} item={item} key={item.id} />
           ))}
         </div>
       ) : (

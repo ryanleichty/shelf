@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { z } from "zod"
 import { getLastCatalogQuery } from "@/components/catalog-search"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
@@ -9,6 +10,7 @@ import { ItemListToggle } from "@/components/item-list-toggle"
 import { getItemBySlug } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
+  validateSearch: z.object({ from: z.literal("all").optional() }),
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
@@ -43,6 +45,7 @@ export const Route = createFileRoute("/item/$slug")({
 
 function ItemDetail() {
   const item = Route.useLoaderData()
+  const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
 
   useEffect(() => {
@@ -56,11 +59,17 @@ function ItemDetail() {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           search={{ query: lastCatalogQuery }}
           to={
-            item.type === "book"
-              ? "/books"
-              : item.type === "tv"
-                ? "/tv"
-                : "/movies"
+            search.from === "all"
+              ? item.type === "book"
+                ? "/books/all"
+                : item.type === "tv"
+                  ? "/tv/all"
+                  : "/movies/all"
+              : item.type === "book"
+                ? "/books"
+                : item.type === "tv"
+                  ? "/tv"
+                  : "/movies"
           }
         >
           <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
@@ -242,18 +251,30 @@ function ItemYearLink({
 
   if (type === "movie")
     return (
-      <Link className={className} params={{ year: yearParam }} to="/movies/year/$year">
+      <Link
+        className={className}
+        params={{ year: yearParam }}
+        to="/movies/year/$year"
+      >
         {year}
       </Link>
     )
   if (type === "tv")
     return (
-      <Link className={className} params={{ year: yearParam }} to="/tv/year/$year">
+      <Link
+        className={className}
+        params={{ year: yearParam }}
+        to="/tv/year/$year"
+      >
         {year}
       </Link>
     )
   return (
-    <Link className={className} params={{ year: yearParam }} to="/books/year/$year">
+    <Link
+      className={className}
+      params={{ year: yearParam }}
+      to="/books/year/$year"
+    >
       {year}
     </Link>
   )
