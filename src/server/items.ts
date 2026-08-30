@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { db, ensureDatabase, refreshSearchIndex } from "./db"
-import { isAgentToken, requireSignedIn } from "./auth"
+import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
 import {
   items,
@@ -657,7 +657,7 @@ type CheckResult =
 export const checkBarcode = createServerFn({ method: "POST" })
   .validator(z.object({ code: barcodeInput }))
   .handler(async ({ data }): Promise<CheckResult> => {
-    requireAdmin()
+    await requireAdmin()
     await ensureDatabase()
 
     const stored = await itemForBarcode(data.code)
