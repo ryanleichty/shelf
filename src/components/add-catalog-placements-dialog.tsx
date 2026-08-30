@@ -107,9 +107,9 @@ export function AddCatalogPlacementsDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add from catalog</DialogTitle>
+          <DialogTitle>Add row</DialogTitle>
           <DialogDescription>
-            Add catalog rows to the {type === "tv" ? "TV" : `${type}s`} index.
+            Show a genre, collection, or person on this index.
           </DialogDescription>
         </DialogHeader>
         <FieldGroup>

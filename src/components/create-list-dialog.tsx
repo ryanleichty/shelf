@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,40 +12,32 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { createList } from "@/server/lists"
 
-const types = [
-  { value: "book", label: "Books" },
-  { value: "movie", label: "Movies" },
-  { value: "tv", label: "TV" },
-] as const
-
-type ListType = (typeof types)[number]["value"]
+type ListType = "book" | "movie" | "tv"
 
 export function CreateListDialog({
-  defaultType = "book",
   onCreated,
   onOpenChange,
   open,
+  type,
 }: {
-  defaultType?: ListType
   onCreated: () => Promise<void>
   onOpenChange: (open: boolean) => void
   open: boolean
+  type: ListType
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [name, setName] = useState("")
-  const [type, setType] = useState<ListType>(defaultType)
 
-  useEffect(() => {
-    if (open) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
       setError("")
       setName("")
-      setType(defaultType)
     }
-  }, [defaultType, open])
+    onOpenChange(nextOpen)
+  }
 
   async function create() {
     setBusy(true)
@@ -53,7 +45,9 @@ export function CreateListDialog({
     try {
       await createList({ data: { name, type } })
       await onCreated()
-      onOpenChange(false)
+      setError("")
+      setName("")
+      handleOpenChange(false)
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Couldn’t create the list."
@@ -64,7 +58,7 @@ export function CreateListDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New list</DialogTitle>
@@ -87,22 +81,6 @@ export function CreateListDialog({
                 required
                 value={name}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="list-type">Type</FieldLabel>
-              <ToggleGroup
-                multiple={false}
-                onValueChange={(value) =>
-                  value[0] && setType(value[0] as ListType)
-                }
-                value={[type]}
-              >
-                {types.map((option) => (
-                  <ToggleGroupItem key={option.value} value={option.value}>
-                    {option.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
             </Field>
           </FieldGroup>
           {error && (

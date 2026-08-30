@@ -1,12 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  PlusIcon,
-  Trash2Icon,
-} from "lucide-react"
+import { type ComponentProps, useEffect, useState } from "react"
+import { DragDropProvider } from "@dnd-kit/react"
+import { isSortable, useSortable } from "@dnd-kit/react/sortable"
+import { GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,16 +16,23 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateListDialog } from "@/components/create-list-dialog"
 import { AddCatalogPlacementsDialog } from "@/components/add-catalog-placements-dialog"
 import {
   deleteCatalogPlacement,
   deleteList,
-  moveListPlacement,
+  reorderListPlacements,
   renameList,
   setListPlacementVisible,
 } from "@/server/lists"
@@ -57,6 +61,12 @@ const types = [
   { value: "tv", label: "TV" },
 ] as const
 
+type ListType = (typeof types)[number]["value"]
+
+function isListType(value: string): value is ListType {
+  return types.some((type) => type.value === value)
+}
+
 export function ListsSettings({
   placements,
   catalogOptions,
@@ -68,9 +78,15 @@ export function ListsSettings({
 }) {
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
-  const [catalogType, setCatalogType] = useState<Placement["type"] | null>(null)
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const [deleting, setDeleting] = useState<Placement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [activeType, setActiveType] = useState<ListType>("book")
+  const [orderedPlacements, setOrderedPlacements] = useState(placements)
+
+  useEffect(() => {
+    setOrderedPlacements(placements)
+  }, [placements])
 
   async function change(action: () => Promise<unknown>) {
     setBusy(true)
@@ -78,13 +94,55 @@ export function ListsSettings({
     try {
       await action()
       await onChange()
+      return true
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Couldn’t update lists."
       )
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  const activeTypeLabel = types.find((type) => type.value === activeType)?.label
+  const rows = orderedPlacements.filter(
+    (placement) => placement.type === activeType
+  )
+
+  function handleDragEnd(
+    event: Parameters<
+      NonNullable<ComponentProps<typeof DragDropProvider>["onDragEnd"]>
+    >[0]
+  ) {
+    if (event.canceled || busy) return
+    const { source } = event.operation
+    if (!isSortable(source)) return
+    const { initialIndex, index } = source
+    if (initialIndex === index) return
+
+    const previousPlacements = orderedPlacements
+    const nextRows = [...rows]
+    const [movedRow] = nextRows.splice(initialIndex, 1)
+    if (!movedRow) return
+    nextRows.splice(index, 0, movedRow)
+    setOrderedPlacements((currentPlacements) => {
+      let nextRowIndex = 0
+      return currentPlacements.map((placement) =>
+        placement.type === activeType ? nextRows[nextRowIndex++] : placement
+      )
+    })
+    void (async () => {
+      const reordered = await change(() =>
+        reorderListPlacements({
+          data: {
+            type: activeType,
+            placementIds: nextRows.map((placement) => placement.id),
+          },
+        })
+      )
+      if (!reordered) setOrderedPlacements(previousPlacements)
+    })()
   }
 
   return (
@@ -94,37 +152,68 @@ export function ListsSettings({
           {error}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Button onClick={() => setNewListOpen(true)}>
-          <PlusIcon data-icon="inline-start" />
-          New list
-        </Button>
-      </div>
-      {types.map((type) => {
-        const rows = placements.filter(
-          (placement) => placement.type === type.value
-        )
-        return (
-          <Card key={type.value}>
+      <Tabs
+        onValueChange={(value) => {
+          if (isListType(value)) setActiveType(value)
+        }}
+        value={activeType}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <TabsList>
+            {types.map((type) => (
+              <TabsTrigger key={type.value} value={type.value}>
+                {type.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <ButtonGroup>
+            <Button onClick={() => setNewListOpen(true)}>
+              <PlusIcon data-icon="inline-start" />
+              New list
+            </Button>
+            <Button onClick={() => setCatalogOpen(true)} variant="outline">
+              Add row
+            </Button>
+          </ButtonGroup>
+        </div>
+        <TabsContent value={activeType}>
+          <Card>
             <CardHeader>
-              <CardTitle>{type.label}</CardTitle>
-              <Button
-                onClick={() => setCatalogType(type.value)}
-                size="sm"
-                variant="outline"
-              >
-                Add from catalog
-              </Button>
+              <CardTitle>{activeTypeLabel}</CardTitle>
+              <CardDescription>
+                Choose which rows appear on the {activeTypeLabel?.toLowerCase()}{" "}
+                index.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <FieldGroup>
-                {rows.map((placement, index) => (
-                  <Field orientation="horizontal" key={placement.id}>
-                    <Switch
-                      aria-label={`Show ${placement.name ?? "Recently added"} on ${type.label}`}
-                      checked={placement.visible}
-                      disabled={busy}
-                      onCheckedChange={(visible) =>
+              <DragDropProvider onDragEnd={handleDragEnd}>
+                <FieldGroup>
+                  {rows.map((placement, index) => (
+                    <SortablePlacement
+                      busy={busy}
+                      key={placement.id}
+                      onDelete={() => {
+                        if (placement.kind === "list") {
+                          setDeleting(placement)
+                          return
+                        }
+                        void change(() =>
+                          deleteCatalogPlacement({
+                            data: {
+                              placementId: placement.id,
+                              type: placement.type,
+                            },
+                          })
+                        )
+                      }}
+                      onRename={(name) =>
+                        void change(() =>
+                          renameList({
+                            data: { listId: placement.listId!, name },
+                          })
+                        )
+                      }
+                      onVisibilityChange={(visible) =>
                         void change(() =>
                           setListPlacementVisible({
                             data: {
@@ -135,135 +224,32 @@ export function ListsSettings({
                           })
                         )
                       }
+                      placement={placement}
+                      index={index}
                     />
-                    {placement.kind === "recent" ||
-                    placement.system ||
-                    placement.kind !== "list" ? (
-                      <FieldLabel className="flex-1">
-                        {placement.name ?? "Recently added"}
-                      </FieldLabel>
-                    ) : (
-                      <form
-                        className="flex flex-1 gap-2"
-                        onSubmit={(event) => {
-                          event.preventDefault()
-                          const name = String(
-                            new FormData(event.currentTarget).get("name") ?? ""
-                          )
-                          void change(() =>
-                            renameList({
-                              data: { listId: placement.listId!, name },
-                            })
-                          )
-                        }}
-                      >
-                        <Input
-                          defaultValue={placement.name ?? ""}
-                          name="name"
-                          required
-                        />
-                        <Button
-                          disabled={busy}
-                          size="sm"
-                          type="submit"
-                          variant="outline"
-                        >
-                          Rename
-                        </Button>
-                      </form>
-                    )}
-                    <ButtonGroup>
-                      <Button
-                        aria-label={`Move ${placement.name} up`}
-                        disabled={busy || index === 0}
-                        onClick={() =>
-                          void change(() =>
-                            moveListPlacement({
-                              data: {
-                                placementId: placement.id,
-                                type: placement.type,
-                                direction: "up",
-                              },
-                            })
-                          )
-                        }
-                        size="icon-sm"
-                        variant="outline"
-                      >
-                        <ChevronUpIcon />
-                      </Button>
-                      <Button
-                        aria-label={`Move ${placement.name} down`}
-                        disabled={busy || index === rows.length - 1}
-                        onClick={() =>
-                          void change(() =>
-                            moveListPlacement({
-                              data: {
-                                placementId: placement.id,
-                                type: placement.type,
-                                direction: "down",
-                              },
-                            })
-                          )
-                        }
-                        size="icon-sm"
-                        variant="outline"
-                      >
-                        <ChevronDownIcon />
-                      </Button>
-                    </ButtonGroup>
-                    {placement.kind === "list" && !placement.system && (
-                      <Button
-                        aria-label={`Delete ${placement.name}`}
-                        onClick={() => setDeleting(placement)}
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    )}
-                    {placement.kind !== "recent" &&
-                      placement.kind !== "list" && (
-                        <Button
-                          aria-label={`Remove ${placement.name}`}
-                          onClick={() =>
-                            void change(() =>
-                              deleteCatalogPlacement({
-                                data: {
-                                  placementId: placement.id,
-                                  type: placement.type,
-                                },
-                              })
-                            )
-                          }
-                          size="icon-sm"
-                          variant="ghost"
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      )}
-                  </Field>
-                ))}
-              </FieldGroup>
+                  ))}
+                </FieldGroup>
+              </DragDropProvider>
             </CardContent>
           </Card>
-        )
-      })}
+        </TabsContent>
+      </Tabs>
       <CreateListDialog
         onCreated={onChange}
         onOpenChange={setNewListOpen}
         open={newListOpen}
+        type={activeType}
       />
-      {catalogType && (
+      {catalogOpen && (
         <AddCatalogPlacementsDialog
-          existing={placements.filter(
-            (placement) => placement.type === catalogType
+          existing={orderedPlacements.filter(
+            (placement) => placement.type === activeType
           )}
           onAdded={onChange}
-          onOpenChange={(open) => !open && setCatalogType(null)}
+          onOpenChange={setCatalogOpen}
           open
           options={catalogOptions}
-          type={catalogType}
+          type={activeType}
         />
       )}
       <AlertDialog
@@ -296,5 +282,84 @@ export function ListsSettings({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+function SortablePlacement({
+  busy,
+  index,
+  onDelete,
+  onRename,
+  onVisibilityChange,
+  placement,
+}: {
+  busy: boolean
+  index: number
+  onDelete: () => void
+  onRename: (name: string) => void
+  onVisibilityChange: (visible: boolean) => void
+  placement: Placement
+}) {
+  const { handleRef, ref } = useSortable({
+    disabled: busy,
+    group: placement.type,
+    id: placement.id,
+    index,
+  })
+  const label = placement.name ?? "Recently added"
+  const switchId = `placement-${placement.id}`
+  const canRename = placement.kind === "list" && !placement.system
+  const canDelete = placement.kind !== "recent" && !placement.system
+
+  return (
+    <Field orientation="horizontal" ref={ref}>
+      <Button
+        aria-label={`Reorder ${label}`}
+        disabled={busy}
+        ref={handleRef}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <GripVerticalIcon />
+      </Button>
+      <Switch
+        aria-label={`Show ${label} on ${placement.type === "tv" ? "TV" : `${placement.type}s`}`}
+        checked={placement.visible}
+        disabled={busy}
+        id={switchId}
+        onCheckedChange={onVisibilityChange}
+      />
+      {canRename ? (
+        <form
+          className="flex flex-1"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const name = String(
+              new FormData(event.currentTarget).get("name") ?? ""
+            )
+            if (name && name !== placement.name) onRename(name)
+          }}
+        >
+          <Input defaultValue={placement.name ?? ""} name="name" required />
+        </form>
+      ) : (
+        <FieldLabel className="flex-1" htmlFor={switchId}>
+          {label}
+        </FieldLabel>
+      )}
+      {canDelete && (
+        <Button
+          aria-label={`${placement.kind === "list" ? "Delete" : "Remove"} ${label}`}
+          disabled={busy}
+          onClick={onDelete}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <Trash2Icon />
+        </Button>
+      )}
+    </Field>
   )
 }
