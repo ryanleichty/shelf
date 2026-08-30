@@ -321,78 +321,80 @@ export function ItemForm({
           <TabsTrigger value="tv">TV</TabsTrigger>
         </TabsList>
       </Tabs>
-      <section className="collection-search">
-        <Field>
-          <FieldLabel htmlFor="collection-search">Find a {type}</FieldLabel>
-          <FieldDescription>
-            Search fills the form; review before saving.
-          </FieldDescription>
-          <InputGroup>
-            <InputGroupInput
-              id="collection-search"
-              onChange={(event) => {
-                setQuery(event.target.value)
-                setSelected(false)
-              }}
-              placeholder={
-                type === "book" ? "Search Open Library" : "Search TMDB"
-              }
-              value={query}
-            />
-            <InputGroupAddon align="inline-end">
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <DialogTrigger
-                      aria-label="Scan barcode"
-                      render={<InputGroupButton aria-label="Scan barcode" />}
-                    />
-                  }
-                >
-                  <ScanBarcodeIcon />
-                </TooltipTrigger>
-                <TooltipContent>Scan barcode</TooltipContent>
-              </Tooltip>
-            </InputGroupAddon>
-          </InputGroup>
-        </Field>
-        {searching && (
-          <p className="lookup-status">Looking through the stacks…</p>
-        )}
-        {searchError && (
-          <p className="form-error" role="alert">
-            {searchError}
-          </p>
-        )}
-        {results.length > 0 && (
-          <div className="lookup-results" role="listbox">
-            {results.map((result) => (
-              <button
-                key={result.id}
-                onClick={() => choose(result)}
-                role="option"
-                type="button"
-              >
-                {result.coverImageUrl ? (
-                  <img alt="" src={result.coverImageUrl} />
-                ) : (
-                  <span className="tiny-cover" />
-                )}
-                <span>
-                  <strong>{result.title}</strong>
-                  <small>
-                    {result.creator} {result.year ? `· ${result.year}` : ""}
-                  </small>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {selected && (
-          <p className="lookup-status">Details added below. Make them yours.</p>
-        )}
-      </section>
       <Dialog onOpenChange={setScanOpen} open={scanOpen}>
+        <section className="collection-search">
+          <Field>
+            <FieldLabel htmlFor="collection-search">Find a {type}</FieldLabel>
+            <FieldDescription>
+              Search fills the form; review before saving.
+            </FieldDescription>
+            <InputGroup>
+              <InputGroupInput
+                id="collection-search"
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setSelected(false)
+                }}
+                placeholder={
+                  type === "book" ? "Search Open Library" : "Search TMDB"
+                }
+                value={query}
+              />
+              <InputGroupAddon align="inline-end">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <DialogTrigger
+                        aria-label="Scan barcode"
+                        render={<InputGroupButton aria-label="Scan barcode" />}
+                      />
+                    }
+                  >
+                    <ScanBarcodeIcon />
+                  </TooltipTrigger>
+                  <TooltipContent>Scan barcode</TooltipContent>
+                </Tooltip>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+          {searching && (
+            <p className="lookup-status">Looking through the stacks…</p>
+          )}
+          {searchError && (
+            <p className="form-error" role="alert">
+              {searchError}
+            </p>
+          )}
+          {results.length > 0 && (
+            <div className="lookup-results" role="listbox">
+              {results.map((result) => (
+                <button
+                  key={result.id}
+                  onClick={() => choose(result)}
+                  role="option"
+                  type="button"
+                >
+                  {result.coverImageUrl ? (
+                    <img alt="" src={result.coverImageUrl} />
+                  ) : (
+                    <span className="tiny-cover" />
+                  )}
+                  <span>
+                    <strong>{result.title}</strong>
+                    <small>
+                      {result.creator} {result.year ? `· ${result.year}` : ""}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {selected && (
+            <p className="lookup-status">
+              Details added below. Make them yours.
+            </p>
+          )}
+        </section>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Scan barcode</DialogTitle>
