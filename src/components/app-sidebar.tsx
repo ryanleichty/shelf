@@ -46,8 +46,8 @@ const navigation = [
     to: "/books",
     icon: BookOpenIcon,
     items: [
-      { title: "Reading list", to: "/books/list/$slug", slug: "reading-list" },
       { title: "All", to: "/books/all" },
+      { title: "Reading list", to: "/books/list/$slug", slug: "reading-list" },
     ],
   },
   {
@@ -55,8 +55,8 @@ const navigation = [
     to: "/movies",
     icon: FilmIcon,
     items: [
-      { title: "Watchlist", to: "/movies/list/$slug", slug: "watchlist" },
       { title: "All", to: "/movies/all" },
+      { title: "Watchlist", to: "/movies/list/$slug", slug: "watchlist" },
     ],
   },
   {
@@ -64,8 +64,8 @@ const navigation = [
     to: "/tv",
     icon: TvIcon,
     items: [
-      { title: "Watchlist", to: "/tv/list/$slug", slug: "watchlist" },
       { title: "All", to: "/tv/all" },
+      { title: "Watchlist", to: "/tv/list/$slug", slug: "watchlist" },
     ],
   },
 ] as const

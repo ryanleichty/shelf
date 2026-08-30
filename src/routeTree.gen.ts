@@ -16,10 +16,13 @@ import { Route as CheckRouteImport } from './routes/check'
 import { Route as BooksRouteImport } from './routes/books'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as TvAllRouteImport } from './routes/tv_.all'
+import { Route as MoviesAllRouteImport } from './routes/movies_.all'
 import { Route as KeywordSlugRouteImport } from './routes/keyword.$slug'
 import { Route as ItemSlugRouteImport } from './routes/item.$slug'
 import { Route as GenreSlugRouteImport } from './routes/genre.$slug'
 import { Route as DirectorSlugRouteImport } from './routes/director.$slug'
+import { Route as BooksAllRouteImport } from './routes/books_.all'
 import { Route as AuthorSlugRouteImport } from './routes/author.$slug'
 import { Route as ApiItemsRouteImport } from './routes/api/items'
 import { Route as AdminNewRouteImport } from './routes/admin/new'
@@ -73,6 +76,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TvAllRoute = TvAllRouteImport.update({
+  id: '/tv_/all',
+  path: '/tv/all',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MoviesAllRoute = MoviesAllRouteImport.update({
+  id: '/movies_/all',
+  path: '/movies/all',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KeywordSlugRoute = KeywordSlugRouteImport.update({
   id: '/keyword/$slug',
   path: '/keyword/$slug',
@@ -91,6 +104,11 @@ const GenreSlugRoute = GenreSlugRouteImport.update({
 const DirectorSlugRoute = DirectorSlugRouteImport.update({
   id: '/director/$slug',
   path: '/director/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BooksAllRoute = BooksAllRouteImport.update({
+  id: '/books_/all',
+  path: '/books/all',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthorSlugRoute = AuthorSlugRouteImport.update({
@@ -192,10 +210,13 @@ export interface FileRoutesByFullPath {
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
+  '/books/all': typeof BooksAllRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
+  '/movies/all': typeof MoviesAllRoute
+  '/tv/all': typeof TvAllRoute
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -222,10 +243,13 @@ export interface FileRoutesByTo {
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
+  '/books/all': typeof BooksAllRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
+  '/movies/all': typeof MoviesAllRoute
+  '/tv/all': typeof TvAllRoute
   '/admin': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -253,10 +277,13 @@ export interface FileRoutesById {
   '/admin/new': typeof AdminNewRoute
   '/api/items': typeof ApiItemsRouteWithChildren
   '/author/$slug': typeof AuthorSlugRoute
+  '/books_/all': typeof BooksAllRoute
   '/director/$slug': typeof DirectorSlugRoute
   '/genre/$slug': typeof GenreSlugRoute
   '/item/$slug': typeof ItemSlugRoute
   '/keyword/$slug': typeof KeywordSlugRoute
+  '/movies_/all': typeof MoviesAllRoute
+  '/tv_/all': typeof TvAllRoute
   '/admin/': typeof AdminIndexRoute
   '/api/items/$id': typeof ApiItemsIdRoute
   '/api/items/sync': typeof ApiItemsSyncRoute
@@ -285,10 +312,13 @@ export interface FileRouteTypes {
     | '/admin/new'
     | '/api/items'
     | '/author/$slug'
+    | '/books/all'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
+    | '/movies/all'
+    | '/tv/all'
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -315,10 +345,13 @@ export interface FileRouteTypes {
     | '/admin/new'
     | '/api/items'
     | '/author/$slug'
+    | '/books/all'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
+    | '/movies/all'
+    | '/tv/all'
     | '/admin'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -345,10 +378,13 @@ export interface FileRouteTypes {
     | '/admin/new'
     | '/api/items'
     | '/author/$slug'
+    | '/books_/all'
     | '/director/$slug'
     | '/genre/$slug'
     | '/item/$slug'
     | '/keyword/$slug'
+    | '/movies_/all'
+    | '/tv_/all'
     | '/admin/'
     | '/api/items/$id'
     | '/api/items/sync'
@@ -376,10 +412,13 @@ export interface RootRouteChildren {
   AdminNewRoute: typeof AdminNewRoute
   ApiItemsRoute: typeof ApiItemsRouteWithChildren
   AuthorSlugRoute: typeof AuthorSlugRoute
+  BooksAllRoute: typeof BooksAllRoute
   DirectorSlugRoute: typeof DirectorSlugRoute
   GenreSlugRoute: typeof GenreSlugRoute
   ItemSlugRoute: typeof ItemSlugRoute
   KeywordSlugRoute: typeof KeywordSlugRoute
+  MoviesAllRoute: typeof MoviesAllRoute
+  TvAllRoute: typeof TvAllRoute
   AdminIndexRoute: typeof AdminIndexRoute
   BooksDecadeDecadeRoute: typeof BooksDecadeDecadeRoute
   BooksListSlugRoute: typeof BooksListSlugRoute
@@ -443,6 +482,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tv_/all': {
+      id: '/tv_/all'
+      path: '/tv/all'
+      fullPath: '/tv/all'
+      preLoaderRoute: typeof TvAllRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/movies_/all': {
+      id: '/movies_/all'
+      path: '/movies/all'
+      fullPath: '/movies/all'
+      preLoaderRoute: typeof MoviesAllRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/keyword/$slug': {
       id: '/keyword/$slug'
       path: '/keyword/$slug'
@@ -469,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/director/$slug'
       fullPath: '/director/$slug'
       preLoaderRoute: typeof DirectorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/books_/all': {
+      id: '/books_/all'
+      path: '/books/all'
+      fullPath: '/books/all'
+      preLoaderRoute: typeof BooksAllRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/author/$slug': {
@@ -620,10 +680,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminNewRoute: AdminNewRoute,
   ApiItemsRoute: ApiItemsRouteWithChildren,
   AuthorSlugRoute: AuthorSlugRoute,
+  BooksAllRoute: BooksAllRoute,
   DirectorSlugRoute: DirectorSlugRoute,
   GenreSlugRoute: GenreSlugRoute,
   ItemSlugRoute: ItemSlugRoute,
   KeywordSlugRoute: KeywordSlugRoute,
+  MoviesAllRoute: MoviesAllRoute,
+  TvAllRoute: TvAllRoute,
   AdminIndexRoute: AdminIndexRoute,
   BooksDecadeDecadeRoute: BooksDecadeDecadeRoute,
   BooksListSlugRoute: BooksListSlugRoute,

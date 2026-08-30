@@ -5,22 +5,20 @@ import { getItems } from "@/server/items"
 export const Route = createFileRoute("/")({
   loader: async () => {
     const items = await getItems({ data: {} })
+    const recentItemsFor = (type: "book" | "movie" | "tv") =>
+      items
+        .filter((item) => item.type === type)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        .slice(0, 12)
+
     return [
-      {
-        title: "Books",
-        to: "/books" as const,
-        items: items.filter((item) => item.type === "book"),
-      },
+      { title: "Books", to: "/books" as const, items: recentItemsFor("book") },
       {
         title: "Movies",
         to: "/movies" as const,
-        items: items.filter((item) => item.type === "movie"),
+        items: recentItemsFor("movie"),
       },
-      {
-        title: "TV",
-        to: "/tv" as const,
-        items: items.filter((item) => item.type === "tv"),
-      },
+      { title: "TV", to: "/tv" as const, items: recentItemsFor("tv") },
     ].filter((row) => row.items.length)
   },
   component: Home,
