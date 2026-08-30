@@ -98,6 +98,19 @@
   scroll-padding-inline-end: 1rem;
 }
 
+.home-carousel-contained {
+  padding-inline: 0;
+  scroll-padding-inline: 0;
+}
+
+.home-carousel-controls:has([blossom-prev][disabled]):has(
+    [blossom-next][disabled]
+  ) {
+  display: none;
+}
+
 @media (pointer: coarse) {
-  .home-carousel-controls { display: none; }
+  .home-carousel-controls {
+    display: none;
+  }
 }
