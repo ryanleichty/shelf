@@ -49,6 +49,10 @@ export function ensureDatabase() {
         edition TEXT,
         genres TEXT NOT NULL DEFAULT '[]',
         description TEXT,
+        subtitle TEXT,
+        page_count INTEGER,
+        publisher TEXT,
+        isbn_13 TEXT,
         notes TEXT NOT NULL DEFAULT '',
         acquired_at TEXT,
         created_at TEXT NOT NULL,
@@ -103,6 +107,16 @@ export function ensureDatabase() {
       )
     if (!columns.rows.some((column) => column.name === "runtime"))
       await getClient().execute("ALTER TABLE items ADD COLUMN runtime INTEGER")
+    if (!columns.rows.some((column) => column.name === "subtitle"))
+      await getClient().execute("ALTER TABLE items ADD COLUMN subtitle TEXT")
+    if (!columns.rows.some((column) => column.name === "page_count"))
+      await getClient().execute(
+        "ALTER TABLE items ADD COLUMN page_count INTEGER"
+      )
+    if (!columns.rows.some((column) => column.name === "publisher"))
+      await getClient().execute("ALTER TABLE items ADD COLUMN publisher TEXT")
+    if (!columns.rows.some((column) => column.name === "isbn_13"))
+      await getClient().execute("ALTER TABLE items ADD COLUMN isbn_13 TEXT")
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,

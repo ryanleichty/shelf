@@ -66,6 +66,18 @@ if (!columns.rows.some((column) => column.name === "certification")) {
 if (!columns.rows.some((column) => column.name === "runtime")) {
   await client.execute("ALTER TABLE items ADD COLUMN runtime INTEGER")
 }
+if (!columns.rows.some((column) => column.name === "subtitle")) {
+  await client.execute("ALTER TABLE items ADD COLUMN subtitle TEXT")
+}
+if (!columns.rows.some((column) => column.name === "page_count")) {
+  await client.execute("ALTER TABLE items ADD COLUMN page_count INTEGER")
+}
+if (!columns.rows.some((column) => column.name === "publisher")) {
+  await client.execute("ALTER TABLE items ADD COLUMN publisher TEXT")
+}
+if (!columns.rows.some((column) => column.name === "isbn_13")) {
+  await client.execute("ALTER TABLE items ADD COLUMN isbn_13 TEXT")
+}
 await client.execute(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
