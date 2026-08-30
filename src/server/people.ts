@@ -65,10 +65,14 @@ async function peopleFor(kind: PersonKind): Promise<Person[]> {
 export const getPeople = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin()
   await ensureDatabase()
-  const [authors, directors, actors] = await Promise.all(
+  const [authorPeople, directorPeople, actorPeople] = await Promise.all(
     personKinds.map((kind) => peopleFor(kind))
   )
-  return { authors, directors, actors }
+  return {
+    authors: authorPeople,
+    directors: directorPeople,
+    actors: actorPeople,
+  }
 })
 
 export const savePerson = createServerFn({ method: "POST" })
@@ -148,30 +152,24 @@ export const mergePeople = createServerFn({ method: "POST" })
 
 async function mergeAuthors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [source, survivor] = await Promise.all([
-      tx
-        .select()
-        .from(authors)
-        .where(eq(authors.id, sourceId))
-        .limit(1),
-      tx
-        .select()
-        .from(authors)
-        .where(eq(authors.id, survivorId))
-        .limit(1),
+    const [[source], [survivor]] = await Promise.all([
+      tx.select().from(authors).where(eq(authors.id, sourceId)).limit(1),
+      tx.select().from(authors).where(eq(authors.id, survivorId)).limit(1),
     ])
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.openLibraryKey && survivor.openLibraryKey)
-      throw new Error("People with different provider records cannot be merged.")
-    await tx
-      .insert(itemAuthors)
-      .select({
-        itemId: itemAuthors.itemId,
-        authorId: sql`${survivorId}`,
-      })
+      throw new Error(
+        "People with different provider records cannot be merged."
+      )
+    const sourceJoins = await tx
+      .select({ itemId: itemAuthors.itemId })
       .from(itemAuthors)
       .where(eq(itemAuthors.authorId, sourceId))
-      .onConflictDoNothing()
+    for (const join of sourceJoins)
+      await tx
+        .insert(itemAuthors)
+        .values({ itemId: join.itemId, authorId: survivorId })
+        .onConflictDoNothing()
     if (source.openLibraryKey)
       await tx
         .update(authors)
@@ -184,30 +182,24 @@ async function mergeAuthors(sourceId: number, survivorId: number) {
 
 async function mergeDirectors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [source, survivor] = await Promise.all([
-      tx
-        .select()
-        .from(directors)
-        .where(eq(directors.id, sourceId))
-        .limit(1),
-      tx
-        .select()
-        .from(directors)
-        .where(eq(directors.id, survivorId))
-        .limit(1),
+    const [[source], [survivor]] = await Promise.all([
+      tx.select().from(directors).where(eq(directors.id, sourceId)).limit(1),
+      tx.select().from(directors).where(eq(directors.id, survivorId)).limit(1),
     ])
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.tmdbPersonId && survivor.tmdbPersonId)
-      throw new Error("People with different provider records cannot be merged.")
-    await tx
-      .insert(itemDirectors)
-      .select({
-        itemId: itemDirectors.itemId,
-        directorId: sql`${survivorId}`,
-      })
+      throw new Error(
+        "People with different provider records cannot be merged."
+      )
+    const sourceJoins = await tx
+      .select({ itemId: itemDirectors.itemId })
       .from(itemDirectors)
       .where(eq(itemDirectors.directorId, sourceId))
-      .onConflictDoNothing()
+    for (const join of sourceJoins)
+      await tx
+        .insert(itemDirectors)
+        .values({ itemId: join.itemId, directorId: survivorId })
+        .onConflictDoNothing()
     if (source.tmdbPersonId)
       await tx
         .update(directors)
@@ -220,23 +212,28 @@ async function mergeDirectors(sourceId: number, survivorId: number) {
 
 async function mergeActors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [source, survivor] = await Promise.all([
+    const [[source], [survivor]] = await Promise.all([
       tx.select().from(actors).where(eq(actors.id, sourceId)).limit(1),
       tx.select().from(actors).where(eq(actors.id, survivorId)).limit(1),
     ])
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.tmdbPersonId && survivor.tmdbPersonId)
-      throw new Error("People with different provider records cannot be merged.")
-    await tx
-      .insert(itemActors)
-      .select({
-        itemId: itemActors.itemId,
-        actorId: sql`${survivorId}`,
-        position: itemActors.position,
-      })
+      throw new Error(
+        "People with different provider records cannot be merged."
+      )
+    const sourceJoins = await tx
+      .select({ itemId: itemActors.itemId, position: itemActors.position })
       .from(itemActors)
       .where(eq(itemActors.actorId, sourceId))
-      .onConflictDoNothing()
+    for (const join of sourceJoins)
+      await tx
+        .insert(itemActors)
+        .values({
+          itemId: join.itemId,
+          actorId: survivorId,
+          position: join.position,
+        })
+        .onConflictDoNothing()
     if (source.tmdbPersonId)
       await tx
         .update(actors)

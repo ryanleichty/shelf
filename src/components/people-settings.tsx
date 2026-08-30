@@ -25,6 +25,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 } from "@/components/ui/combobox"
 import {
   Empty,
@@ -33,13 +34,25 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import {
   Table,
   TableBody,
@@ -125,7 +138,9 @@ export function PeopleSettings({
       setEditing(null)
       setMergeTarget(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Couldn’t merge people.")
+      setError(
+        cause instanceof Error ? cause.message : "Couldn’t merge people."
+      )
     } finally {
       setBusy(false)
       setConfirmingMerge(false)
@@ -141,7 +156,9 @@ export function PeopleSettings({
       await onChange()
       setEditing(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Couldn’t delete person.")
+      setError(
+        cause instanceof Error ? cause.message : "Couldn’t delete person."
+      )
     } finally {
       setBusy(false)
       setConfirmingDelete(false)
@@ -167,9 +184,7 @@ export function PeopleSettings({
             <PeopleTable
               kind={kind}
               onQueryChange={setQuery}
-              onSelect={(person) =>
-                setEditing({ ...person, kind })
-              }
+              onSelect={(person) => setEditing({ ...person, kind })}
               people={people[`${kind}s`]}
               query={query}
             />
@@ -177,10 +192,15 @@ export function PeopleSettings({
         ))}
       </Tabs>
 
-      <Sheet onOpenChange={(open) => !open && closeSheet()} open={Boolean(editing)}>
+      <Sheet
+        onOpenChange={(open) => !open && closeSheet()}
+        open={Boolean(editing)}
+      >
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Edit {editing ? labels[editing.kind].toLowerCase() : "person"}</SheetTitle>
+            <SheetTitle>
+              Edit {editing ? labels[editing.kind].toLowerCase() : "person"}
+            </SheetTitle>
             <SheetDescription>
               Correct the name or slug, merge duplicate people, or remove unused
               people.
@@ -223,13 +243,20 @@ export function PeopleSettings({
                     itemToStringValue={(person) => person.name}
                     items={mergeOptions}
                     onValueChange={setMergeTarget}
-                    render={
-                      <Button id="merge-person" type="button" variant="outline">
-                        {mergeTarget?.name ?? `Choose ${labels[editing.kind].toLowerCase()}…`}
-                      </Button>
-                    }
                     value={mergeTarget}
                   >
+                    <ComboboxTrigger
+                      render={
+                        <Button
+                          id="merge-person"
+                          type="button"
+                          variant="outline"
+                        />
+                      }
+                    >
+                      {mergeTarget?.name ??
+                        `Choose ${labels[editing.kind].toLowerCase()}…`}
+                    </ComboboxTrigger>
                     <ComboboxContent>
                       <ComboboxInput placeholder="Search people…" />
                       <ComboboxEmpty>No people found.</ComboboxEmpty>
@@ -337,7 +364,9 @@ function PeopleTable({
   onSelect: (person: Person) => void
 }) {
   const filteredPeople = people.filter((person) =>
-    `${person.name} ${person.slug}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+    `${person.name} ${person.slug}`
+      .toLocaleLowerCase()
+      .includes(query.toLocaleLowerCase())
   )
   const plural = `${labels[kind]}s`
 
@@ -374,7 +403,9 @@ function PeopleTable({
                 <TableRow key={person.id} onClick={() => onSelect(person)}>
                   <TableCell className="font-medium">{person.name}</TableCell>
                   <TableCell>{person.slug}</TableCell>
-                  <TableCell className="text-right">{person.itemCount}</TableCell>
+                  <TableCell className="text-right">
+                    {person.itemCount}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -386,9 +417,7 @@ function PeopleTable({
                 <UsersRoundIcon />
               </EmptyMedia>
               <EmptyTitle>No {plural.toLocaleLowerCase()} found</EmptyTitle>
-              <EmptyDescription>
-                Try a different search.
-              </EmptyDescription>
+              <EmptyDescription>Try a different search.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

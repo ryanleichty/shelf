@@ -262,8 +262,7 @@ export const importItems = createServerFn({ method: "POST" })
         if (data.type !== "book" && resolved.cast !== undefined)
           await replaceItemCast(
             created.id,
-            resolved.castPeople ??
-              resolved.cast.map((name) => ({ name }))
+            resolved.castPeople ?? resolved.cast.map((name) => ({ name }))
           )
         if (data.type === "movie")
           await replaceItemCollection(created.id, resolved.collection ?? null)
@@ -515,7 +514,11 @@ const normalizeEdition = (edition?: string | null) => edition?.trim() || null
 
 type TagKind = "genre" | "keyword" | "author" | "director"
 
-export async function upsertTags(itemId: number, kind: TagKind, names: string[]) {
+export async function upsertTags(
+  itemId: number,
+  kind: TagKind,
+  names: string[]
+) {
   const table =
     kind === "genre"
       ? genres
@@ -579,12 +582,12 @@ function parseCreatorNames(creator: string) {
     .filter(Boolean)
 }
 
-async function replaceItemCreators(
+export async function replaceItemCreators(
   itemId: number,
   type: Item["type"],
   creators: string | string[] | ProviderPerson[]
 ) {
-  const people =
+  const people: ProviderPerson[] =
     typeof creators === "string"
       ? parseCreatorNames(creators).map((name) => ({ name }))
       : creators.map((creator) =>
@@ -599,12 +602,11 @@ async function replaceItemCreators(
     ).values(),
   ]
   const kind = type === "book" ? "author" : "director"
-  await db.delete(kind === "author" ? itemAuthors : itemDirectors).where(
-    eq(
-      kind === "author" ? itemAuthors.itemId : itemDirectors.itemId,
-      itemId
+  await db
+    .delete(kind === "author" ? itemAuthors : itemDirectors)
+    .where(
+      eq(kind === "author" ? itemAuthors.itemId : itemDirectors.itemId, itemId)
     )
-  )
   for (const person of normalized) {
     const id =
       kind === "author"
@@ -623,7 +625,10 @@ async function replaceItemCreators(
   }
 }
 
-export async function replaceItemCast(itemId: number, people: ProviderPerson[]) {
+export async function replaceItemCast(
+  itemId: number,
+  people: ProviderPerson[]
+) {
   const normalized = [
     ...new Map(
       people
@@ -675,7 +680,11 @@ async function upsertAuthor(person: ProviderPerson) {
   }
   const [created] = await db
     .insert(authors)
-    .values({ slug, name: person.name, openLibraryKey: person.providerId ?? null })
+    .values({
+      slug,
+      name: person.name,
+      openLibraryKey: person.providerId ?? null,
+    })
     .returning({ id: authors.id })
   return created.id
 }
@@ -713,7 +722,11 @@ async function upsertDirector(person: ProviderPerson) {
   }
   const [created] = await db
     .insert(directors)
-    .values({ slug, name: person.name, tmdbPersonId: person.providerId ?? null })
+    .values({
+      slug,
+      name: person.name,
+      tmdbPersonId: person.providerId ?? null,
+    })
     .returning({ id: directors.id })
   return created.id
 }
@@ -751,7 +764,11 @@ async function upsertActor(person: ProviderPerson) {
   }
   const [created] = await db
     .insert(actors)
-    .values({ slug, name: person.name, tmdbPersonId: person.providerId ?? null })
+    .values({
+      slug,
+      name: person.name,
+      tmdbPersonId: person.providerId ?? null,
+    })
     .returning({ id: actors.id })
   return created.id
 }
@@ -1336,9 +1353,9 @@ export async function getCollectionResultById(data: {
           (person) => person.job === "Creator" || person.job === "Director"
         ))
       : result.credits?.crew?.find((person) => person.job === "Director")
-  const creator = creatorPerson?.name ?? (
-    data.type === "tv" ? "Creator unavailable" : "Director unavailable"
-  )
+  const creator =
+    creatorPerson?.name ??
+    (data.type === "tv" ? "Creator unavailable" : "Director unavailable")
   return {
     id: data.id,
     type: data.type,
@@ -1432,15 +1449,19 @@ function tmdbCastPeople(
     type === "movie" ? result.credits?.cast : result.aggregate_credits?.cast
   if (!cast) return undefined
   return cast
-    .map((person, index) => ({
-      name: person.name?.trim(),
-      providerId:
-        typeof person.id === "number" ? String(person.id) : undefined,
-      order: person.order ?? index,
-    }))
-    .filter((person): person is ProviderPerson & { order: number } =>
-      Boolean(person.name)
-    )
+    .flatMap((person, index) => {
+      const name = person.name?.trim()
+      if (!name) return []
+      return [
+        {
+          name,
+          ...(typeof person.id === "number"
+            ? { providerId: String(person.id) }
+            : {}),
+          order: person.order ?? index,
+        },
+      ]
+    })
     .sort((a, b) => a.order - b.order)
     .map(({ name, providerId }) => ({ name, providerId }))
 }
@@ -1809,9 +1830,14 @@ async function openLibraryAuthors(
         const providerId = normalizeOpenLibraryAuthorKey(author.author?.key)
         if (author.name?.trim()) return { name: author.name.trim(), providerId }
         if (!providerId) return undefined
-        const response = await fetch(`https://openlibrary.org${providerId}.json`, {
-          headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-        })
+        const response = await fetch(
+          `https://openlibrary.org${providerId}.json`,
+          {
+            headers: {
+              "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
+            },
+          }
+        )
         if (!response.ok) return undefined
         const name = ((await response.json()) as { name?: string }).name?.trim()
         return name ? { name, providerId } : undefined
@@ -2496,7 +2522,10 @@ export const saveItem = createServerFn({ method: "POST" })
       await replaceItemTags(data.id, { genres: data.genres })
       await replaceItemCreators(data.id, data.type, primaryPeople)
       if (data.type !== "book")
-        await replaceItemCast(data.id, data.actors.map((name) => ({ name })))
+        await replaceItemCast(
+          data.id,
+          data.actors.map((name) => ({ name }))
+        )
       return { id: data.id, slug: data.slug }
     }
     if (
@@ -2518,7 +2547,10 @@ export const saveItem = createServerFn({ method: "POST" })
     await replaceItemTags(item.id, { genres: data.genres })
     await replaceItemCreators(item.id, data.type, primaryPeople)
     if (data.type !== "book")
-      await replaceItemCast(item.id, data.actors.map((name) => ({ name })))
+      await replaceItemCast(
+        item.id,
+        data.actors.map((name) => ({ name }))
+      )
     return item
   })
 

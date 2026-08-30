@@ -413,7 +413,10 @@ function Settings() {
         )}
         {data.isAdmin && (
           <TabsContent value="people">
-            <PeopleSettings people={people} onChange={() => router.invalidate()} />
+            <PeopleSettings
+              people={people}
+              onChange={() => router.invalidate()}
+            />
           </TabsContent>
         )}
       </Tabs>

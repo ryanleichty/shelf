@@ -161,8 +161,12 @@ export function ensureDatabase() {
         open_library_key TEXT UNIQUE
       )
     `)
-    const authorColumns = await getClient().execute("PRAGMA table_info(authors)")
-    if (!authorColumns.rows.some((column) => column.name === "open_library_key"))
+    const authorColumns = await getClient().execute(
+      "PRAGMA table_info(authors)"
+    )
+    if (
+      !authorColumns.rows.some((column) => column.name === "open_library_key")
+    )
       await getClient().execute(
         "ALTER TABLE authors ADD COLUMN open_library_key TEXT"
       )
@@ -187,7 +191,9 @@ export function ensureDatabase() {
     const directorColumns = await getClient().execute(
       "PRAGMA table_info(directors)"
     )
-    if (!directorColumns.rows.some((column) => column.name === "tmdb_person_id"))
+    if (
+      !directorColumns.rows.some((column) => column.name === "tmdb_person_id")
+    )
       await getClient().execute(
         "ALTER TABLE directors ADD COLUMN tmdb_person_id TEXT"
       )
