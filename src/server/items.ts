@@ -2629,17 +2629,22 @@ export const getMovieTrailer = createServerFn({ method: "GET" })
         results?: Array<{
           key?: string
           official?: boolean
+          iso_3166_1?: string
+          iso_639_1?: string
           site?: string
           type?: string
         }>
       }
       const trailers = (body.results ?? []).filter(
         (video) =>
+          video.official === true &&
           video.type === "Trailer" &&
           video.site === "YouTube" &&
+          video.iso_3166_1 === "US" &&
+          video.iso_639_1 === "en" &&
           Boolean(video.key?.trim())
       )
-      const trailer = trailers.find((video) => video.official) ?? trailers[0]
+      const trailer = trailers[0]
       return trailer?.key ? { key: trailer.key } : null
     } catch {
       return null
