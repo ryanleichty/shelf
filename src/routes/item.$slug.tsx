@@ -284,11 +284,11 @@ function ItemDetail() {
       </div>
       {similarItems.length > 0 && (
         <section
-          className="item-shelf-carousel container mx-auto mt-12 max-w-5xl px-4"
+          className="item-shelf-carousel mt-12"
           aria-labelledby="also-on-the-shelf"
         >
           <h2
-            className="mb-4 text-xl font-semibold tracking-tight"
+            className="container mx-auto mb-4 max-w-5xl px-4 text-xl font-semibold tracking-tight"
             id="also-on-the-shelf"
           >
             Also on the shelf
