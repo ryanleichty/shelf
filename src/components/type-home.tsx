@@ -6,7 +6,9 @@ import { HomeCarousel } from "@/components/home-carousel"
 import { Button } from "@/components/ui/button"
 import type { Item } from "@/server/schema"
 
-type HomeRow = { title: string; slug?: string; items: Item[] }
+type HomeRow =
+  | { title: string; kind: "recent"; items: Item[] }
+  | { title: string; kind: "list"; slug: string; items: Item[] }
 
 export function TypeHome({
   addLabel,
@@ -41,11 +43,17 @@ export function TypeHome({
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
                 <h2 className="text-xl font-semibold tracking-tight">
-                  {row.slug ? (
+                  {row.kind === "list" ? (
                     <Link
                       className="hover:underline"
                       params={{ slug: row.slug }}
-                      to="/genre/$slug"
+                      to={
+                        type === "book"
+                          ? "/books/list/$slug"
+                          : type === "movie"
+                            ? "/movies/list/$slug"
+                            : "/tv/list/$slug"
+                      }
                     >
                       {row.title}
                     </Link>

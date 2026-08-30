@@ -66,13 +66,18 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getSignedInStatus } from "@/server/items"
+import { ListsSettings } from "@/components/lists-settings"
+import { getListPlacements } from "@/server/lists"
 import { deleteUser, getSettings, saveProfile, saveUser } from "@/server/users"
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
-  loader: () => getSettings(),
+  loader: async () => ({
+    settings: await getSettings(),
+    placements: await getListPlacements(),
+  }),
   component: Settings,
 })
 
@@ -86,7 +91,7 @@ type UserForm = {
 }
 
 function Settings() {
-  const data = Route.useLoaderData()
+  const { settings: data, placements } = Route.useLoaderData()
   const router = useRouter()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -169,6 +174,7 @@ function Settings() {
       <Tabs className="mt-8" defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="lists">Lists</TabsTrigger>
           {data.isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
         </TabsList>
         <TabsContent value="profile">
@@ -263,6 +269,12 @@ function Settings() {
               </FieldGroup>
             </form>
           </Card>
+        </TabsContent>
+        <TabsContent value="lists">
+          <ListsSettings
+            onChange={() => router.invalidate()}
+            placements={placements}
+          />
         </TabsContent>
         {data.isAdmin && (
           <TabsContent value="users">

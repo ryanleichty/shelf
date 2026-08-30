@@ -182,9 +182,16 @@ export function ensureDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
+        system INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
       )
     `)
+    const listColumns = await getClient().execute("PRAGMA table_info(lists)")
+    if (!listColumns.rows.some((column) => column.name === "system")) {
+      await getClient().execute(
+        "ALTER TABLE lists ADD COLUMN system INTEGER NOT NULL DEFAULT 0"
+      )
+    }
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS list_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -195,12 +202,46 @@ export function ensureDatabase() {
         UNIQUE(list_id, item_id)
       )
     `)
+    await getClient().execute(`
+      CREATE TABLE IF NOT EXISTS list_placements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        type TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        visible INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(list_id, type)
+      )
+    `)
+    const placementColumns = await getClient().execute(
+      "PRAGMA table_info(list_placements)"
+    )
+    if (
+      !placementColumns.rows.some((column) => column.name === "kind") ||
+      placementColumns.rows.find((column) => column.name === "list_id")?.notnull
+    ) {
+      await getClient().execute(`
+        CREATE TABLE list_placements_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          type TEXT NOT NULL,
+          position INTEGER NOT NULL,
+          visible INTEGER NOT NULL DEFAULT 1,
+          UNIQUE(list_id, type)
+        );
+        INSERT INTO list_placements_new (id, list_id, kind, type, position, visible)
+        SELECT id, list_id, 'list', type, position, visible FROM list_placements;
+        DROP TABLE list_placements;
+        ALTER TABLE list_placements_new RENAME TO list_placements;
+      `)
+    }
     const now = new Date().toISOString()
     await getClient().execute({
       sql: `
-        INSERT INTO lists (slug, name, created_at)
-        VALUES (?, ?, ?), (?, ?, ?)
-        ON CONFLICT(slug) DO NOTHING
+        INSERT INTO lists (slug, name, system, created_at)
+        VALUES (?, ?, 1, ?), (?, ?, 1, ?)
+        ON CONFLICT(slug) DO UPDATE SET system = 1
       `,
       args: [
         "watchlist",
@@ -211,6 +252,33 @@ export function ensureDatabase() {
         now,
       ],
     })
+    await getClient().execute(`
+      INSERT INTO list_placements (list_id, kind, type, position, visible)
+      SELECT id, 'list', 'book', 1, 1 FROM lists WHERE slug = 'reading-list'
+      ON CONFLICT(list_id, type) DO NOTHING
+    `)
+    await getClient().execute(`
+      INSERT INTO list_placements (list_id, kind, type, position, visible)
+      SELECT id, 'list', 'movie', 1, 1 FROM lists WHERE slug = 'watchlist'
+      ON CONFLICT(list_id, type) DO NOTHING
+    `)
+    await getClient().execute(`
+      INSERT INTO list_placements (list_id, kind, type, position, visible)
+      SELECT id, 'list', 'tv', 1, 1 FROM lists WHERE slug = 'watchlist'
+      ON CONFLICT(list_id, type) DO NOTHING
+    `)
+    for (const type of ["book", "movie", "tv"]) {
+      await getClient().execute({
+        sql: `
+          INSERT INTO list_placements (list_id, kind, type, position, visible)
+          SELECT NULL, 'recent', ?, 0, 1
+          WHERE NOT EXISTS (
+            SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
+          )
+        `,
+        args: [type, type],
+      })
+    }
     if (!isEphemeral) return
     const count = await getClient().execute(
       "SELECT COUNT(*) AS count FROM items"

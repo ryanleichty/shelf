@@ -43,6 +43,13 @@
       "when": 1788017105426,
       "tag": "0005_absurd_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788063789318,
+      "tag": "0006_custom_list_placements",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,15 @@
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm"
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
@@ -19,6 +30,7 @@ import {
   itemStatuses,
   itemTypes,
   listItems,
+  listPlacements,
   lists,
   users,
   type Item,
@@ -1402,15 +1414,6 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
     }
   })
 
-const namedLists: Array<{
-  slug: string
-  title: string
-  allowedTypes: Item["type"][]
-}> = [
-  { slug: "watchlist", title: "Watchlist", allowedTypes: ["movie", "tv"] },
-  { slug: "reading-list", title: "Reading list", allowedTypes: ["book"] },
-]
-
 export const getItemsByList = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
@@ -1421,15 +1424,24 @@ export const getItemsByList = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     await ensureDatabase()
-    const namedList = namedLists.find((list) => list.slug === data.listSlug)
-    if (!namedList?.allowedTypes.includes(data.type)) return null
-
     const [list] = await db
       .select({ id: lists.id, name: lists.name })
       .from(lists)
+      .innerJoin(listPlacements, eq(listPlacements.listId, lists.id))
       .where(eq(lists.slug, data.listSlug))
       .limit(1)
     if (!list) return null
+    const [placement] = await db
+      .select({ id: listPlacements.id })
+      .from(listPlacements)
+      .where(
+        and(
+          eq(listPlacements.listId, list.id),
+          eq(listPlacements.type, data.type)
+        )
+      )
+      .limit(1)
+    if (!placement) return null
 
     const filters = [eq(listItems.listId, list.id), eq(items.type, data.type)]
     if (data.query?.trim()) {
@@ -1459,112 +1471,90 @@ export const getItemsByList = createServerFn({ method: "GET" })
     }
   })
 
-const listMembershipInput = z.object({
-  itemId: z.number().int(),
-  listSlug: z.string().min(1).max(120),
-})
-
-export const addItemToList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
-  .handler(async ({ data }) => {
-    await requireSignedIn()
-    await ensureDatabase()
-    const [list] = await db
-      .select()
-      .from(lists)
-      .where(eq(lists.slug, data.listSlug))
-      .limit(1)
-    if (!list) throw new Error("List not found.")
-    await db
-      .insert(listItems)
-      .values({
-        listId: list.id,
-        itemId: data.itemId,
-        position: Date.now(),
-        addedAt: new Date().toISOString(),
-      })
-      .onConflictDoNothing()
-    return { ok: true }
-  })
-
-export const removeItemFromList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
-  .handler(async ({ data }) => {
-    await requireSignedIn()
-    await ensureDatabase()
-    const [list] = await db
-      .select()
-      .from(lists)
-      .where(eq(lists.slug, data.listSlug))
-      .limit(1)
-    if (!list) return { ok: true }
-    await db
-      .delete(listItems)
-      .where(
-        and(eq(listItems.listId, list.id), eq(listItems.itemId, data.itemId))
-      )
-    return { ok: true }
-  })
-
 export const getHomeRows = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ type: z.enum(itemTypes).optional() }).optional())
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const allItems = await enrichItems(
-      await db
-        .select()
-        .from(items)
-        .where(data?.type ? eq(items.type, data.type) : undefined)
-        .orderBy(asc(items.title))
-    )
-    const memberships = await db
-      .select({
-        listSlug: lists.slug,
-        itemId: listItems.itemId,
-        position: listItems.position,
-      })
-      .from(listItems)
-      .innerJoin(lists, eq(listItems.listId, lists.id))
-      .orderBy(asc(listItems.position))
+  .inputValidator(z.object({ type: z.enum(itemTypes) }))
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      Array<
+        | { title: string; kind: "recent"; items: Item[] }
+        | { title: string; slug: string; kind: "list"; items: Item[] }
+      >
+    > => {
+      await ensureDatabase()
+      const recentItems = await enrichItems(
+        await db
+          .select()
+          .from(items)
+          .where(eq(items.type, data.type))
+          .orderBy(desc(items.createdAt))
+          .limit(12)
+      )
+      const placements = await db
+        .select({
+          listId: listPlacements.listId,
+          slug: lists.slug,
+          title: lists.name,
+          kind: listPlacements.kind,
+        })
+        .from(listPlacements)
+        .leftJoin(lists, eq(listPlacements.listId, lists.id))
+        .where(
+          and(
+            eq(listPlacements.type, data.type),
+            eq(listPlacements.visible, true)
+          )
+        )
+        .orderBy(asc(listPlacements.position))
+      const allItems = await enrichItems(
+        await db.select().from(items).where(eq(items.type, data.type))
+      )
+      const memberships = await db
+        .select({
+          listId: listItems.listId,
+          itemId: listItems.itemId,
+          position: listItems.position,
+        })
+        .from(listItems)
+        .orderBy(asc(listItems.position))
 
-    const rows: Array<{ title: string; slug?: string; items: Item[] }> = []
-    const itemsById = new Map(allItems.map((item) => [item.id, item]))
-    for (const { slug, title, allowedTypes } of namedLists) {
-      if (data?.type && !allowedTypes.includes(data.type)) continue
-      const rowItems = memberships.flatMap((membership) => {
-        const item = itemsById.get(membership.itemId)
-        return membership.listSlug === slug &&
-          item &&
-          allowedTypes.includes(item.type)
-          ? [item]
+      const itemsById = new Map(allItems.map((item) => [item.id, item]))
+      const rows: Array<
+        | { title: string; kind: "recent"; items: Item[] }
+        | { title: string; slug: string; kind: "list"; items: Item[] }
+      > = placements.flatMap<
+        | { title: string; kind: "recent"; items: Item[] }
+        | { title: string; slug: string; kind: "list"; items: Item[] }
+      >((placement) => {
+        if (placement.kind === "recent")
+          return recentItems.length
+            ? [
+                {
+                  title: "Recently added",
+                  kind: "recent" as const,
+                  items: recentItems,
+                },
+              ]
+            : []
+        const rowItems = memberships.flatMap((membership) => {
+          const item = itemsById.get(membership.itemId)
+          return membership.listId === placement.listId && item ? [item] : []
+        })
+        return rowItems.length
+          ? [
+              {
+                title: placement.title!,
+                slug: placement.slug!,
+                kind: "list" as const,
+                items: rowItems,
+              },
+            ]
           : []
       })
-      if (rowItems.length) rows.push({ title, items: rowItems })
+      return rows
     }
-
-    const genres = new Map<string, Item[]>()
-    for (const item of allItems) {
-      for (const genre of item.genres) {
-        const name = genre.trim()
-        if (!name) continue
-        genres.set(name, [...(genres.get(name) ?? []), item])
-      }
-    }
-    return [
-      ...rows,
-      ...[...genres.entries()]
-        .sort(
-          ([leftName, leftItems], [rightName, rightItems]) =>
-            rightItems.length - leftItems.length ||
-            leftName.localeCompare(rightName)
-        )
-        .map(([title, rowItems]) => ({
-          title,
-          slug: slugify(title),
-          items: rowItems,
-        })),
-    ]
-  })
+  )
 
 export const getItemBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))
@@ -1574,29 +1564,23 @@ export const getItemBySlug = createServerFn({ method: "GET" })
       await db.select().from(items).where(eq(items.slug, data.slug))
     )
     if (!item) return null
-    const listSlug = item.type === "book" ? "reading-list" : "watchlist"
-    const [list] = await db
-      .select()
-      .from(lists)
-      .where(eq(lists.slug, listSlug))
-      .limit(1)
-    const [membership] = list
-      ? await db
-          .select({ id: listItems.id })
-          .from(listItems)
-          .where(
-            and(eq(listItems.listId, list.id), eq(listItems.itemId, item.id))
-          )
-          .limit(1)
-      : []
+    const customLists = await db
+      .select({
+        slug: lists.slug,
+        name: lists.name,
+        containsItem: sql<boolean>`exists(
+          select 1 from ${listItems}
+          where ${listItems.listId} = ${lists.id}
+            and ${listItems.itemId} = ${item.id}
+        )`,
+      })
+      .from(listPlacements)
+      .innerJoin(lists, eq(listPlacements.listId, lists.id))
+      .where(eq(listPlacements.type, item.type))
+      .orderBy(asc(listPlacements.position))
     return {
       ...item,
-      targetList: {
-        slug: listSlug,
-        name:
-          list?.name ?? (item.type === "book" ? "Reading list" : "Watchlist"),
-        containsItem: Boolean(membership),
-      },
+      customLists,
     }
   })
 
