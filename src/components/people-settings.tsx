@@ -45,6 +45,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
+import { Input } from "@/components/ui/input"
 import {
   Sheet,
   SheetContent,
@@ -211,28 +212,24 @@ export function PeopleSettings({
               <FieldGroup className="px-4">
                 <Field>
                   <FieldLabel htmlFor="person-name">Name</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      id="person-name"
-                      onChange={(event) =>
-                        setEditing({ ...editing, name: event.target.value })
-                      }
-                      value={editing.name}
-                    />
-                  </InputGroup>
+                  <Input
+                    id="person-name"
+                    onChange={(event) =>
+                      setEditing({ ...editing, name: event.target.value })
+                    }
+                    value={editing.name}
+                  />
                 </Field>
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="person-slug">Slug</FieldLabel>
-                  <InputGroup>
-                    <InputGroupInput
-                      aria-invalid={Boolean(error)}
-                      id="person-slug"
-                      onChange={(event) =>
-                        setEditing({ ...editing, slug: event.target.value })
-                      }
-                      value={editing.slug}
-                    />
-                  </InputGroup>
+                  <Input
+                    aria-invalid={Boolean(error)}
+                    id="person-slug"
+                    onChange={(event) =>
+                      setEditing({ ...editing, slug: event.target.value })
+                    }
+                    value={editing.slug}
+                  />
                   <FieldError>{error}</FieldError>
                 </Field>
                 <Field>
@@ -257,8 +254,19 @@ export function PeopleSettings({
                       {mergeTarget?.name ??
                         `Choose ${labels[editing.kind].toLowerCase()}…`}
                     </ComboboxTrigger>
-                    <ComboboxContent>
-                      <ComboboxInput placeholder="Search people…" />
+                    <ComboboxContent
+                      collisionAvoidance={{
+                        align: "shift",
+                        fallbackAxisSide: "none",
+                        side: "shift",
+                      }}
+                      collisionPadding={8}
+                      positionMethod="fixed"
+                    >
+                      <ComboboxInput
+                        placeholder="Search people…"
+                        showTrigger={false}
+                      />
                       <ComboboxEmpty>No people found.</ComboboxEmpty>
                       <ComboboxList>
                         {(person) => (
