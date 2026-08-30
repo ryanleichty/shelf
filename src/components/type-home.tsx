@@ -53,7 +53,8 @@ export function TypeHome({
           {rows.map((row, index) => {
             const isSystemListRow =
               row.kind === "list" && row.slug === systemListSlug
-            if (isSystemListRow && emptySystemListRows.has(row.slug)) return null
+            if (isSystemListRow && emptySystemListRows.has(row.slug))
+              return null
 
             return (
               <section className="overflow-x-hidden" key={row.title}>
@@ -95,7 +96,8 @@ export function TypeHome({
                     isSystemListRow
                       ? (isEmpty) =>
                           setEmptySystemListRows((current) => {
-                            if (isEmpty === current.has(row.slug)) return current
+                            if (isEmpty === current.has(row.slug))
+                              return current
                             const next = new Set(current)
                             if (isEmpty) next.add(row.slug)
                             else next.delete(row.slug)

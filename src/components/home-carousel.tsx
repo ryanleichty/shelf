@@ -25,7 +25,9 @@ export function HomeCarousel({
   onEmptyChange?: (isEmpty: boolean) => void
   systemListSlug?: string
 }) {
-  const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(() => new Set())
+  const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(
+    () => new Set()
+  )
   const visibleItems = systemListSlug
     ? items.filter((item) => !hiddenItemIds.has(item.id))
     : items
@@ -65,9 +67,7 @@ export function HomeCarousel({
               className="w-full"
               item={item}
               onSystemListMembershipChange={
-                systemListSlug
-                  ? handleSystemListMembershipChange
-                  : undefined
+                systemListSlug ? handleSystemListMembershipChange : undefined
               }
               variant="carousel"
             />
