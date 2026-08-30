@@ -1219,7 +1219,7 @@ function tmdbScreenMetadata(
       results?: Array<{ iso_3166_1?: string; rating?: string }>
     }
   }
-): Pick<SyncedFields, "certification" | "runtime"> {
+): { certification?: string; runtime?: number } {
   const certification =
     type === "movie"
       ? tmdbMovieUsCertification(result.release_dates)
@@ -1235,30 +1235,29 @@ function tmdbScreenMetadata(
   }
 }
 
-function tmdbMovieUsCertification(
-  releaseDates?: {
-    results?: Array<{
-      iso_3166_1?: string
-      release_dates?: Array<{ certification?: string; type?: number }>
-    }>
-  }
-): string | undefined {
+function tmdbMovieUsCertification(releaseDates?: {
+  results?: Array<{
+    iso_3166_1?: string
+    release_dates?: Array<{ certification?: string; type?: number }>
+  }>
+}): string | undefined {
   const releases = releaseDates?.results?.find(
     (country) => country.iso_3166_1 === "US"
   )?.release_dates
   const theatrical = releases?.find(
     (release) => release.type === 3 && release.certification?.trim()
   )
-  return theatrical?.certification?.trim() ?? releases?.find(
-    (release) => release.certification?.trim()
-  )?.certification?.trim()
+  return (
+    theatrical?.certification?.trim() ??
+    releases
+      ?.find((release) => release.certification?.trim())
+      ?.certification?.trim()
+  )
 }
 
-function tmdbTvUsCertification(
-  contentRatings?: {
-    results?: Array<{ iso_3166_1?: string; rating?: string }>
-  }
-): string | undefined {
+function tmdbTvUsCertification(contentRatings?: {
+  results?: Array<{ iso_3166_1?: string; rating?: string }>
+}): string | undefined {
   return contentRatings?.results
     ?.find((country) => country.iso_3166_1 === "US")
     ?.rating?.trim()
