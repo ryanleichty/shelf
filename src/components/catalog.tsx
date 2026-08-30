@@ -144,9 +144,7 @@ export function Catalog({
           <Field>
             <FieldLabel htmlFor="catalog-format">Format</FieldLabel>
             <Select
-              onValueChange={(value) =>
-                setFormat((value ?? "all") as Format | "all")
-              }
+              onValueChange={(value) => setFormat(value ?? "all")}
               value={format}
             >
               <SelectTrigger id="catalog-format">
@@ -169,9 +167,7 @@ export function Catalog({
           <Field>
             <FieldLabel htmlFor="catalog-status">Status</FieldLabel>
             <Select
-              onValueChange={(value) =>
-                setStatus((value ?? "all") as Status | "all")
-              }
+              onValueChange={(value) => setStatus(value ?? "all")}
               value={status}
             >
               <SelectTrigger id="catalog-status">
@@ -236,7 +232,7 @@ export function Catalog({
         <Field>
           <FieldLabel htmlFor="catalog-sort">Sort</FieldLabel>
           <Select
-            onValueChange={(value) => setSort((value ?? "title-asc") as Sort)}
+            onValueChange={(value) => setSort(value ?? "title-asc")}
             value={sort}
           >
             <SelectTrigger id="catalog-sort">
