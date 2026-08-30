@@ -220,6 +220,7 @@ export const importItems = createServerFn({ method: "POST" })
             year: resolved.year ?? 0,
             coverImageUrl:
               (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
+            backdropImageUrl: resolved.backdropImageUrl || null,
             openLibraryKey: data.type === "book" ? match.id : null,
             tmdbId: data.type === "book" ? null : match.id,
             format: data.format || null,
@@ -259,6 +260,7 @@ export type LookupResult = {
   creator: string
   year: number | null
   coverImageUrl: string
+  backdropImageUrl?: string
   genres: string[]
   description?: string
   keywords?: string[]
@@ -1087,6 +1089,7 @@ export async function getCollectionResultById(data: {
     release_date?: string
     first_air_date?: string
     poster_path?: string | null
+    backdrop_path?: string | null
     overview?: string
     runtime?: number
     episode_run_time?: number[]
@@ -1146,6 +1149,9 @@ export async function getCollectionResultById(data: {
     coverImageUrl: result.poster_path
       ? `https://image.tmdb.org/t/p/w500${result.poster_path}`
       : "",
+    backdropImageUrl: result.backdrop_path
+      ? `https://image.tmdb.org/t/p/w1280${result.backdrop_path}`
+      : undefined,
     genres:
       result.genres?.flatMap((genre) => (genre.name ? [genre.name] : [])) ?? [],
     description: result.overview ?? "",
@@ -1280,6 +1286,7 @@ type SyncedFields = {
   collection?: CollectionInput | null
   certification?: string | null
   runtime?: number | null
+  backdropImageUrl?: string | null
 }
 
 export type ProviderSyncResult = {
@@ -1406,6 +1413,7 @@ async function getTmdbSyncMetadata(
     name?: string
     release_date?: string
     first_air_date?: string
+    backdrop_path?: string | null
     overview?: string
     runtime?: number
     episode_run_time?: number[]
@@ -1483,6 +1491,9 @@ async function getTmdbSyncMetadata(
       : {}),
     certification: screenMetadata.certification ?? null,
     runtime: screenMetadata.runtime ?? null,
+    backdropImageUrl: result.backdrop_path
+      ? `https://image.tmdb.org/t/p/w1280${result.backdrop_path}`
+      : null,
   }
 }
 
@@ -1554,6 +1565,7 @@ function changedFields(
     "collection",
     "certification",
     "runtime",
+    "backdropImageUrl",
   ] as const) {
     if (field === "collection" && item.type !== "movie") continue
     if (field === "cast" && item.type === "book") continue

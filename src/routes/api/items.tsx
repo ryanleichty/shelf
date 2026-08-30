@@ -34,6 +34,7 @@ const output = {
   tmdbId: items.tmdbId,
   openLibraryKey: items.openLibraryKey,
   coverImageUrl: items.coverImageUrl,
+  backdropImageUrl: items.backdropImageUrl,
 }
 
 export const Route = createFileRoute("/api/items")({
@@ -196,6 +197,7 @@ export const Route = createFileRoute("/api/items")({
                 coverImageUrl:
                   (await storeCover(resolved.coverImageUrl, resolved.slug)) ||
                   null,
+                backdropImageUrl: resolved.backdropImageUrl || null,
                 tmdbId: input.type === "book" ? null : providerId,
                 openLibraryKey: input.type === "book" ? providerId : null,
                 notes: "",

@@ -53,196 +53,213 @@ function ItemDetail() {
   }, [item.type])
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-10">
-      <div className="flex items-start justify-between gap-4">
-        <Link
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          search={{ query: lastCatalogQuery }}
-          to={
-            search.from === "all"
-              ? item.type === "book"
-                ? "/books/all"
-                : item.type === "tv"
-                  ? "/tv/all"
-                  : "/movies/all"
-              : item.type === "book"
-                ? "/books"
-                : item.type === "tv"
-                  ? "/tv"
-                  : "/movies"
-          }
-        >
-          <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
-          {item.type === "book"
-            ? "books"
-            : item.type === "tv"
-              ? "TV"
-              : "movies"}
-        </Link>
-        <ItemAdminActions
-          id={item.id}
-          providerId={item.type === "book" ? item.openLibraryKey : item.tmdbId}
-          title={item.title}
-          type={item.type}
-        />
-      </div>
-      <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
-        <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted">
-          {item.coverImageUrl ? (
-            <img
-              alt={item.title}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-              src={item.coverImageUrl}
-            />
-          ) : (
-            <span className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {item.type}
-            </span>
-          )}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[inherit] border"
+    <main>
+      {item.type !== "book" && item.backdropImageUrl && (
+        <div className="aspect-[21/9] w-full overflow-hidden bg-muted sm:aspect-[3/1]">
+          <img
+            alt=""
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+            src={item.backdropImageUrl}
           />
         </div>
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              {item.type} · <ItemYearLink type={item.type} year={item.year} />
-            </span>
-            {item.type !== "book" && item.certification?.trim() && (
-              <Badge variant="outline">{item.certification.trim()}</Badge>
-            )}
-            {item.type !== "book" && validRuntime(item.runtime) && (
-              <span>{formatRuntime(item.runtime)}</span>
-            )}
-            {item.status !== "owned" && (
-              <Badge variant="outline">
-                {item.status === "reading"
-                  ? "Reading"
-                  : item.status === "watching"
-                    ? "Watching"
-                    : "Borrowed"}
-              </Badge>
-            )}
-          </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            {item.title}
-          </h1>
-          <p className="mt-2 text-lg text-muted-foreground">
-            {(item.type === "book" ? item.authors : item.directors).length
-              ? (item.type === "book" ? item.authors : item.directors).map(
-                  (person, index) => (
-                    <span key={person}>
-                      {index > 0 && ", "}
-                      <Link
-                        params={{ slug: slugify(person) }}
-                        to={
-                          item.type === "book"
-                            ? "/author/$slug"
-                            : "/director/$slug"
-                        }
-                      >
-                        {person}
-                      </Link>
-                    </span>
-                  )
-                )
-              : item.creator}
-          </p>
-          {item.type !== "book" && item.actors.length > 0 && (
-            <p className="mt-1 text-lg text-muted-foreground">
-              {item.actors.slice(0, 8).map((person, index) => (
-                <span key={person}>
-                  {index > 0 && ", "}
-                  <Link params={{ slug: slugify(person) }} to="/actor/$slug">
-                    {person}
-                  </Link>
-                </span>
-              ))}
-            </p>
-          )}
-          <ItemListMenu
-            itemId={item.id}
-            itemType={item.type}
-            lists={item.customLists}
+      )}
+      <div className="container mx-auto max-w-5xl px-4 py-10">
+        <div className="flex items-start justify-between gap-4">
+          <Link
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            search={{ query: lastCatalogQuery }}
+            to={
+              search.from === "all"
+                ? item.type === "book"
+                  ? "/books/all"
+                  : item.type === "tv"
+                    ? "/tv/all"
+                    : "/movies/all"
+                : item.type === "book"
+                  ? "/books"
+                  : item.type === "tv"
+                    ? "/tv"
+                    : "/movies"
+            }
+          >
+            <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
+            {item.type === "book"
+              ? "books"
+              : item.type === "tv"
+                ? "TV"
+                : "movies"}
+          </Link>
+          <ItemAdminActions
+            id={item.id}
+            providerId={
+              item.type === "book" ? item.openLibraryKey : item.tmdbId
+            }
+            title={item.title}
+            type={item.type}
           />
-          {item.genres.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {item.genres.map((genre) => (
-                <Badge
-                  key={genre}
-                  render={
-                    <Link params={{ slug: slugify(genre) }} to="/genre/$slug" />
-                  }
-                  variant="secondary"
-                >
-                  {genre}
+        </div>
+        <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
+          <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted">
+            {item.coverImageUrl ? (
+              <img
+                alt={item.title}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                src={item.coverImageUrl}
+              />
+            ) : (
+              <span className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {item.type}
+              </span>
+            )}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 rounded-[inherit] border"
+            />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {item.type} · <ItemYearLink type={item.type} year={item.year} />
+              </span>
+              {item.type !== "book" && item.certification?.trim() && (
+                <Badge variant="outline">{item.certification.trim()}</Badge>
+              )}
+              {item.type !== "book" && validRuntime(item.runtime) && (
+                <span>{formatRuntime(item.runtime)}</span>
+              )}
+              {item.status !== "owned" && (
+                <Badge variant="outline">
+                  {item.status === "reading"
+                    ? "Reading"
+                    : item.status === "watching"
+                      ? "Watching"
+                      : "Borrowed"}
                 </Badge>
-              ))}
+              )}
             </div>
-          )}
-          {item.type === "movie" && item.collection && (
-            <div className="mt-4">
-              <Badge
-                render={
-                  <Link
-                    params={{ slug: item.collection.slug }}
-                    to="/collection/$slug"
-                  />
-                }
-                variant="secondary"
-              >
-                {item.collection.name}
-              </Badge>
-            </div>
-          )}
-          {item.description && (
-            <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
-              {item.description}
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+              {item.title}
+            </h1>
+            <p className="mt-2 text-lg text-muted-foreground">
+              {(item.type === "book" ? item.authors : item.directors).length
+                ? (item.type === "book" ? item.authors : item.directors).map(
+                    (person, index) => (
+                      <span key={person}>
+                        {index > 0 && ", "}
+                        <Link
+                          params={{ slug: slugify(person) }}
+                          to={
+                            item.type === "book"
+                              ? "/author/$slug"
+                              : "/director/$slug"
+                          }
+                        >
+                          {person}
+                        </Link>
+                      </span>
+                    )
+                  )
+                : item.creator}
             </p>
-          )}
-          {item.keywords.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {item.keywords.map((keyword) => (
+            {item.type !== "book" && item.actors.length > 0 && (
+              <p className="mt-1 text-lg text-muted-foreground">
+                {item.actors.slice(0, 8).map((person, index) => (
+                  <span key={person}>
+                    {index > 0 && ", "}
+                    <Link params={{ slug: slugify(person) }} to="/actor/$slug">
+                      {person}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
+            <ItemListMenu
+              itemId={item.id}
+              itemType={item.type}
+              lists={item.customLists}
+            />
+            {item.genres.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {item.genres.map((genre) => (
+                  <Badge
+                    key={genre}
+                    render={
+                      <Link
+                        params={{ slug: slugify(genre) }}
+                        to="/genre/$slug"
+                      />
+                    }
+                    variant="secondary"
+                  >
+                    {genre}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {item.type === "movie" && item.collection && (
+              <div className="mt-4">
                 <Badge
-                  key={keyword}
                   render={
                     <Link
-                      params={{ slug: slugify(keyword) }}
-                      to="/keyword/$slug"
+                      params={{ slug: item.collection.slug }}
+                      to="/collection/$slug"
                     />
                   }
                   variant="secondary"
                 >
-                  {titleCase(keyword)}
+                  {item.collection.name}
                 </Badge>
-              ))}
+              </div>
+            )}
+            {item.description && (
+              <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
+                {item.description}
+              </p>
+            )}
+            {item.keywords.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {item.keywords.map((keyword) => (
+                  <Badge
+                    key={keyword}
+                    render={
+                      <Link
+                        params={{ slug: slugify(keyword) }}
+                        to="/keyword/$slug"
+                      />
+                    }
+                    variant="secondary"
+                  >
+                    {titleCase(keyword)}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+              {(item.format || item.edition) && (
+                <p className="flex items-center gap-2">
+                  {item.format && (
+                    <>
+                      <FormatIcon format={item.format} />
+                      <span>{formatLabel(item.format)}</span>
+                    </>
+                  )}
+                  {item.edition && <span>{editionLabel(item.edition)}</span>}
+                </p>
+              )}
+              {item.status === "borrowed" && item.borrower && (
+                <p>
+                  With {item.borrower}
+                  {item.loanedAt
+                    ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}`
+                    : ""}
+                </p>
+              )}
             </div>
-          )}
-          <div className="mt-6 space-y-2 text-sm text-muted-foreground">
-            {(item.format || item.edition) && (
-              <p className="flex items-center gap-2">
-                {item.format && (
-                  <>
-                    <FormatIcon format={item.format} />
-                    <span>{formatLabel(item.format)}</span>
-                  </>
-                )}
-                {item.edition && <span>{editionLabel(item.edition)}</span>}
-              </p>
-            )}
-            {item.status === "borrowed" && item.borrower && (
-              <p>
-                With {item.borrower}
-                {item.loanedAt
-                  ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}`
-                  : ""}
-              </p>
-            )}
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </main>
   )
 }
