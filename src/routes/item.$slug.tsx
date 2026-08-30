@@ -11,9 +11,9 @@ import { ItemListMenu } from "@/components/item-list-menu"
 import { TrailerDialog } from "@/components/trailer-dialog"
 import {
   getItemBySlug,
-  getMovieTrailer,
   getSignedInStatus,
   getSimilarOwnedItems,
+  getTmdbTrailer,
 } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -24,8 +24,8 @@ export const Route = createFileRoute("/item/$slug")({
     const [similarItems, signedIn, trailer] = await Promise.all([
       getSimilarOwnedItems({ data: { itemId: item.id } }),
       getSignedInStatus(),
-      item.type === "movie" && item.tmdbId
-        ? getMovieTrailer({ data: { tmdbId: item.tmdbId } })
+      (item.type === "movie" || item.type === "tv") && item.tmdbId
+        ? getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } })
         : Promise.resolve(null),
     ])
     return { item, similarItems, signedIn, trailer }

@@ -40,8 +40,8 @@ export function TrailerDialog({
         />
         <TooltipContent>Trailer</TooltipContent>
       </Tooltip>
-      <DialogContent className="max-w-4xl gap-0 overflow-hidden bg-black p-0">
-        <DialogTitle className="sr-only">{title} trailer</DialogTitle>
+      <DialogContent className="gap-0 overflow-hidden bg-black p-0 sm:max-w-3xl">
+        <DialogTitle className="sr-only">{title}</DialogTitle>
         {open && (
           <iframe
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

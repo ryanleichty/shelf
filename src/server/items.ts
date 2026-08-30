@@ -2611,15 +2611,20 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
     })
   })
 
-export const getMovieTrailer = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ tmdbId: z.string().min(1).max(40) }))
+export const getTmdbTrailer = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      tmdbId: z.string().min(1).max(40),
+      type: z.enum(["movie", "tv"]),
+    })
+  )
   .handler(async ({ data }): Promise<{ key: string } | null> => {
     const apiKey = process.env.TMDB_API_KEY
     if (!apiKey) return null
 
     try {
       const url = new URL(
-        `https://api.themoviedb.org/3/movie/${data.tmdbId}/videos`
+        `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/videos`
       )
       url.searchParams.set("api_key", apiKey)
       url.searchParams.set("language", "en-US")
