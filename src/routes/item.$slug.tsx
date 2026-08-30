@@ -144,6 +144,18 @@ function ItemDetail() {
                 )
               : item.creator}
           </p>
+          {item.type !== "book" && item.actors.length > 0 && (
+            <p className="mt-1 text-lg text-muted-foreground">
+              {item.actors.slice(0, 8).map((person, index) => (
+                <span key={person}>
+                  {index > 0 && ", "}
+                  <Link params={{ slug: slugify(person) }} to="/actor/$slug">
+                    {person}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
           <ItemListMenu
             itemId={item.id}
             itemType={item.type}

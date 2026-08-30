@@ -10,6 +10,7 @@ import {
   normalizeTitle,
   normalizeOpenLibraryWorkKey,
   replaceItemCollection,
+  replaceItemCast,
   upsertTags,
   uniqueSlug,
 } from "@/server/items"
@@ -200,6 +201,8 @@ export const Route = createFileRoute("/api/items")({
               .returning({ id: items.id, title: items.title, slug: items.slug })
             await upsertTags(created.id, "genre", resolved.genres)
             await upsertTags(created.id, "keyword", resolved.keywords ?? [])
+            if (input.type !== "book" && resolved.cast !== undefined)
+              await replaceItemCast(created.id, resolved.cast)
             if (input.type === "movie")
               await replaceItemCollection(
                 created.id,

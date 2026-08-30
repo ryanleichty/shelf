@@ -167,6 +167,31 @@ export const itemDirectors = sqliteTable(
   ]
 )
 
+export const actors = sqliteTable("actors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+})
+
+export const itemActors = sqliteTable(
+  "item_actors",
+  {
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    actorId: integer("actor_id")
+      .notNull()
+      .references(() => actors.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    uniqueIndex("item_actors_item_id_actor_id_unique").on(
+      table.itemId,
+      table.actorId
+    ),
+  ]
+)
+
 export const collections = sqliteTable("collections", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
@@ -250,5 +275,6 @@ export type Item = ItemRecord & {
   keywords: string[]
   authors: string[]
   directors: string[]
+  actors: string[]
   collection?: Collection
 }
