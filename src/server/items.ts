@@ -662,6 +662,16 @@ async function upsertAuthor(person: ProviderPerson) {
     : await db.select().from(authors).where(eq(authors.slug, slug)).limit(1)
   const existing = byProvider ?? bySlug
   if (existing) {
+    const [slugOwner] =
+      person.providerId &&
+      existing.slug === slugify(existing.name) &&
+      existing.slug !== slug
+        ? await db
+            .select({ id: authors.id })
+            .from(authors)
+            .where(eq(authors.slug, slug))
+            .limit(1)
+        : []
     await db
       .update(authors)
       .set({
@@ -671,7 +681,8 @@ async function upsertAuthor(person: ProviderPerson) {
           : {}),
         ...(person.providerId &&
         existing.slug === slugify(existing.name) &&
-        existing.slug !== slug
+        existing.slug !== slug &&
+        (!slugOwner || slugOwner.id === existing.id)
           ? { slug }
           : {}),
       })
@@ -704,6 +715,16 @@ async function upsertDirector(person: ProviderPerson) {
     : await db.select().from(directors).where(eq(directors.slug, slug)).limit(1)
   const existing = byProvider ?? bySlug
   if (existing) {
+    const [slugOwner] =
+      person.providerId &&
+      existing.slug === slugify(existing.name) &&
+      existing.slug !== slug
+        ? await db
+            .select({ id: directors.id })
+            .from(directors)
+            .where(eq(directors.slug, slug))
+            .limit(1)
+        : []
     await db
       .update(directors)
       .set({
@@ -713,7 +734,8 @@ async function upsertDirector(person: ProviderPerson) {
           : {}),
         ...(person.providerId &&
         existing.slug === slugify(existing.name) &&
-        existing.slug !== slug
+        existing.slug !== slug &&
+        (!slugOwner || slugOwner.id === existing.id)
           ? { slug }
           : {}),
       })
@@ -746,6 +768,16 @@ async function upsertActor(person: ProviderPerson) {
     : await db.select().from(actors).where(eq(actors.slug, slug)).limit(1)
   const existing = byProvider ?? bySlug
   if (existing) {
+    const [slugOwner] =
+      person.providerId &&
+      existing.slug === slugify(existing.name) &&
+      existing.slug !== slug
+        ? await db
+            .select({ id: actors.id })
+            .from(actors)
+            .where(eq(actors.slug, slug))
+            .limit(1)
+        : []
     await db
       .update(actors)
       .set({
@@ -755,7 +787,8 @@ async function upsertActor(person: ProviderPerson) {
           : {}),
         ...(person.providerId &&
         existing.slug === slugify(existing.name) &&
-        existing.slug !== slug
+        existing.slug !== slug &&
+        (!slugOwner || slugOwner.id === existing.id)
           ? { slug }
           : {}),
       })

@@ -173,7 +173,7 @@ export function PeopleSettings({
 
   return (
     <>
-      <Tabs defaultValue="authors">
+      <Tabs defaultValue="authors" onValueChange={() => setQuery("")}>
         <TabsList>
           <TabsTrigger value="authors">Authors</TabsTrigger>
           <TabsTrigger value="directors">Directors</TabsTrigger>
