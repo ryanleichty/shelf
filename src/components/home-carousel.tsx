@@ -40,7 +40,7 @@ export function HomeCarousel({
         ))}
       </BlossomCarousel>
       <div className="home-carousel-controls pointer-events-none absolute inset-y-0 right-0 left-0 z-20 hidden md:block">
-        <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-20 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
+        <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-24 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Previous titles"
             className="ml-2 bg-background/90 shadow-sm"
@@ -51,7 +51,7 @@ export function HomeCarousel({
             <ChevronLeft />
           </Button>
         </div>
-        <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-20 items-center justify-end opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
+        <div className="pointer-events-auto absolute inset-y-0 right-0 flex w-24 items-center justify-end opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Next titles"
             className="mr-2 bg-background/90 shadow-sm"
