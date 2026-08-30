@@ -28,6 +28,8 @@ export function TypeHome({
   type: Item["type"]
   rows: HomeRow[]
 }) {
+  const systemListSlug = type === "book" ? "reading-list" : "watchlist"
+
   return (
     <main className="overflow-x-hidden py-10">
       <section className="container mx-auto mb-10 flex max-w-6xl items-end justify-between gap-4 px-4">
@@ -77,7 +79,15 @@ export function TypeHome({
                   )}
                 </h2>
               </div>
-              <HomeCarousel id={`${type}-row-${index}`} items={row.items} />
+              <HomeCarousel
+                id={`${type}-row-${index}`}
+                items={row.items}
+                systemListSlug={
+                  row.kind === "list" && row.slug === systemListSlug
+                    ? systemListSlug
+                    : undefined
+                }
+              />
             </section>
           ))}
         </div>
