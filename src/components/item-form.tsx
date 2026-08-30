@@ -48,6 +48,7 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
@@ -138,12 +139,9 @@ export function ItemForm({
   })
   const [values, setValues] = useState({
     title: item?.title ?? "",
-    authors: item?.authors.length
-      ? item.authors
-      : namesFromCreator(item?.creator ?? ""),
-    directors: item?.directors.length
-      ? item.directors
-      : namesFromCreator(item?.creator ?? ""),
+    author: item?.authors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
+    director:
+      item?.directors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
     actors: item?.actors ?? [],
     slug: item?.slug ?? "",
     year: item?.year ? String(item.year) : "",
@@ -268,14 +266,14 @@ export function ItemForm({
       setValues((current) => ({
         ...current,
         title: resolved.title,
-        authors:
+        author:
           resolved.type === "book"
-            ? namesFromCreator(creator)
-            : current.authors,
-        directors:
+            ? (namesFromCreator(creator)[0] ?? "")
+            : current.author,
+        director:
           resolved.type === "book"
-            ? current.directors
-            : namesFromCreator(creator),
+            ? current.director
+            : (namesFromCreator(creator)[0] ?? ""),
         actors:
           resolved.type === "book" ? current.actors : (resolved.cast ?? []),
         year: resolved.year ? String(resolved.year) : "",
@@ -342,12 +340,9 @@ export function ItemForm({
           slug: values.slug,
           type,
           status: status === "unspecified" ? "owned" : status,
-          creator:
-            type === "book"
-              ? (values.authors[0] ?? "")
-              : (values.directors[0] ?? ""),
-          authors: values.authors,
-          directors: values.directors,
+          creator: type === "book" ? values.author : values.director,
+          authors: values.author ? [values.author] : [],
+          directors: values.director ? [values.director] : [],
           actors: values.actors,
           year: Number(values.year),
           coverImageUrl: values.coverImageUrl,
@@ -538,24 +533,19 @@ export function ItemForm({
               inputValue={authorQuery}
               items={peopleItems(
                 peopleOptions.authors,
-                values.authors,
+                values.author ? [values.author] : [],
                 authorQuery
               )}
-              multiple
               onInputValueChange={setAuthorQuery}
-              onValueChange={(authors) =>
-                setValues((current) => ({ ...current, authors }))
+              onValueChange={(author) =>
+                setValues((current) => ({ ...current, author: author ?? "" }))
               }
-              value={values.authors}
+              value={values.author}
             >
-              <ComboboxChips>
-                <ComboboxValue>
-                  {values.authors.map((author) => (
-                    <ComboboxChip key={author}>{author}</ComboboxChip>
-                  ))}
-                </ComboboxValue>
-                <ComboboxChipsInput id="authors" placeholder="Add an author…" />
-              </ComboboxChips>
+              <ComboboxInput
+                id="authors"
+                placeholder="Select or add an author…"
+              />
               <ComboboxContent>
                 <ComboboxEmpty>No authors found.</ComboboxEmpty>
                 <ComboboxList>
@@ -584,27 +574,22 @@ export function ItemForm({
                 inputValue={directorQuery}
                 items={peopleItems(
                   peopleOptions.directors,
-                  values.directors,
+                  values.director ? [values.director] : [],
                   directorQuery
                 )}
-                multiple
                 onInputValueChange={setDirectorQuery}
-                onValueChange={(directors) =>
-                  setValues((current) => ({ ...current, directors }))
+                onValueChange={(director) =>
+                  setValues((current) => ({
+                    ...current,
+                    director: director ?? "",
+                  }))
                 }
-                value={values.directors}
+                value={values.director}
               >
-                <ComboboxChips>
-                  <ComboboxValue>
-                    {values.directors.map((director) => (
-                      <ComboboxChip key={director}>{director}</ComboboxChip>
-                    ))}
-                  </ComboboxValue>
-                  <ComboboxChipsInput
-                    id="directors"
-                    placeholder="Add a director…"
-                  />
-                </ComboboxChips>
+                <ComboboxInput
+                  id="directors"
+                  placeholder="Select or add a director…"
+                />
                 <ComboboxContent>
                   <ComboboxEmpty>No directors found.</ComboboxEmpty>
                   <ComboboxList>
