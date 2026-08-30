@@ -271,20 +271,10 @@ function Settings() {
           </Card>
         </TabsContent>
         <TabsContent value="lists">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lists</CardTitle>
-              <CardDescription>
-                Choose which lists appear on each catalog page.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ListsSettings
-                onChange={() => router.invalidate()}
-                placements={placements}
-              />
-            </CardContent>
-          </Card>
+          <ListsSettings
+            onChange={() => router.invalidate()}
+            placements={placements}
+          />
         </TabsContent>
         {data.isAdmin && (
           <TabsContent value="users">

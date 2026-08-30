@@ -14,13 +14,13 @@ CREATE TABLE `list_placements` (
 CREATE UNIQUE INDEX `list_placements_list_id_type_unique`
   ON `list_placements` (`list_id`, `type`);
 --> statement-breakpoint
-INSERT INTO `list_placements` (`list_id`, `type`, `position`, `visible`)
+INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
 SELECT `id`, 'list', 'book', 1, true FROM `lists` WHERE `slug` = 'reading-list';
 --> statement-breakpoint
-INSERT INTO `list_placements` (`list_id`, `type`, `position`, `visible`)
+INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
 SELECT `id`, 'list', 'movie', 1, true FROM `lists` WHERE `slug` = 'watchlist';
 --> statement-breakpoint
-INSERT INTO `list_placements` (`list_id`, `type`, `position`, `visible`)
+INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
 SELECT `id`, 'list', 'tv', 1, true FROM `lists` WHERE `slug` = 'watchlist';
 --> statement-breakpoint
 INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)

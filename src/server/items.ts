@@ -1471,53 +1471,6 @@ export const getItemsByList = createServerFn({ method: "GET" })
     }
   })
 
-const listMembershipInput = z.object({
-  itemId: z.number().int(),
-  listSlug: z.string().min(1).max(120),
-})
-
-export const addItemToList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
-  .handler(async ({ data }) => {
-    await requireSignedIn()
-    await ensureDatabase()
-    const [list] = await db
-      .select()
-      .from(lists)
-      .where(eq(lists.slug, data.listSlug))
-      .limit(1)
-    if (!list) throw new Error("List not found.")
-    await db
-      .insert(listItems)
-      .values({
-        listId: list.id,
-        itemId: data.itemId,
-        position: Date.now(),
-        addedAt: new Date().toISOString(),
-      })
-      .onConflictDoNothing()
-    return { ok: true }
-  })
-
-export const removeItemFromList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
-  .handler(async ({ data }) => {
-    await requireSignedIn()
-    await ensureDatabase()
-    const [list] = await db
-      .select()
-      .from(lists)
-      .where(eq(lists.slug, data.listSlug))
-      .limit(1)
-    if (!list) return { ok: true }
-    await db
-      .delete(listItems)
-      .where(
-        and(eq(listItems.listId, list.id), eq(listItems.itemId, data.itemId))
-      )
-    return { ok: true }
-  })
-
 export const getHomeRows = createServerFn({ method: "GET" })
   .inputValidator(z.object({ type: z.enum(itemTypes) }))
   .handler(
@@ -1570,10 +1523,10 @@ export const getHomeRows = createServerFn({ method: "GET" })
       const rows: Array<
         | { title: string; kind: "recent"; items: Item[] }
         | { title: string; slug: string; kind: "list"; items: Item[] }
-    > = placements.flatMap<
-      | { title: string; kind: "recent"; items: Item[] }
-      | { title: string; slug: string; kind: "list"; items: Item[] }
-    >((placement) => {
+      > = placements.flatMap<
+        | { title: string; kind: "recent"; items: Item[] }
+        | { title: string; slug: string; kind: "list"; items: Item[] }
+      >((placement) => {
         if (placement.kind === "recent")
           return recentItems.length
             ? [

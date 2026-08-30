@@ -112,7 +112,7 @@ export function ListsSettings({
             <CardContent>
               <FieldGroup>
                 {rows.map((placement, index) => (
-                  <Field className="flex-row items-center" key={placement.id}>
+                  <Field orientation="horizontal" key={placement.id}>
                     <Switch
                       aria-label={`Show ${placement.name ?? "Recently added"} on ${type.label}`}
                       checked={placement.visible}
@@ -254,6 +254,7 @@ export function ListsSettings({
                   onValueChange={(value) =>
                     value[0] && setNewType(value[0] as Placement["type"])
                   }
+                  multiple={false}
                   value={[newType]}
                 >
                   {types.map((type) => (
