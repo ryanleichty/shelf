@@ -110,6 +110,12 @@ function ItemDetail() {
             <span>
               {item.type} · <ItemYearLink type={item.type} year={item.year} />
             </span>
+            {item.type !== "book" && item.certification?.trim() && (
+              <Badge variant="outline">{item.certification.trim()}</Badge>
+            )}
+            {item.type !== "book" && validRuntime(item.runtime) && (
+              <span>{formatRuntime(item.runtime)}</span>
+            )}
             {item.status !== "owned" && (
               <Badge variant="outline">
                 {item.status === "reading"
@@ -247,6 +253,16 @@ function formatLabel(format: string) {
     : format === "dvd"
       ? "DVD"
       : format[0].toUpperCase() + format.slice(1)
+}
+
+function validRuntime(runtime: number | null): runtime is number {
+  return typeof runtime === "number" && Number.isInteger(runtime) && runtime > 0
+}
+
+function formatRuntime(runtime: number) {
+  const hours = Math.floor(runtime / 60)
+  const minutes = runtime % 60
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
 function editionLabel(edition: string) {

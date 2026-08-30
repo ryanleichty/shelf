@@ -60,6 +60,12 @@ if (!columns.rows.some((column) => column.name === "genres")) {
 if (!columns.rows.some((column) => column.name === "description")) {
   await client.execute("ALTER TABLE items ADD COLUMN description TEXT")
 }
+if (!columns.rows.some((column) => column.name === "certification")) {
+  await client.execute("ALTER TABLE items ADD COLUMN certification TEXT")
+}
+if (!columns.rows.some((column) => column.name === "runtime")) {
+  await client.execute("ALTER TABLE items ADD COLUMN runtime INTEGER")
+}
 await client.execute(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,

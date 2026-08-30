@@ -224,6 +224,8 @@ export const importItems = createServerFn({ method: "POST" })
             tmdbId: data.type === "book" ? null : match.id,
             format: data.format || null,
             edition: normalizeEdition(data.edition),
+            certification: resolved.certification ?? null,
+            runtime: resolved.runtime ?? null,
             notes: "",
             acquiredAt: null,
             createdAt: now,
@@ -262,6 +264,8 @@ export type LookupResult = {
   keywords?: string[]
   cast?: string[]
   collection?: CollectionInput
+  certification?: string
+  runtime?: number
 }
 
 type CollectionInput = {
@@ -1067,7 +1071,9 @@ export async function getCollectionResultById(data: {
   const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.id}`)
   url.searchParams.set(
     "append_to_response",
-    data.type === "tv" ? "aggregate_credits,keywords" : "credits,keywords"
+    data.type === "tv"
+      ? "aggregate_credits,keywords,content_ratings"
+      : "credits,keywords,release_dates"
   )
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
@@ -1082,6 +1088,8 @@ export async function getCollectionResultById(data: {
     first_air_date?: string
     poster_path?: string | null
     overview?: string
+    runtime?: number
+    episode_run_time?: number[]
     genres?: Array<{ name?: string }>
     keywords?: {
       keywords?: Array<{ name?: string }>
@@ -1103,6 +1111,15 @@ export async function getCollectionResultById(data: {
         order?: number
         roles?: Array<{ character?: string }>
       }>
+    }
+    release_dates?: {
+      results?: Array<{
+        iso_3166_1?: string
+        release_dates?: Array<{ certification?: string; type?: number }>
+      }>
+    }
+    content_ratings?: {
+      results?: Array<{ iso_3166_1?: string; rating?: string }>
     }
   }
   const title =
@@ -1143,6 +1160,7 @@ export async function getCollectionResultById(data: {
     ...(data.type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) }
       : {}),
+    ...tmdbScreenMetadata(data.type, result),
     slug: slugify(title),
   }
 }
@@ -1186,6 +1204,72 @@ function tmdbCast(
     .map((person) => person.name)
 }
 
+function tmdbScreenMetadata(
+  type: "movie" | "tv",
+  result: {
+    runtime?: number
+    episode_run_time?: number[]
+    release_dates?: {
+      results?: Array<{
+        iso_3166_1?: string
+        release_dates?: Array<{ certification?: string; type?: number }>
+      }>
+    }
+    content_ratings?: {
+      results?: Array<{ iso_3166_1?: string; rating?: string }>
+    }
+  }
+): Pick<SyncedFields, "certification" | "runtime"> {
+  const certification =
+    type === "movie"
+      ? tmdbMovieUsCertification(result.release_dates)
+      : tmdbTvUsCertification(result.content_ratings)
+  const runtime =
+    type === "movie"
+      ? validRuntime(result.runtime)
+      : result.episode_run_time?.map(validRuntime).find(Boolean)
+
+  return {
+    certification,
+    runtime,
+  }
+}
+
+function tmdbMovieUsCertification(
+  releaseDates?: {
+    results?: Array<{
+      iso_3166_1?: string
+      release_dates?: Array<{ certification?: string; type?: number }>
+    }>
+  }
+): string | undefined {
+  const releases = releaseDates?.results?.find(
+    (country) => country.iso_3166_1 === "US"
+  )?.release_dates
+  const theatrical = releases?.find(
+    (release) => release.type === 3 && release.certification?.trim()
+  )
+  return theatrical?.certification?.trim() ?? releases?.find(
+    (release) => release.certification?.trim()
+  )?.certification?.trim()
+}
+
+function tmdbTvUsCertification(
+  contentRatings?: {
+    results?: Array<{ iso_3166_1?: string; rating?: string }>
+  }
+): string | undefined {
+  return contentRatings?.results
+    ?.find((country) => country.iso_3166_1 === "US")
+    ?.rating?.trim()
+}
+
+function validRuntime(value: number | undefined) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : undefined
+}
+
 type SyncedFields = {
   title?: string
   creator?: string
@@ -1195,6 +1279,8 @@ type SyncedFields = {
   keywords?: string[]
   cast?: string[]
   collection?: CollectionInput | null
+  certification?: string | null
+  runtime?: number | null
 }
 
 export type ProviderSyncResult = {
@@ -1307,7 +1393,9 @@ async function getTmdbSyncMetadata(
   const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
   url.searchParams.set(
     "append_to_response",
-    type === "tv" ? "aggregate_credits,keywords" : "credits,keywords"
+    type === "tv"
+      ? "aggregate_credits,keywords,content_ratings"
+      : "credits,keywords,release_dates"
   )
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
@@ -1320,6 +1408,8 @@ async function getTmdbSyncMetadata(
     release_date?: string
     first_air_date?: string
     overview?: string
+    runtime?: number
+    episode_run_time?: number[]
     genres?: Array<{ name?: string }>
     keywords?: {
       keywords?: Array<{ name?: string }>
@@ -1342,6 +1432,15 @@ async function getTmdbSyncMetadata(
         roles?: Array<{ character?: string }>
       }>
     }
+    release_dates?: {
+      results?: Array<{
+        iso_3166_1?: string
+        release_dates?: Array<{ certification?: string; type?: number }>
+      }>
+    }
+    content_ratings?: {
+      results?: Array<{ iso_3166_1?: string; rating?: string }>
+    }
   }
   const creator =
     type === "tv"
@@ -1350,6 +1449,7 @@ async function getTmdbSyncMetadata(
           (person) => person.job === "Creator" || person.job === "Director"
         )?.name)
       : result.credits?.crew?.find((person) => person.job === "Director")?.name
+  const screenMetadata = tmdbScreenMetadata(type, result)
   return {
     ...(type === "tv"
       ? result.name
@@ -1382,6 +1482,8 @@ async function getTmdbSyncMetadata(
     ...(type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) ?? null }
       : {}),
+    certification: screenMetadata.certification ?? null,
+    runtime: screenMetadata.runtime ?? null,
   }
 }
 
@@ -1451,9 +1553,16 @@ function changedFields(
     "keywords",
     "cast",
     "collection",
+    "certification",
+    "runtime",
   ] as const) {
     if (field === "collection" && item.type !== "movie") continue
     if (field === "cast" && item.type === "book") continue
+    if (
+      (field === "certification" || field === "runtime") &&
+      item.type === "book"
+    )
+      continue
     const next = metadata[field]
     if (next === undefined) continue
     const previous =

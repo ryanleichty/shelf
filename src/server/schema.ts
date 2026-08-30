@@ -65,6 +65,8 @@ export const items = sqliteTable("items", {
   format: text("format"),
   edition: text("edition"),
   description: text("description"),
+  certification: text("certification"),
+  runtime: integer("runtime"),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),
