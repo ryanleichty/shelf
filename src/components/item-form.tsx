@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
+import { ScanBarcodeIcon } from "lucide-react"
+import { BarcodeScanner } from "@/components/barcode-scanner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,6 +22,26 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Spinner } from "@/components/ui/spinner"
+import {
   Combobox,
   ComboboxChips,
   ComboboxChip,
@@ -33,6 +55,7 @@ import {
 import {
   getCollectionResult,
   getCoverOptions,
+  resolveBarcode,
   saveItem,
   searchCollection,
   bookGenreOptions,
@@ -68,6 +91,13 @@ export function ItemForm({
   const [results, setResults] = useState<LookupResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
+  const [scanOpen, setScanOpen] = useState(false)
+  const [barcodeCode, setBarcodeCode] = useState("")
+  const [barcodeError, setBarcodeError] = useState("")
+  const [barcodeResult, setBarcodeResult] = useState<
+    Extract<Awaited<ReturnType<typeof resolveBarcode>>, { status: "owned" }> | null
+  >(null)
+  const [resolvingBarcode, setResolvingBarcode] = useState(false)
   const [selected, setSelected] = useState(false)
   const [coverOptions, setCoverOptions] = useState<string[]>([])
   const [coverError, setCoverError] = useState("")
@@ -89,6 +119,7 @@ export function ItemForm({
     edition: item?.edition ?? "",
     genres: item?.genres ?? [],
     description: item?.description ?? "",
+    barcode: item?.barcode ?? "",
   })
   const genreOptions = type === "book" ? bookGenreOptions : screenGenreOptions
 
@@ -170,7 +201,10 @@ export function ItemForm({
       setStatus("unspecified")
   }
 
-  async function choose(result: LookupResult) {
+  async function choose(
+    result: LookupResult,
+    options?: { barcode?: string; format?: ItemInput["format"] }
+  ) {
     setSearchError("")
     try {
       const resolved = await getCollectionResult({
@@ -193,6 +227,8 @@ export function ItemForm({
         description: resolved.description ?? "",
         openLibraryKey: result.type === "book" ? result.id : "",
         tmdbId: result.type === "book" ? "" : result.id,
+        barcode: options?.barcode ?? current.barcode,
+        format: options?.format || current.format,
       }))
       setCoversLoading(true)
       if (!values.slug || slugWasAutoFilled) setSlugWasAutoFilled(true)
@@ -203,6 +239,34 @@ export function ItemForm({
       setSearchError(
         cause instanceof Error ? cause.message : "Could not load that item."
       )
+    }
+  }
+  async function resolveScannedBarcode(code: string) {
+    if (resolvingBarcode) return
+    setBarcodeCode(code)
+    setBarcodeError("")
+    setBarcodeResult(null)
+    setResolvingBarcode(true)
+    try {
+      const resolution = await resolveBarcode({ data: { code, type } })
+      if (resolution.status === "owned") {
+        setBarcodeResult(resolution)
+        return
+      }
+      if (resolution.result.type !== type) changeType(resolution.result.type)
+      await choose(resolution.result, {
+        barcode: code,
+        format: resolution.format,
+      })
+      setScanOpen(false)
+    } catch (cause) {
+      setBarcodeError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not look up that barcode. You can still complete the form manually."
+      )
+    } finally {
+      setResolvingBarcode(false)
     }
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -222,6 +286,7 @@ export function ItemForm({
           coverImageUrl: values.coverImageUrl,
           openLibraryKey: values.openLibraryKey,
           tmdbId: values.tmdbId,
+          barcode: values.barcode,
           borrower: values.borrower,
           loanedAt: values.loanedAt,
           format: values.format as ItemInput["format"],
@@ -255,18 +320,38 @@ export function ItemForm({
         </TabsList>
       </Tabs>
       <section className="collection-search">
-        <div className="lookup-heading">
-          <span>Find a {type}</span>
-          <small>Search fills the form; review before saving.</small>
-        </div>
-        <Input
-          onChange={(event) => {
-            setQuery(event.target.value)
-            setSelected(false)
-          }}
-          placeholder={type === "book" ? "Search Open Library" : "Search TMDB"}
-          value={query}
-        />
+        <Field>
+          <FieldLabel htmlFor="collection-search">Find a {type}</FieldLabel>
+          <FieldDescription>
+            Search fills the form; review before saving.
+          </FieldDescription>
+          <InputGroup>
+            <InputGroupInput
+              id="collection-search"
+              onChange={(event) => {
+                setQuery(event.target.value)
+                setSelected(false)
+              }}
+              placeholder={type === "book" ? "Search Open Library" : "Search TMDB"}
+              value={query}
+            />
+            <InputGroupAddon align="inline-end">
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <DialogTrigger
+                      aria-label="Scan barcode"
+                      render={<InputGroupButton aria-label="Scan barcode" />}
+                    />
+                  }
+                >
+                  <ScanBarcodeIcon />
+                </TooltipTrigger>
+                <TooltipContent>Scan barcode</TooltipContent>
+              </Tooltip>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
         {searching && (
           <p className="lookup-status">Looking through the stacks…</p>
         )}
@@ -303,6 +388,63 @@ export function ItemForm({
           <p className="lookup-status">Details added below. Make them yours.</p>
         )}
       </section>
+      <Dialog onOpenChange={setScanOpen} open={scanOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Scan barcode</DialogTitle>
+            <DialogDescription>
+              Scan or type an EAN-13, UPC-A, ISBN-10, or ISBN-13 code.
+            </DialogDescription>
+          </DialogHeader>
+          <BarcodeScanner
+            active={scanOpen}
+            onDetected={(code) => void resolveScannedBarcode(code)}
+          />
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void resolveScannedBarcode(barcodeCode)
+            }}
+          >
+            <Field data-invalid={Boolean(barcodeError)}>
+              <FieldLabel htmlFor="barcode-code">Barcode, UPC, or ISBN</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  aria-invalid={Boolean(barcodeError)}
+                  autoComplete="off"
+                  id="barcode-code"
+                  inputMode="numeric"
+                  onChange={(event) => setBarcodeCode(event.target.value)}
+                  placeholder="Type or paste a code"
+                  value={barcodeCode}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    disabled={resolvingBarcode || !barcodeCode.trim()}
+                    type="submit"
+                  >
+                    {resolvingBarcode && <Spinner data-icon="inline-start" />}
+                    Add details
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              {barcodeError && <FieldError>{barcodeError}</FieldError>}
+            </Field>
+          </form>
+          {barcodeResult && (
+            <Field>
+              <FieldDescription>Already on Shelf</FieldDescription>
+              <Link
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                params={{ slug: barcodeResult.item.slug }}
+                to="/item/$slug"
+              >
+                {barcodeResult.item.title}
+              </Link>
+            </Field>
+          )}
+        </DialogContent>
+      </Dialog>
       <FieldGroup className="form-grid">
         <Field>
           <FieldLabel htmlFor="title">Title</FieldLabel>

@@ -70,6 +70,7 @@ const itemInput = z
     coverImageUrl: z.string().url().optional().or(z.literal("")),
     openLibraryKey: z.string().max(120).optional().or(z.literal("")),
     tmdbId: z.string().max(40).optional().or(z.literal("")),
+    barcode: z.string().max(80).optional().or(z.literal("")),
     borrower: z.string().max(120).optional().or(z.literal("")),
     loanedAt: z.string().date().optional().or(z.literal("")),
     format: z
@@ -654,6 +655,14 @@ type CheckResult =
   | { status: "owned"; item: ItemRecord }
   | { status: "not-owned"; title?: string; year?: number; format?: string }
 
+type BarcodeResolution =
+  | { status: "owned"; item: ItemRecord }
+  | {
+      status: "resolved"
+      result: LookupResult
+      format: ItemInput["format"]
+    }
+
 export const checkBarcode = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: barcodeInput }))
   .handler(async ({ data }): Promise<CheckResult> => {
@@ -685,6 +694,39 @@ export const checkBarcode = createServerFn({ method: "POST" })
     return { status: "owned", item: catalogItem }
   })
 
+export const resolveBarcode = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ code: barcodeInput, type: z.enum(itemTypes) }))
+  .handler(async ({ data }): Promise<BarcodeResolution> => {
+    await requireSignedIn()
+    await ensureDatabase()
+
+    const stored = await itemForBarcode(data.code)
+    if (stored) return { status: "owned", item: stored }
+
+    const book = await lookupBookBarcode(data.code)
+    if (book) {
+      const owned = await itemForBookWork(book.id)
+      if (owned) return { status: "owned", item: owned }
+      return { status: "resolved", result: book, format: "" }
+    }
+
+    const disc = await lookupDiscBarcode(data.code)
+    if (!disc)
+      throw new Error(
+        "We couldn't look up that barcode. You can still complete the form manually."
+      )
+
+    const owned = await itemForDisc(disc.title, disc.year)
+    if (owned) return { status: "owned", item: owned }
+
+    const result = await lookupDiscResult(disc, data.type)
+    if (!result)
+      throw new Error(
+        "We found the barcode but couldn't match it in the catalog. You can still complete the form manually."
+      )
+    return { status: "resolved", result, format: discFormat(disc.format) }
+  })
+
 async function itemForBarcode(barcode: string) {
   const [item] = await db
     .select()
@@ -706,12 +748,54 @@ async function itemForIsbn(isbn: string) {
   const key = edition.works?.[0]?.key
   if (!key) return null
   const workKey = normalizeOpenLibraryWorkKey(key)
+  return itemForBookWork(workKey)
+}
+
+async function itemForBookWork(workKey: string) {
   const [item] = await db
     .select()
     .from(items)
     .where(and(eq(items.type, "book"), eq(items.openLibraryKey, workKey)))
     .limit(1)
   return item
+}
+
+async function lookupBookBarcode(isbn: string): Promise<LookupResult | null> {
+  const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+  })
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error("Open Library could not look up that ISBN.")
+  const edition = (await response.json()) as {
+    works?: Array<{ key?: string }>
+    authors?: Array<{ key?: string; name?: string }>
+    covers?: number[]
+    publish_date?: string
+  }
+  const workKey = edition.works?.[0]?.key
+  if (!workKey) return null
+
+  const result = await getCollectionResultById({ id: workKey, type: "book" })
+  const author = edition.authors?.[0]
+  const authorName = author?.name ??
+    (author?.key ? await lookupOpenLibraryAuthor(author.key) : "")
+  return {
+    ...result,
+    creator: authorName || result.creator,
+    year: yearFromDate(edition.publish_date) ?? result.year,
+    coverImageUrl: edition.covers?.[0]
+      ? `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`
+      : result.coverImageUrl,
+  }
+}
+
+async function lookupOpenLibraryAuthor(key: string) {
+  const response = await fetch(`https://openlibrary.org${key}.json`, {
+    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+  })
+  if (!response.ok) return ""
+  const author = (await response.json()) as { name?: string }
+  return author.name ?? ""
 }
 
 async function lookupDiscBarcode(barcode: string) {
@@ -733,6 +817,32 @@ async function lookupDiscBarcode(barcode: string) {
       : Number(body.data?.year)
   if (body.status !== "success" || !title || !Number.isInteger(year)) return null
   return { title, year, format: body.data?.format }
+}
+
+async function lookupDiscResult(
+  disc: { title: string; year: number },
+  currentType: Item["type"]
+) {
+  const types =
+    currentType === "movie" || currentType === "tv"
+      ? [currentType]
+      : (["movie", "tv"] as const)
+  const matches = (
+    await Promise.all(
+      types.map(async (type) => {
+        const results = await lookupCollection({ query: disc.title, type })
+        return results.find((result) => result.year === disc.year)
+      })
+    )
+  ).filter((result): result is LookupResult => Boolean(result))
+  return matches.length === 1 ? matches[0] : null
+}
+
+function discFormat(format?: string): ItemInput["format"] {
+  const normalized = format?.toLowerCase() ?? ""
+  if (normalized.includes("blu")) return "blu-ray"
+  if (normalized.includes("dvd")) return "dvd"
+  return ""
 }
 
 async function itemForDisc(title: string, year: number) {
@@ -1534,6 +1644,7 @@ export const saveItem = createServerFn({ method: "POST" })
       coverImageUrl: coverImageUrl || null,
       openLibraryKey: data.openLibraryKey || null,
       tmdbId: data.tmdbId || null,
+      barcode: data.barcode || null,
       borrower: data.borrower?.trim() || null,
       loanedAt: data.loanedAt || null,
       format: data.format?.trim() || null,
