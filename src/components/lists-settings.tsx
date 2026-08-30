@@ -24,7 +24,9 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { CreateListDialog } from "@/components/create-list-dialog"
+import { AddCatalogPlacementsDialog } from "@/components/add-catalog-placements-dialog"
 import {
+  deleteCatalogPlacement,
   deleteList,
   moveListPlacement,
   renameList,
@@ -37,11 +39,17 @@ type Placement = {
   slug: string | null
   name: string | null
   system: boolean | null
-  kind: "recent" | "list"
+  kind:
+    "recent" | "list" | "genre" | "collection" | "director" | "actor" | "author"
+  sourceSlug: string | null
   type: "book" | "movie" | "tv"
   position: number
   visible: boolean
 }
+type CatalogOptions = Record<
+  Exclude<Placement["kind"], "recent" | "list">,
+  Array<{ type: Placement["type"]; slug: string; name: string }>
+>
 
 const types = [
   { value: "book", label: "Books" },
@@ -51,13 +59,16 @@ const types = [
 
 export function ListsSettings({
   placements,
+  catalogOptions,
   onChange,
 }: {
   placements: Placement[]
+  catalogOptions: CatalogOptions
   onChange: () => Promise<void>
 }) {
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
+  const [catalogType, setCatalogType] = useState<Placement["type"] | null>(null)
   const [deleting, setDeleting] = useState<Placement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -83,7 +94,7 @@ export function ListsSettings({
           {error}
         </p>
       )}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
         <Button onClick={() => setNewListOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New list
@@ -97,6 +108,13 @@ export function ListsSettings({
           <Card key={type.value}>
             <CardHeader>
               <CardTitle>{type.label}</CardTitle>
+              <Button
+                onClick={() => setCatalogType(type.value)}
+                size="sm"
+                variant="outline"
+              >
+                Add from catalog
+              </Button>
             </CardHeader>
             <CardContent>
               <FieldGroup>
@@ -118,7 +136,9 @@ export function ListsSettings({
                         )
                       }
                     />
-                    {placement.kind === "recent" || placement.system ? (
+                    {placement.kind === "recent" ||
+                    placement.system ||
+                    placement.kind !== "list" ? (
                       <FieldLabel className="flex-1">
                         {placement.name ?? "Recently added"}
                       </FieldLabel>
@@ -202,6 +222,26 @@ export function ListsSettings({
                         <Trash2Icon />
                       </Button>
                     )}
+                    {placement.kind !== "recent" &&
+                      placement.kind !== "list" && (
+                        <Button
+                          aria-label={`Remove ${placement.name}`}
+                          onClick={() =>
+                            void change(() =>
+                              deleteCatalogPlacement({
+                                data: {
+                                  placementId: placement.id,
+                                  type: placement.type,
+                                },
+                              })
+                            )
+                          }
+                          size="icon-sm"
+                          variant="ghost"
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      )}
                   </Field>
                 ))}
               </FieldGroup>
@@ -214,6 +254,18 @@ export function ListsSettings({
         onOpenChange={setNewListOpen}
         open={newListOpen}
       />
+      {catalogType && (
+        <AddCatalogPlacementsDialog
+          existing={placements.filter(
+            (placement) => placement.type === catalogType
+          )}
+          onAdded={onChange}
+          onOpenChange={(open) => !open && setCatalogType(null)}
+          open
+          options={catalogOptions}
+          type={catalogType}
+        />
+      )}
       <AlertDialog
         onOpenChange={(open) => !open && setDeleting(null)}
         open={Boolean(deleting)}

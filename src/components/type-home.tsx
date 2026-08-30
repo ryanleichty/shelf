@@ -10,7 +10,7 @@ type HomeRow =
   | { title: string; kind: "recent"; items: Item[] }
   | {
       title: string
-      kind: "list" | "collection"
+      kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
       slug: string
       items: Item[]
     }
@@ -48,18 +48,26 @@ export function TypeHome({
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
                 <h2 className="text-xl font-semibold tracking-tight">
-                  {row.kind === "list" || row.kind === "collection" ? (
+                  {row.kind !== "recent" ? (
                     <Link
                       className="hover:underline"
                       params={{ slug: row.slug }}
                       to={
-                        row.kind === "collection"
-                          ? "/collection/$slug"
-                          : type === "book"
-                            ? "/books/list/$slug"
-                            : type === "movie"
-                              ? "/movies/list/$slug"
-                              : "/tv/list/$slug"
+                        row.kind === "genre"
+                          ? "/genre/$slug"
+                          : row.kind === "collection"
+                            ? "/collection/$slug"
+                            : row.kind === "director"
+                              ? "/director/$slug"
+                              : row.kind === "actor"
+                                ? "/actor/$slug"
+                                : row.kind === "author"
+                                  ? "/author/$slug"
+                                  : type === "book"
+                                    ? "/books/list/$slug"
+                                    : type === "movie"
+                                      ? "/movies/list/$slug"
+                                      : "/tv/list/$slug"
                       }
                     >
                       {row.title}

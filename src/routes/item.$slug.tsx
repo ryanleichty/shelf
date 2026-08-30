@@ -183,6 +183,7 @@ function ItemDetail() {
               itemId={item.id}
               itemType={item.type}
               lists={item.customLists}
+              systemList={item.systemList}
             />
             {item.genres.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">

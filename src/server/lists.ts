@@ -1,14 +1,42 @@
-import { and, asc, eq, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { requireSignedIn } from "./auth"
 import { db, ensureDatabase } from "./db"
-import { itemTypes, listItems, listPlacements, lists } from "./schema"
+import {
+  actors,
+  authors,
+  collections,
+  directors,
+  genres,
+  itemActors,
+  itemAuthors,
+  itemCollections,
+  itemDirectors,
+  itemGenres,
+  items,
+  itemTypes,
+  listItems,
+  listPlacements,
+  lists,
+} from "./schema"
 
 const listName = z.string().trim().min(1).max(80)
 const placementInput = z.object({
   placementId: z.number().int(),
   type: z.enum(itemTypes),
+})
+const catalogPlacementKinds = [
+  "genre",
+  "collection",
+  "director",
+  "actor",
+  "author",
+] as const
+const catalogPlacementInput = z.object({
+  type: z.enum(itemTypes),
+  kind: z.enum(catalogPlacementKinds),
+  slugs: z.array(z.string().min(1).max(120)).min(1).max(100),
 })
 
 function slugify(value: string) {
@@ -41,9 +69,19 @@ export const getListPlacements = createServerFn({ method: "GET" }).handler(
         id: listPlacements.id,
         listId: listPlacements.listId,
         slug: lists.slug,
-        name: lists.name,
+        name: sql<string | null>`coalesce(
+          ${lists.name},
+          case ${listPlacements.kind}
+            when 'genre' then (select name from ${genres} where slug = ${listPlacements.sourceSlug})
+            when 'collection' then (select name from ${collections} where slug = ${listPlacements.sourceSlug})
+            when 'director' then (select name from ${directors} where slug = ${listPlacements.sourceSlug})
+            when 'actor' then (select name from ${actors} where slug = ${listPlacements.sourceSlug})
+            when 'author' then (select name from ${authors} where slug = ${listPlacements.sourceSlug})
+          end
+        )`,
         system: lists.system,
         kind: listPlacements.kind,
+        sourceSlug: listPlacements.sourceSlug,
         type: listPlacements.type,
         position: listPlacements.position,
         visible: listPlacements.visible,
@@ -53,6 +91,71 @@ export const getListPlacements = createServerFn({ method: "GET" }).handler(
       .orderBy(asc(listPlacements.type), asc(listPlacements.position))
   }
 )
+
+export const getCatalogPlacementOptions = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  await ensureDatabase()
+  const options = await Promise.all([
+    db
+      .selectDistinct({
+        type: items.type,
+        slug: genres.slug,
+        name: genres.name,
+      })
+      .from(itemGenres)
+      .innerJoin(genres, eq(itemGenres.genreId, genres.id))
+      .innerJoin(items, eq(itemGenres.itemId, items.id))
+      .orderBy(asc(genres.name)),
+    db
+      .selectDistinct({
+        type: items.type,
+        slug: collections.slug,
+        name: collections.name,
+      })
+      .from(itemCollections)
+      .innerJoin(collections, eq(itemCollections.collectionId, collections.id))
+      .innerJoin(items, eq(itemCollections.itemId, items.id))
+      .orderBy(asc(collections.name)),
+    db
+      .selectDistinct({
+        type: items.type,
+        slug: directors.slug,
+        name: directors.name,
+      })
+      .from(itemDirectors)
+      .innerJoin(directors, eq(itemDirectors.directorId, directors.id))
+      .innerJoin(items, eq(itemDirectors.itemId, items.id))
+      .orderBy(asc(directors.name)),
+    db
+      .selectDistinct({
+        type: items.type,
+        slug: actors.slug,
+        name: actors.name,
+      })
+      .from(itemActors)
+      .innerJoin(actors, eq(itemActors.actorId, actors.id))
+      .innerJoin(items, eq(itemActors.itemId, items.id))
+      .orderBy(asc(actors.name)),
+    db
+      .selectDistinct({
+        type: items.type,
+        slug: authors.slug,
+        name: authors.name,
+      })
+      .from(itemAuthors)
+      .innerJoin(authors, eq(itemAuthors.authorId, authors.id))
+      .innerJoin(items, eq(itemAuthors.itemId, items.id))
+      .orderBy(asc(authors.name)),
+  ])
+  return {
+    genre: options[0],
+    collection: options[1].filter((option) => option.type === "movie"),
+    director: options[2].filter((option) => option.type !== "book"),
+    actor: options[3].filter((option) => option.type !== "book"),
+    author: options[4].filter((option) => option.type === "book"),
+  }
+})
 
 export const getSidebarLists = createServerFn({ method: "GET" }).handler(
   async () =>
@@ -86,10 +189,51 @@ export const createList = createServerFn({ method: "POST" })
     await db.insert(listPlacements).values({
       listId: list.id,
       kind: "list",
+      sourceSlug: slug,
       type: data.type,
       position: position + 1,
       visible: true,
     })
+    return { ok: true }
+  })
+
+export const addCatalogPlacements = createServerFn({ method: "POST" })
+  .inputValidator(catalogPlacementInput)
+  .handler(async ({ data }) => {
+    await requireSignedIn()
+    await ensureDatabase()
+    const [{ position }] = await db
+      .select({
+        position: sql<number>`coalesce(max(${listPlacements.position}), -1)`,
+      })
+      .from(listPlacements)
+      .where(eq(listPlacements.type, data.type))
+    const existing = await db
+      .select({ sourceSlug: listPlacements.sourceSlug })
+      .from(listPlacements)
+      .where(
+        and(
+          eq(listPlacements.type, data.type),
+          eq(listPlacements.kind, data.kind),
+          inArray(listPlacements.sourceSlug, data.slugs)
+        )
+      )
+    const existingSlugs = new Set(
+      existing.flatMap((placement) =>
+        placement.sourceSlug ? [placement.sourceSlug] : []
+      )
+    )
+    const slugs = data.slugs.filter((slug) => !existingSlugs.has(slug))
+    if (!slugs.length) return { ok: true }
+    await db.insert(listPlacements).values(
+      slugs.map((sourceSlug, index) => ({
+        kind: data.kind,
+        sourceSlug,
+        type: data.type,
+        position: position + index + 1,
+        visible: true,
+      }))
+    )
     return { ok: true }
   })
 
@@ -125,6 +269,23 @@ export const deleteList = createServerFn({ method: "POST" })
     if (!list || list.system)
       throw new Error("This system list cannot be deleted.")
     await db.delete(lists).where(eq(lists.id, data.listId))
+    return { ok: true }
+  })
+
+export const deleteCatalogPlacement = createServerFn({ method: "POST" })
+  .inputValidator(placementInput)
+  .handler(async ({ data }) => {
+    await requireSignedIn()
+    await ensureDatabase()
+    await db
+      .delete(listPlacements)
+      .where(
+        and(
+          eq(listPlacements.id, data.placementId),
+          eq(listPlacements.type, data.type),
+          inArray(listPlacements.kind, catalogPlacementKinds)
+        )
+      )
     return { ok: true }
   })
 
@@ -164,8 +325,8 @@ export const moveListPlacement = createServerFn({ method: "POST" })
     const nextIndex = index + (data.direction === "up" ? -1 : 1)
     if (index < 0 || nextIndex < 0 || nextIndex >= placements.length)
       return { ok: true }
-    const current = placements[index]!
-    const adjacent = placements[nextIndex]!
+    const current = placements[index]
+    const adjacent = placements[nextIndex]
     await db
       .update(listPlacements)
       .set({ position: adjacent.position })

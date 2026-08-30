@@ -240,7 +240,18 @@ export const listPlacements = sqliteTable(
     listId: integer("list_id").references(() => lists.id, {
       onDelete: "cascade",
     }),
-    kind: text("kind", { enum: ["recent", "list"] }).notNull(),
+    kind: text("kind", {
+      enum: [
+        "recent",
+        "list",
+        "genre",
+        "collection",
+        "director",
+        "actor",
+        "author",
+      ],
+    }).notNull(),
+    sourceSlug: text("source_slug").notNull(),
     type: text("type", { enum: itemTypes }).notNull(),
     position: integer("position").notNull(),
     visible: integer("visible", { mode: "boolean" }).notNull().default(true),
@@ -249,6 +260,11 @@ export const listPlacements = sqliteTable(
     uniqueIndex("list_placements_list_id_type_unique").on(
       table.listId,
       table.type
+    ),
+    uniqueIndex("list_placements_type_kind_source_slug_unique").on(
+      table.type,
+      table.kind,
+      table.sourceSlug
     ),
   ]
 )

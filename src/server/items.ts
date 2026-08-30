@@ -2233,7 +2233,12 @@ export const getItemsByList = createServerFn({ method: "GET" })
 
 type HomeRow =
   | { title: string; kind: "recent"; items: Item[] }
-  | { title: string; slug: string; kind: "list" | "collection"; items: Item[] }
+  | {
+      title: string
+      slug: string
+      kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
+      items: Item[]
+    }
 
 export const getHomeRows = createServerFn({ method: "GET" })
   .inputValidator(z.object({ type: z.enum(itemTypes) }))
@@ -2253,6 +2258,7 @@ export const getHomeRows = createServerFn({ method: "GET" })
         slug: lists.slug,
         title: lists.name,
         kind: listPlacements.kind,
+        sourceSlug: listPlacements.sourceSlug,
       })
       .from(listPlacements)
       .leftJoin(lists, eq(listPlacements.listId, lists.id))
@@ -2287,46 +2293,69 @@ export const getHomeRows = createServerFn({ method: "GET" })
               },
             ]
           : []
-      const rowItems = memberships.flatMap((membership) => {
-        const item = itemsById.get(membership.itemId)
-        return membership.listId === placement.listId && item ? [item] : []
-      })
-      return rowItems.length
-        ? [
-            {
-              title: placement.title!,
-              slug: placement.slug!,
-              kind: "list" as const,
-              items: rowItems,
-            },
-          ]
-        : []
-    })
-    const collectionRows: HomeRow[] =
-      data.type === "movie"
-        ? [
-            ...new Map(
-              allItems
-                .flatMap((item) =>
-                  item.collection
-                    ? [[item.collection.slug, item.collection.name] as const]
-                    : []
+      if (placement.kind === "list" && (!placement.slug || !placement.title))
+        return []
+      const rowItems =
+        placement.kind === "list"
+          ? memberships.flatMap((membership) => {
+              const item = itemsById.get(membership.itemId)
+              return membership.listId === placement.listId && item
+                ? [item]
+                : []
+            })
+          : placement.kind === "genre"
+            ? allItems.filter((item) =>
+                item.genres.some(
+                  (genre) => slugify(genre) === placement.sourceSlug
                 )
-                .map(([slug, name]) => [
-                  slug,
-                  {
-                    title: name,
-                    slug,
-                    kind: "collection" as const,
-                    items: allItems.filter(
-                      (item) => item.collection?.slug === slug
-                    ),
-                  },
-                ])
-            ).values(),
-          ]
-        : []
-    return [...rows, ...collectionRows]
+              )
+            : placement.kind === "collection"
+              ? allItems.filter(
+                  (item) => item.collection?.slug === placement.sourceSlug
+                )
+              : placement.kind === "director"
+                ? allItems.filter((item) =>
+                    item.directors.some(
+                      (director) => slugify(director) === placement.sourceSlug
+                    )
+                  )
+                : placement.kind === "actor"
+                  ? allItems.filter((item) =>
+                      item.actors.some(
+                        (actor) => slugify(actor) === placement.sourceSlug
+                      )
+                    )
+                  : allItems.filter((item) =>
+                      item.authors.some(
+                        (author) => slugify(author) === placement.sourceSlug
+                      )
+                    )
+      const title =
+        placement.kind === "list"
+          ? placement.title
+          : placement.kind === "genre"
+            ? rowItems
+                .flatMap((item) => item.genres)
+                .find((value) => slugify(value) === placement.sourceSlug)
+            : placement.kind === "collection"
+              ? rowItems.find((item) => item.collection)?.collection?.name
+              : placement.kind === "director"
+                ? rowItems
+                    .flatMap((item) => item.directors)
+                    .find((value) => slugify(value) === placement.sourceSlug)
+                : placement.kind === "actor"
+                  ? rowItems
+                      .flatMap((item) => item.actors)
+                      .find((value) => slugify(value) === placement.sourceSlug)
+                  : rowItems
+                      .flatMap((item) => item.authors)
+                      .find((value) => slugify(value) === placement.sourceSlug)
+      const slug =
+        placement.kind === "list" ? placement.slug : placement.sourceSlug
+      if (!rowItems.length || !title || !slug) return []
+      return [{ title, slug, kind: placement.kind, items: rowItems }]
+    })
+    return rows
   })
 
 export const getItemBySlug = createServerFn({ method: "GET" })
@@ -2341,7 +2370,7 @@ export const getItemBySlug = createServerFn({ method: "GET" })
       .select({
         slug: lists.slug,
         name: lists.name,
-        containsItem: sql<boolean>`exists(
+        containsItem: sql<number>`exists(
           select 1 from ${listItems}
           where ${listItems.listId} = ${lists.id}
             and ${listItems.itemId} = ${item.id}
@@ -2349,11 +2378,31 @@ export const getItemBySlug = createServerFn({ method: "GET" })
       })
       .from(listPlacements)
       .innerJoin(lists, eq(listPlacements.listId, lists.id))
-      .where(eq(listPlacements.type, item.type))
+      .where(and(eq(listPlacements.type, item.type), eq(lists.system, false)))
       .orderBy(asc(listPlacements.position))
+    const systemListSlug = item.type === "book" ? "reading-list" : "watchlist"
+    const [systemList] = await db
+      .select({
+        slug: lists.slug,
+        name: lists.name,
+        containsItem: sql<number>`exists(
+          select 1 from ${listItems}
+          where ${listItems.listId} = ${lists.id}
+            and ${listItems.itemId} = ${item.id}
+        )`,
+      })
+      .from(lists)
+      .where(eq(lists.slug, systemListSlug))
+      .limit(1)
     return {
       ...item,
-      customLists,
+      customLists: customLists.map((list) => ({
+        ...list,
+        containsItem: Boolean(list.containsItem),
+      })),
+      systemList: systemList
+        ? { ...systemList, containsItem: Boolean(systemList.containsItem) }
+        : null,
     }
   })
 
