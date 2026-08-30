@@ -8,12 +8,13 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerSwipeArea,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -178,32 +179,32 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-        <SheetContent
+      <Drawer
+        open={openMobile}
+        onOpenChange={setOpenMobile}
+        swipeDirection="left"
+      >
+        <DrawerSwipeArea className="fixed inset-y-0 left-0 w-6" />
+        <DrawerContent
           {...props}
           dir={dir}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className={cn(
-            "w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
-            className
-          )}
+          className={cn("bg-sidebar p-0 text-sidebar-foreground", className)}
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              "--drawer-content-width": SIDEBAR_WIDTH_MOBILE,
             } as React.CSSProperties
           }
-          side={side}
-          showCloseButton={false}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-          </SheetHeader>
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Sidebar</DrawerTitle>
+            <DrawerDescription>Displays the mobile sidebar.</DrawerDescription>
+          </DrawerHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     )
   }
 
