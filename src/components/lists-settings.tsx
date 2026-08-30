@@ -94,10 +94,12 @@ export function ListsSettings({
     try {
       await action()
       await onChange()
+      return true
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Couldn’t update lists."
       )
+      return false
     } finally {
       setBusy(false)
     }
@@ -119,6 +121,7 @@ export function ListsSettings({
     const { initialIndex, index } = source
     if (initialIndex === index) return
 
+    const previousPlacements = orderedPlacements
     const nextRows = [...rows]
     const [movedRow] = nextRows.splice(initialIndex, 1)
     if (!movedRow) return
@@ -129,14 +132,17 @@ export function ListsSettings({
         placement.type === activeType ? nextRows[nextRowIndex++] : placement
       )
     })
-    void change(() =>
-      reorderListPlacements({
-        data: {
-          type: activeType,
-          placementIds: nextRows.map((placement) => placement.id),
-        },
-      })
-    )
+    void (async () => {
+      const reordered = await change(() =>
+        reorderListPlacements({
+          data: {
+            type: activeType,
+            placementIds: nextRows.map((placement) => placement.id),
+          },
+        })
+      )
+      if (!reordered) setOrderedPlacements(previousPlacements)
+    })()
   }
 
   return (
