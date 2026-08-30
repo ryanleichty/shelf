@@ -1,0 +1,53 @@
+"use client"
+
+import { PlayIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+export function TrailerDialog({
+  title,
+  trailerKey,
+}: {
+  title: string
+  trailerKey: string
+}) {
+  return (
+    <Dialog>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <DialogTrigger
+              render={
+                <Button aria-label="Trailer" size="icon" variant="outline">
+                  <PlayIcon />
+                </Button>
+              }
+            />
+          }
+        />
+        <TooltipContent>Trailer</TooltipContent>
+      </Tooltip>
+      <DialogContent className="max-w-4xl gap-0 overflow-hidden bg-black p-0">
+        <DialogTitle className="sr-only">{title} trailer</DialogTitle>
+        <iframe
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="aspect-video w-full"
+          referrerPolicy="strict-origin-when-cross-origin"
+          src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailerKey)}?autoplay=1&mute=1&rel=0`}
+          title={`${title} trailer`}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
