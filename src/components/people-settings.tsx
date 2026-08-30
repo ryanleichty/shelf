@@ -25,7 +25,6 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxTrigger,
 } from "@/components/ui/combobox"
 import {
   Empty,
@@ -242,31 +241,11 @@ export function PeopleSettings({
                     onValueChange={setMergeTarget}
                     value={mergeTarget}
                   >
-                    <ComboboxTrigger
-                      render={
-                        <Button
-                          id="merge-person"
-                          type="button"
-                          variant="outline"
-                        />
-                      }
-                    >
-                      {mergeTarget?.name ??
-                        `Choose ${labels[editing.kind].toLowerCase()}…`}
-                    </ComboboxTrigger>
-                    <ComboboxContent
-                      collisionAvoidance={{
-                        align: "shift",
-                        fallbackAxisSide: "none",
-                        side: "shift",
-                      }}
-                      collisionPadding={8}
-                      positionMethod="fixed"
-                    >
-                      <ComboboxInput
-                        placeholder="Search people…"
-                        showTrigger={false}
-                      />
+                    <ComboboxInput
+                      id="merge-person"
+                      placeholder={`Choose ${labels[editing.kind].toLowerCase()}…`}
+                    />
+                    <ComboboxContent>
                       <ComboboxEmpty>No people found.</ComboboxEmpty>
                       <ComboboxList>
                         {(person) => (
