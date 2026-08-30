@@ -39,13 +39,13 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const navigation = [
-  { title: "Home", to: "/", icon: HouseIcon },
+const catalogNavigation = [
   {
     title: "Books",
     to: "/books",
     icon: BookOpenIcon,
     items: [
+      { title: "All", to: "/books/all" },
       { title: "Reading list", to: "/books/list/$slug", slug: "reading-list" },
     ],
   },
@@ -54,6 +54,7 @@ const navigation = [
     to: "/movies",
     icon: FilmIcon,
     items: [
+      { title: "All", to: "/movies/all" },
       { title: "Watchlist", to: "/movies/list/$slug", slug: "watchlist" },
     ],
   },
@@ -61,7 +62,10 @@ const navigation = [
     title: "TV",
     to: "/tv",
     icon: TvIcon,
-    items: [{ title: "Watchlist", to: "/tv/list/$slug", slug: "watchlist" }],
+    items: [
+      { title: "All", to: "/tv/all" },
+      { title: "Watchlist", to: "/tv/list/$slug", slug: "watchlist" },
+    ],
   },
 ] as const
 
@@ -79,14 +83,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       .catch(() => setSignedIn(false))
   }, [])
   useEffect(() => {
-    const currentParent = navigation.find(
-      (item) =>
-        "items" in item &&
-        item.items.some(
-          (subItem) => location.pathname === `${item.to}/list/${subItem.slug}`
-        )
+    const currentParent = catalogNavigation.find((item) =>
+      item.items.some(
+        (subItem) =>
+          location.pathname ===
+          ("slug" in subItem ? `${item.to}/list/${subItem.slug}` : subItem.to)
+      )
     )
-    if (currentParent && "items" in currentParent) {
+    if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
   }, [location.pathname])
@@ -132,25 +136,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span>Search</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {navigation.map((item) => {
-                if (!("items" in item)) {
-                  return (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton
-                        isActive={location.pathname === item.to}
-                        render={<Link to={item.to} />}
-                        tooltip={item.title}
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                }
-
-                const isOnListSubpage = item.items.some(
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={location.pathname === "/"}
+                  render={<Link to="/" />}
+                  tooltip="Home"
+                >
+                  <HouseIcon />
+                  <span>Home</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Catalog</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {catalogNavigation.map((item) => {
+                const isOnSubpage = item.items.some(
                   (subItem) =>
-                    location.pathname === `${item.to}/list/${subItem.slug}`
+                    location.pathname ===
+                    ("slug" in subItem
+                      ? `${item.to}/list/${subItem.slug}`
+                      : subItem.to)
                 )
                 return (
                   <Collapsible
@@ -162,7 +171,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         [item.to]: open,
                       }))
                     }
-                    open={openNavigation[item.to] ?? isOnListSubpage}
+                    open={openNavigation[item.to] ?? isOnSubpage}
                   >
                     <SidebarMenuItem>
                       <SidebarMenuButton
@@ -177,7 +186,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         render={
                           <SidebarMenuAction
                             aria-label={`Toggle ${item.title} navigation`}
-                            className="rounded-full transition-transform duration-200 aria-expanded:rotate-90 data-[state=open]:rotate-90 data-open:rotate-90"
+                            className="rounded-full transition-transform duration-200 data-panel-open:rotate-90"
                           />
                         }
                       >
@@ -185,24 +194,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </CollapsibleTrigger>
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {item.items.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.to}>
-                              <SidebarMenuSubButton
-                                isActive={
-                                  location.pathname ===
-                                  `${item.to}/list/${subItem.slug}`
-                                }
-                                render={
-                                  <Link
-                                    params={{ slug: subItem.slug }}
-                                    to={subItem.to}
-                                  />
-                                }
-                              >
-                                <span>{subItem.title}</span>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {item.items.map((subItem) => {
+                            const path =
+                              "slug" in subItem
+                                ? `${item.to}/list/${subItem.slug}`
+                                : subItem.to
+                            return (
+                              <SidebarMenuSubItem key={subItem.to}>
+                                <SidebarMenuSubButton
+                                  isActive={location.pathname === path}
+                                  render={
+                                    "slug" in subItem ? (
+                                      <Link
+                                        params={{ slug: subItem.slug }}
+                                        to={subItem.to}
+                                      />
+                                    ) : (
+                                      <Link to={subItem.to} />
+                                    )
+                                  }
+                                >
+                                  <span>{subItem.title}</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            )
+                          })}
                         </SidebarMenuSub>
                       </CollapsibleContent>
                     </SidebarMenuItem>

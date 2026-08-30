@@ -6,10 +6,12 @@ export function CoverTile({
   item,
   className = "",
   variant = "default",
+  fromAll = false,
 }: {
   item: Item
   className?: string
   variant?: "default" | "carousel"
+  fromAll?: boolean
 }) {
   const accessibleName = item.creator
     ? `${item.title} by ${item.creator}`
@@ -21,6 +23,7 @@ export function CoverTile({
       aria-label={accessibleName}
       className={`group block ${isCarouselTile ? "relative z-0 hover:z-10 focus-visible:z-10 focus-visible:outline-none" : ""} ${className}`}
       params={{ slug: item.slug }}
+      search={fromAll ? { from: "all" } : {}}
       to="/item/$slug"
     >
       <div

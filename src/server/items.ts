@@ -1506,11 +1506,16 @@ export const removeItemFromList = createServerFn({ method: "POST" })
     return { ok: true }
   })
 
-export const getHomeRows = createServerFn({ method: "GET" }).handler(
-  async () => {
+export const getHomeRows = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ type: z.enum(itemTypes).optional() }).optional())
+  .handler(async ({ data }) => {
     await ensureDatabase()
     const allItems = await enrichItems(
-      await db.select().from(items).orderBy(asc(items.title))
+      await db
+        .select()
+        .from(items)
+        .where(data?.type ? eq(items.type, data.type) : undefined)
+        .orderBy(asc(items.title))
     )
     const memberships = await db
       .select({
@@ -1525,6 +1530,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
     const rows: Array<{ title: string; slug?: string; items: Item[] }> = []
     const itemsById = new Map(allItems.map((item) => [item.id, item]))
     for (const { slug, title, allowedTypes } of namedLists) {
+      if (data?.type && !allowedTypes.includes(data.type)) continue
       const rowItems = memberships.flatMap((membership) => {
         const item = itemsById.get(membership.itemId)
         return membership.listSlug === slug &&
@@ -1558,8 +1564,7 @@ export const getHomeRows = createServerFn({ method: "GET" }).handler(
           items: rowItems,
         })),
     ]
-  }
-)
+  })
 
 export const getItemBySlug = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))

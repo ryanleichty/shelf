@@ -1,9 +1,26 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { HomeCarousel } from "@/components/home-carousel"
-import { getHomeRows } from "@/server/items"
+import { getItems } from "@/server/items"
 
 export const Route = createFileRoute("/")({
-  loader: () => getHomeRows(),
+  loader: async () => {
+    const items = await getItems({ data: {} })
+    const recentItemsFor = (type: "book" | "movie" | "tv") =>
+      items
+        .filter((item) => item.type === type)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+        .slice(0, 12)
+
+    return [
+      { title: "Books", to: "/books" as const, items: recentItemsFor("book") },
+      {
+        title: "Movies",
+        to: "/movies" as const,
+        items: recentItemsFor("movie"),
+      },
+      { title: "TV", to: "/tv" as const, items: recentItemsFor("tv") },
+    ].filter((row) => row.items.length)
+  },
   component: Home,
 })
 
@@ -18,22 +35,14 @@ function Home() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Shelf</h1>
       </div>
       {rows.length ? (
-        <div className="space-y-10">
+        <div className="flex flex-col gap-10">
           {rows.map((row, index) => (
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
                 <h2 className="text-xl font-semibold tracking-tight">
-                  {row.slug ? (
-                    <Link
-                      className="hover:underline"
-                      params={{ slug: row.slug }}
-                      to="/genre/$slug"
-                    >
-                      {row.title}
-                    </Link>
-                  ) : (
-                    row.title
-                  )}
+                  <Link className="hover:underline" to={row.to}>
+                    {row.title}
+                  </Link>
                 </h2>
               </div>
               <HomeCarousel id={`home-row-${index}`} items={row.items} />
