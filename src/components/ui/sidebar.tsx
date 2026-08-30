@@ -191,7 +191,10 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className={cn("bg-sidebar p-0 text-sidebar-foreground", className)}
+          className={cn(
+            "h-svh min-h-0 bg-sidebar p-0 text-sidebar-foreground",
+            className
+          )}
           style={
             {
               "--drawer-content-width": SIDEBAR_WIDTH_MOBILE,
@@ -202,7 +205,9 @@ function Sidebar({
             <DrawerTitle>Sidebar</DrawerTitle>
             <DrawerDescription>Displays the mobile sidebar.</DrawerDescription>
           </DrawerHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+            {children}
+          </div>
         </DrawerContent>
       </Drawer>
     )
@@ -344,7 +349,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex shrink-0 flex-col gap-2 p-2", className)}
       {...props}
     />
   )

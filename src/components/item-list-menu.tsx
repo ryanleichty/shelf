@@ -4,12 +4,15 @@ import { useEffect, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { ListPlusIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CreateListDialog } from "@/components/create-list-dialog"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getSignedInStatus } from "@/server/items"
@@ -19,14 +22,17 @@ type ListOption = { slug: string; name: string; containsItem: boolean }
 
 export function ItemListMenu({
   itemId,
+  itemType,
   lists,
 }: {
   itemId: number
+  itemType: "book" | "movie" | "tv"
   lists: ListOption[]
 }) {
   const router = useRouter()
   const [signedIn, setSignedIn] = useState(false)
   const [error, setError] = useState("")
+  const [newListOpen, setNewListOpen] = useState(false)
 
   useEffect(() => {
     getSignedInStatus()
@@ -34,7 +40,7 @@ export function ItemListMenu({
       .catch(() => setSignedIn(false))
   }, [])
 
-  if (!signedIn || !lists.length) return null
+  if (!signedIn) return null
 
   async function toggleList(list: ListOption) {
     setError("")
@@ -75,8 +81,18 @@ export function ItemListMenu({
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setNewListOpen(true)}>
+            New list
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <CreateListDialog
+        defaultType={itemType}
+        onCreated={router.invalidate}
+        onOpenChange={setNewListOpen}
+        open={newListOpen}
+      />
       {error && (
         <p className="mt-2 text-sm text-destructive" role="alert">
           {error}

@@ -20,20 +20,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { CreateListDialog } from "@/components/create-list-dialog"
 import {
-  createList,
   deleteList,
   moveListPlacement,
   renameList,
@@ -67,8 +58,6 @@ export function ListsSettings({
 }) {
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newType, setNewType] = useState<Placement["type"]>("book")
   const [deleting, setDeleting] = useState<Placement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -220,59 +209,11 @@ export function ListsSettings({
           </Card>
         )
       })}
-      <Dialog onOpenChange={setNewListOpen} open={newListOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New list</DialogTitle>
-            <DialogDescription>
-              Create a list for one catalog type.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              void change(async () => {
-                await createList({ data: { name: newName, type: newType } })
-                setNewName("")
-                setNewListOpen(false)
-              })
-            }}
-          >
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="list-name">Name</FieldLabel>
-                <Input
-                  id="list-name"
-                  onChange={(event) => setNewName(event.target.value)}
-                  required
-                  value={newName}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="list-type">Type</FieldLabel>
-                <ToggleGroup
-                  onValueChange={(value) =>
-                    value[0] && setNewType(value[0] as Placement["type"])
-                  }
-                  multiple={false}
-                  value={[newType]}
-                >
-                  {types.map((type) => (
-                    <ToggleGroupItem key={type.value} value={type.value}>
-                      {type.label}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-              </Field>
-            </FieldGroup>
-            <DialogFooter className="mt-4">
-              <Button disabled={busy} type="submit">
-                Create list
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CreateListDialog
+        onCreated={onChange}
+        onOpenChange={setNewListOpen}
+        open={newListOpen}
+      />
       <AlertDialog
         onOpenChange={(open) => !open && setDeleting(null)}
         open={Boolean(deleting)}
