@@ -6,7 +6,7 @@ import {
   BlossomPrev,
 } from "@blossom-carousel/react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -16,14 +16,18 @@ export function HomeCarousel({
   contained = false,
   id,
   items,
+  renderSection,
   systemListSlug,
 }: {
   contained?: boolean
   id: string
   items: Item[]
+  renderSection?: (carousel: ReactNode) => ReactNode
   systemListSlug?: string
 }) {
-  const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(() => new Set())
+  const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(
+    () => new Set()
+  )
   const visibleItems = systemListSlug
     ? items.filter((item) => !hiddenItemIds.has(item.id))
     : items
@@ -40,7 +44,9 @@ export function HomeCarousel({
     })
   }
 
-  return (
+  if (systemListSlug && visibleItems.length === 0) return null
+
+  const carousel = (
     <div className="relative">
       <BlossomCarousel
         className={cn(
@@ -59,9 +65,7 @@ export function HomeCarousel({
               className="w-full"
               item={item}
               onSystemListMembershipChange={
-                systemListSlug
-                  ? handleSystemListMembershipChange
-                  : undefined
+                systemListSlug ? handleSystemListMembershipChange : undefined
               }
               variant="carousel"
             />
@@ -94,4 +98,5 @@ export function HomeCarousel({
       </div>
     </div>
   )
+  return renderSection ? renderSection(carousel) : carousel
 }

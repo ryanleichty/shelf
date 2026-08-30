@@ -1,6 +1,7 @@
 import { createClient } from "@libsql/client"
 import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
+import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 
@@ -339,18 +340,11 @@ export function ensureDatabase() {
         VALUES (?, ?, 1, ?), (?, ?, 1, ?)
         ON CONFLICT(slug) DO UPDATE SET system = 1
       `,
-      args: [
-        "watchlist",
-        "Watchlist",
-        now,
-        "reading-list",
-        "Reading list",
-        now,
-      ],
+      args: ["watchlist", "Watchlist", now, READLIST_SLUG, READLIST_NAME, now],
     })
     await getClient().execute(`
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'book', 1, 1 FROM lists WHERE slug = 'reading-list'
+      SELECT id, 'list', slug, 'book', 1, 1 FROM lists WHERE slug = '${READLIST_SLUG}'
       ON CONFLICT(list_id, type) DO NOTHING
     `)
     await getClient().execute(`

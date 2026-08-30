@@ -254,7 +254,7 @@ await client.execute({
     VALUES (?, ?, 1, ?), (?, ?, 1, ?)
     ON CONFLICT(slug) DO UPDATE SET system = 1
   `,
-  args: ["watchlist", "Watchlist", now, "reading-list", "Reading list", now],
+  args: ["watchlist", "Watchlist", now, "reading-list", "Readlist", now],
 })
 for (const [slug, type] of [
   ["reading-list", "book"],

@@ -13,6 +13,7 @@ import {
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
+import { displayListName } from "@/lib/system-lists"
 import { db, ensureDatabase, refreshSearchIndex } from "./db"
 import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
@@ -2245,7 +2246,7 @@ export const getItemsByList = createServerFn({ method: "GET" })
       .where(and(...filters))
       .orderBy(asc(listItems.position))
     return {
-      name: list.name,
+      name: displayListName(data.listSlug, list.name),
       items: await enrichItems(records.map((row) => row.items)),
     }
   })
@@ -2351,7 +2352,7 @@ export const getHomeRows = createServerFn({ method: "GET" })
                     )
       const title =
         placement.kind === "list"
-          ? placement.title
+          ? displayListName(placement.slug, placement.title)
           : placement.kind === "genre"
             ? rowItems
                 .flatMap((item) => item.genres)
@@ -2420,7 +2421,11 @@ export const getItemBySlug = createServerFn({ method: "GET" })
         containsItem: Boolean(list.containsItem),
       })),
       systemList: systemList
-        ? { ...systemList, containsItem: Boolean(systemList.containsItem) }
+        ? {
+            ...systemList,
+            name: displayListName(systemList.slug, systemList.name),
+            containsItem: Boolean(systemList.containsItem),
+          }
         : null,
     }
   })
