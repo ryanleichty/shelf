@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import { Link, createFileRoute, redirect } from "@tanstack/react-router"
-import { CameraIcon, LoaderCircleIcon, ScanBarcodeIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { checkBarcode } from "@/server/items"
-import { getAdminStatus } from "@/server/items"
+import { BarcodeScanner } from "@/components/barcode-scanner"
+import { Field, FieldDescription, FieldError } from "@/components/ui/field"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Spinner } from "@/components/ui/spinner"
+import { checkBarcode, getAdminStatus } from "@/server/items"
 
 type CheckResult = Awaited<ReturnType<typeof checkBarcode>>
-type ScannerControls = { stop: () => void }
 
 export const Route = createFileRoute("/check")({
   beforeLoad: async () => {
@@ -17,30 +21,11 @@ export const Route = createFileRoute("/check")({
 })
 
 function Check() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const scannerControls = useRef<ScannerControls | null>(null)
-  const mediaStream = useRef<MediaStream | null>(null)
-  const detectionTimer = useRef<number | null>(null)
-  const handlingCode = useRef(false)
   const [code, setCode] = useState("")
   const [result, setResult] = useState<CheckResult | null>(null)
   const [error, setError] = useState("")
-  const [scanning, setScanning] = useState(false)
   const [checking, setChecking] = useState(false)
-
-  const stopScanner = useCallback(() => {
-    scannerControls.current?.stop()
-    scannerControls.current = null
-    mediaStream.current?.getTracks().forEach((track) => track.stop())
-    mediaStream.current = null
-    if (detectionTimer.current !== null) {
-      window.clearInterval(detectionTimer.current)
-      detectionTimer.current = null
-    }
-    setScanning(false)
-  }, [])
-
-  useEffect(() => stopScanner, [stopScanner])
+  const [scannerReset, setScannerReset] = useState(0)
 
   const submitCode = useCallback(
     async (value: string) => {
@@ -58,82 +43,14 @@ function Check() {
         )
       } finally {
         setChecking(false)
-        handlingCode.current = false
       }
     },
     [checking]
   )
 
-  const handleDetectedCode = useCallback(
-    (value: string) => {
-      if (handlingCode.current) return
-      handlingCode.current = true
-      stopScanner()
-      setCode(value)
-      void submitCode(value)
-    },
-    [stopScanner, submitCode]
-  )
-
-  const startScanner = useCallback(async () => {
-    setError("")
-    setResult(null)
-    handlingCode.current = false
-    setScanning(true)
-    await new Promise<void>((resolve) =>
-      window.requestAnimationFrame(() => resolve())
-    )
-    if (!videoRef.current) return
-    try {
-      const Detector = (
-        window as unknown as {
-          BarcodeDetector?: new (options: {
-            formats: string[]
-          }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> }
-        }
-      ).BarcodeDetector
-      if (Detector) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false,
-        })
-        mediaStream.current = stream
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        const detector = new Detector({
-          formats: ["ean_13", "upc_a", "ean_8", "code_128"],
-        })
-        detectionTimer.current = window.setInterval(() => {
-          if (!videoRef.current || handlingCode.current) return
-          detector
-            .detect(videoRef.current)
-            .then((codes) => {
-              const value = codes[0]?.rawValue
-              if (value) handleDetectedCode(value)
-            })
-            .catch(() => undefined)
-        }, 250)
-        return
-      }
-
-      const { BrowserMultiFormatReader } = await import("@zxing/browser")
-      const reader = new BrowserMultiFormatReader()
-      scannerControls.current = await reader.decodeFromConstraints(
-        { video: { facingMode: { ideal: "environment" } }, audio: false },
-        videoRef.current,
-        (decoded) => {
-          if (decoded) handleDetectedCode(decoded.getText())
-        }
-      )
-    } catch {
-      stopScanner()
-      setError("Camera access is unavailable. Type or paste the code instead.")
-    }
-  }, [handleDetectedCode, stopScanner])
-
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    stopScanner()
+    setScannerReset((current) => current + 1)
     await submitCode(code)
   }
 
@@ -147,51 +64,44 @@ function Check() {
         Scan a barcode before you buy.
       </p>
 
-      <div className="mt-6 space-y-3">
-        {scanning && (
-          <div className="overflow-hidden rounded-lg bg-muted">
-            <video
-              aria-label="Barcode scanner camera"
-              className="aspect-square w-full object-cover"
-              muted
-              playsInline
-              ref={videoRef}
-            />
-          </div>
-        )}
-        <Button
-          className="w-full"
-          onClick={scanning ? stopScanner : startScanner}
-          type="button"
-          variant={scanning ? "outline" : "default"}
-        >
-          {scanning ? <CameraIcon /> : <ScanBarcodeIcon />}
-          {scanning ? "Stop camera" : "Scan barcode"}
-        </Button>
+      <div className="mt-6 flex flex-col gap-5">
+        <BarcodeScanner
+          stopSignal={scannerReset}
+          onDetected={(value) => {
+            setCode(value)
+            void submitCode(value)
+          }}
+        />
+        <form onSubmit={submit}>
+          <Field>
+            <InputGroup>
+              <InputGroupInput
+                aria-label="Barcode, UPC, or ISBN"
+                autoComplete="off"
+                inputMode="numeric"
+                onChange={(event) => setCode(event.target.value)}
+                placeholder="Type or paste a code"
+                value={code}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  aria-label="Check barcode"
+                  disabled={checking || !code.trim()}
+                  type="submit"
+                >
+                  {checking && <Spinner />}
+                  Check
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <FieldDescription>
+              EAN-13, UPC-A, ISBN-10, or ISBN-13
+            </FieldDescription>
+          </Field>
+        </form>
       </div>
 
-      <form className="mt-5 flex gap-2" onSubmit={submit}>
-        <Input
-          aria-label="Barcode, UPC, or ISBN"
-          autoComplete="off"
-          inputMode="numeric"
-          onChange={(event) => setCode(event.target.value)}
-          placeholder="Type or paste a code"
-          value={code}
-        />
-        <Button disabled={checking || !code.trim()} type="submit">
-          {checking ? <LoaderCircleIcon className="animate-spin" /> : "Check"}
-        </Button>
-      </form>
-      <p className="mt-2 text-xs text-muted-foreground">
-        EAN-13, UPC-A, ISBN-10, or ISBN-13
-      </p>
-
-      {error && (
-        <p className="mt-5 text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <FieldError className="mt-5">{error}</FieldError>}
       {result?.status === "owned" && (
         <article className="mt-6 flex gap-4 rounded-lg border p-4">
           <div className="size-20 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -209,7 +119,9 @@ function Check() {
             <h2 className="mt-1 truncate font-semibold">{result.item.title}</h2>
             <p className="text-sm text-muted-foreground">
               {result.item.year}
-              {result.item.format ? ` · ${formatLabel(result.item.format)}` : ""}
+              {result.item.format
+                ? ` · ${formatLabel(result.item.format)}`
+                : ""}
             </p>
             <Link
               className="mt-2 inline-block text-sm text-primary underline-offset-4 hover:underline"
