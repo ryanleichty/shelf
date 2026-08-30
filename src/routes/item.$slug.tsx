@@ -144,7 +144,11 @@ function ItemDetail() {
                 )
               : item.creator}
           </p>
-          <ItemListMenu itemId={item.id} lists={item.customLists} />
+          <ItemListMenu
+            itemId={item.id}
+            itemType={item.type}
+            lists={item.customLists}
+          />
           {item.genres.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
               {item.genres.map((genre) => (
