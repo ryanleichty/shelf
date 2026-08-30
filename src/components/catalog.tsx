@@ -9,6 +9,14 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -74,7 +82,7 @@ export function Catalog({
   ].sort((left, right) => left.localeCompare(right))
   const visibleItems = useMemo(() => {
     const localQuery = onQueryChange ? "" : draftQuery.trim().toLowerCase()
-    return catalogItems
+    return [...catalogItems]
       .filter((item) => format === "all" || item.format === format)
       .filter((item) => status === "all" || item.status === status)
       .filter(
@@ -88,7 +96,7 @@ export function Catalog({
           item.title.toLowerCase().includes(localQuery) ||
           item.creator.toLowerCase().includes(localQuery)
       )
-      .toSorted((left, right) => {
+      .sort((left, right) => {
         if (sort === "title-desc") return right.title.localeCompare(left.title)
         if (sort === "year-desc") return right.year - left.year
         if (sort === "year-asc") return left.year - right.year
@@ -185,24 +193,44 @@ export function Catalog({
         {genreOptions.length > 0 && !hideGenreFilter && (
           <Field>
             <FieldLabel htmlFor="catalog-genre">Genre</FieldLabel>
-            <Select
-              onValueChange={(value) => setGenre(value ?? "all")}
-              value={genre}
-            >
-              <SelectTrigger id="catalog-genre">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">All genres</SelectItem>
-                  {genreOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {genreOptions.length >= 8 ? (
+              <Combobox
+                items={["all", ...genreOptions]}
+                onValueChange={(value) => setGenre(value ?? "all")}
+                value={genre}
+              >
+                <ComboboxInput id="catalog-genre" placeholder="All genres" />
+                <ComboboxContent>
+                  <ComboboxEmpty>No genres found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(option) => (
+                      <ComboboxItem key={option} value={option}>
+                        {option === "all" ? "All genres" : option}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            ) : (
+              <Select
+                onValueChange={(value) => setGenre(value ?? "all")}
+                value={genre}
+              >
+                <SelectTrigger id="catalog-genre">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="all">All genres</SelectItem>
+                    {genreOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
           </Field>
         )}
         <Field>
