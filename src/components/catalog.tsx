@@ -29,13 +29,13 @@ import type { Item } from "@/server/schema"
 type Sort =
   "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
 
-const sortItems: Record<Sort, string> = {
-  "title-asc": "Title A–Z",
-  "title-desc": "Title Z–A",
-  "year-desc": "Year newest",
-  "year-asc": "Year oldest",
-  "updated-desc": "Recently updated",
-}
+const sortItems: { value: Sort; label: string }[] = [
+  { value: "title-asc", label: "Title A–Z" },
+  { value: "title-desc", label: "Title Z–A" },
+  { value: "year-desc", label: "Year newest" },
+  { value: "year-asc", label: "Year oldest" },
+  { value: "updated-desc", label: "Recently updated" },
+]
 
 export function Catalog({
   items,
@@ -130,20 +130,17 @@ export function Catalog({
             <FieldLabel htmlFor="catalog-genre">Genre</FieldLabel>
             {genreOptions.length >= 8 ? (
               <Combobox
-                items={["all", ...genreOptions]}
-                itemToStringLabel={(item) =>
-                  item === "all" ? "All genres" : item
-                }
-                onValueChange={(value) => setGenre(value ?? "all")}
-                value={genre}
+                items={genreItems}
+                onValueChange={(item) => setGenre(item?.value ?? "all")}
+                value={genreItems.find((item) => item.value === genre)}
               >
                 <ComboboxInput id="catalog-genre" placeholder="All genres" />
                 <ComboboxContent>
                   <ComboboxEmpty>No genres found.</ComboboxEmpty>
                   <ComboboxList>
-                    {(option) => (
-                      <ComboboxItem key={option} value={option}>
-                        {option === "all" ? "All genres" : option}
+                    {(item) => (
+                      <ComboboxItem key={item.value} value={item}>
+                        {item.label}
                       </ComboboxItem>
                     )}
                   </ComboboxList>
