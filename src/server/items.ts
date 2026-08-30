@@ -2063,14 +2063,18 @@ async function getTmdbRelatedIds(
 
   const results = await Promise.all(
     ["similar", "recommendations"].map(async (kind) => {
-      const url = new URL(
-        `https://api.themoviedb.org/3/${type}/${tmdbId}/${kind}`
-      )
-      url.searchParams.set("api_key", apiKey)
-      url.searchParams.set("language", "en-US")
-      const response = await fetch(url)
-      if (!response.ok) return []
-      return tmdbResultIds(await response.json())
+      try {
+        const url = new URL(
+          `https://api.themoviedb.org/3/${type}/${tmdbId}/${kind}`
+        )
+        url.searchParams.set("api_key", apiKey)
+        url.searchParams.set("language", "en-US")
+        const response = await fetch(url)
+        if (!response.ok) return []
+        return tmdbResultIds(await response.json())
+      } catch {
+        return []
+      }
     })
   )
   return [...new Set(results.flat())]

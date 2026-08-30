@@ -15,7 +15,9 @@ export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const similarItems = await getSimilarOwnedItems({ data: { itemId: item.id } })
+    const similarItems = await getSimilarOwnedItems({
+      data: { itemId: item.id },
+    })
     return { item, similarItems }
   },
   head: ({ loaderData }) => {
