@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { ListPlusIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -42,6 +42,7 @@ export function ItemListMenu({
   const [bookmark, setBookmark] = useState(systemList)
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
+  const listRequestsInFlight = useRef(new Set<string>())
 
   useEffect(() => {
     getSignedInStatus()
@@ -59,25 +60,39 @@ export function ItemListMenu({
   if (!signedIn) return null
 
   async function toggleList(list: ListOption) {
+    if (listRequestsInFlight.current.has(list.slug)) return
+
+    const previousContainsItem = list.containsItem
+    const nextContainsItem = !previousContainsItem
+    listRequestsInFlight.current.add(list.slug)
     setError("")
+    setCustomLists((current) =>
+      current.map((candidate) =>
+        candidate.slug === list.slug
+          ? { ...candidate, containsItem: nextContainsItem }
+          : candidate
+      )
+    )
     try {
-      if (list.containsItem)
+      if (previousContainsItem)
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
+      void router.invalidate().catch(() => undefined)
+    } catch (cause) {
       setCustomLists((current) =>
         current.map((candidate) =>
           candidate.slug === list.slug
-            ? { ...candidate, containsItem: !candidate.containsItem }
+            ? { ...candidate, containsItem: previousContainsItem }
             : candidate
         )
       )
-      await router.invalidate()
-    } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
           : `Could not update ${list.name}.`
       )
+    } finally {
+      listRequestsInFlight.current.delete(list.slug)
     }
   }
 

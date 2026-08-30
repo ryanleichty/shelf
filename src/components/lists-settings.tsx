@@ -1,6 +1,6 @@
 "use client"
 
-import { type ComponentProps, useEffect, useState } from "react"
+import { type ComponentProps, useEffect, useRef, useState } from "react"
 import { DragDropProvider } from "@dnd-kit/react"
 import { isSortable, useSortable } from "@dnd-kit/react/sortable"
 import { GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react"
@@ -83,6 +83,8 @@ export function ListsSettings({
   const [busy, setBusy] = useState(false)
   const [activeType, setActiveType] = useState<ListType>("book")
   const [orderedPlacements, setOrderedPlacements] = useState(placements)
+  const reorderInFlight = useRef(new Set<ListType>())
+  const visibilityRequestsInFlight = useRef(new Set<number>())
 
   useEffect(() => {
     setOrderedPlacements(placements)
@@ -115,7 +117,7 @@ export function ListsSettings({
       NonNullable<ComponentProps<typeof DragDropProvider>["onDragEnd"]>
     >[0]
   ) {
-    if (event.canceled || busy) return
+    if (event.canceled || reorderInFlight.current.has(activeType)) return
     const { source } = event.operation
     if (!isSortable(source)) return
     const { initialIndex, index } = source
@@ -133,15 +135,62 @@ export function ListsSettings({
       )
     })
     void (async () => {
-      const reordered = await change(() =>
-        reorderListPlacements({
+      reorderInFlight.current.add(activeType)
+      setError("")
+      try {
+        await reorderListPlacements({
           data: {
             type: activeType,
             placementIds: nextRows.map((placement) => placement.id),
           },
         })
+        void onChange().catch(() => undefined)
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "Couldn’t update lists."
+        )
+        setOrderedPlacements(previousPlacements)
+      } finally {
+        reorderInFlight.current.delete(activeType)
+      }
+    })()
+  }
+
+  function updateVisibility(placement: Placement, visible: boolean) {
+    if (visibilityRequestsInFlight.current.has(placement.id)) return
+
+    const previousVisible = placement.visible
+    visibilityRequestsInFlight.current.add(placement.id)
+    setError("")
+    setOrderedPlacements((current) =>
+      current.map((candidate) =>
+        candidate.id === placement.id ? { ...candidate, visible } : candidate
       )
-      if (!reordered) setOrderedPlacements(previousPlacements)
+    )
+    void (async () => {
+      try {
+        await setListPlacementVisible({
+          data: {
+            placementId: placement.id,
+            type: placement.type,
+            visible,
+          },
+        })
+        void onChange().catch(() => undefined)
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "Couldn’t update lists."
+        )
+        setOrderedPlacements((current) =>
+          current.map((candidate) =>
+            candidate.id === placement.id
+              ? { ...candidate, visible: previousVisible }
+              : candidate
+          )
+        )
+      } finally {
+        visibilityRequestsInFlight.current.delete(placement.id)
+      }
     })()
   }
 
@@ -214,15 +263,7 @@ export function ListsSettings({
                         )
                       }
                       onVisibilityChange={(visible) =>
-                        void change(() =>
-                          setListPlacementVisible({
-                            data: {
-                              placementId: placement.id,
-                              type: placement.type,
-                              visible,
-                            },
-                          })
-                        )
+                        updateVisibility(placement, visible)
                       }
                       placement={placement}
                       index={index}
@@ -326,7 +367,6 @@ function SortablePlacement({
       <Switch
         aria-label={`Show ${label} on ${placement.type === "tv" ? "TV" : `${placement.type}s`}`}
         checked={placement.visible}
-        disabled={busy}
         id={switchId}
         onCheckedChange={onVisibilityChange}
       />
