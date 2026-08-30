@@ -38,6 +38,7 @@ export function ensureDatabase() {
         creator TEXT NOT NULL,
         year INTEGER NOT NULL,
         cover_image_url TEXT,
+        backdrop_image_url TEXT,
         open_library_key TEXT,
         tmdb_id TEXT,
         barcode TEXT UNIQUE,
@@ -91,6 +92,10 @@ export function ensureDatabase() {
       )
     if (!columns.rows.some((column) => column.name === "description"))
       await getClient().execute("ALTER TABLE items ADD COLUMN description TEXT")
+    if (!columns.rows.some((column) => column.name === "backdrop_image_url"))
+      await getClient().execute(
+        "ALTER TABLE items ADD COLUMN backdrop_image_url TEXT"
+      )
     if (!columns.rows.some((column) => column.name === "certification"))
       await getClient().execute(
         "ALTER TABLE items ADD COLUMN certification TEXT"

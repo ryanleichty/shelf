@@ -86,6 +86,16 @@ function ItemDetail() {
           type={item.type}
         />
       </div>
+      {item.type !== "book" && item.backdropImageUrl && (
+        <div className="mt-8 aspect-[21/9] overflow-hidden rounded-lg bg-muted">
+          <img
+            alt=""
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+            src={item.backdropImageUrl}
+          />
+        </div>
+      )}
       <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
         <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted">
           {item.coverImageUrl ? (
