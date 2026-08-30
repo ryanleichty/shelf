@@ -37,7 +37,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar"
 
 const catalogNavigation = [
@@ -73,7 +72,6 @@ const catalogNavigation = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const router = useRouter()
-  const { setOpenMobile } = useSidebar()
   const [signedIn, setSignedIn] = useState(false)
   const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>(
     {}
@@ -95,18 +93,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
-    setOpenMobile(false)
-  }, [location.pathname, setOpenMobile])
+  }, [location.pathname])
 
   async function signOut() {
     await logout()
     setSignedIn(false)
     await router.navigate({ to: "/" })
-  }
-
-  function openSearch() {
-    setOpenMobile(false)
-    setSearchOpen(true)
   }
 
   return (
@@ -138,7 +130,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={openSearch} tooltip="Search">
+                  <SidebarMenuButton
+                    onClick={() => setSearchOpen(true)}
+                    tooltip="Search"
+                  >
                     <SearchIcon />
                     <span>Search</span>
                   </SidebarMenuButton>

@@ -26,23 +26,6 @@ import {
 } from "@/components/ui/select"
 import type { Item } from "@/server/schema"
 
-const formatLabels = {
-  "blu-ray": "Blu-ray",
-  dvd: "DVD",
-  hardcover: "Hardcover",
-  paperback: "Paperback",
-  other: "Other",
-} as const
-
-const statusLabels = {
-  owned: "Owned",
-  reading: "Reading",
-  watching: "Watching",
-  borrowed: "Borrowed",
-} as const
-
-type Format = keyof typeof formatLabels
-type Status = keyof typeof statusLabels
 type Sort =
   "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
 
@@ -66,25 +49,15 @@ export function Catalog({
   emptyDescription?: string
 }) {
   const [draftQuery, setDraftQuery] = useState(query ?? "")
-  const [format, setFormat] = useState<Format | "all">("all")
-  const [status, setStatus] = useState<Status | "all">("all")
   const [genre, setGenre] = useState("all")
   const [sort, setSort] = useState<Sort>("title-asc")
   const catalogItems = type ? items.filter((item) => item.type === type) : items
-  const formatOptions = Object.keys(formatLabels).filter((value) =>
-    catalogItems.some((item) => item.format === value)
-  ) as Format[]
-  const statusOptions = Object.keys(statusLabels).filter((value) =>
-    catalogItems.some((item) => item.status === value)
-  ) as Status[]
   const genreOptions = [
     ...new Set(catalogItems.flatMap((item) => item.genres)),
   ].sort((left, right) => left.localeCompare(right))
   const visibleItems = useMemo(() => {
     const localQuery = onQueryChange ? "" : draftQuery.trim().toLowerCase()
     return [...catalogItems]
-      .filter((item) => format === "all" || item.format === format)
-      .filter((item) => status === "all" || item.status === status)
       .filter(
         (item) =>
           genre === "all" ||
@@ -104,7 +77,7 @@ export function Catalog({
           return right.updatedAt.localeCompare(left.updatedAt)
         return left.title.localeCompare(right.title)
       })
-  }, [catalogItems, draftQuery, format, genre, onQueryChange, sort, status])
+  }, [catalogItems, draftQuery, genre, onQueryChange, sort])
 
   useEffect(() => {
     setDraftQuery(query ?? "")
@@ -140,52 +113,6 @@ export function Catalog({
             />
           </InputGroup>
         </Field>
-        {formatOptions.length > 0 && (
-          <Field>
-            <FieldLabel htmlFor="catalog-format">Format</FieldLabel>
-            <Select
-              onValueChange={(value) => setFormat(value ?? "all")}
-              value={format}
-            >
-              <SelectTrigger id="catalog-format">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">All formats</SelectItem>
-                  {formatOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {formatLabels[option]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
-        {statusOptions.length > 0 && (
-          <Field>
-            <FieldLabel htmlFor="catalog-status">Status</FieldLabel>
-            <Select
-              onValueChange={(value) => setStatus(value ?? "all")}
-              value={status}
-            >
-              <SelectTrigger id="catalog-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {statusLabels[option]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
         {genreOptions.length > 0 && !hideGenreFilter && (
           <Field>
             <FieldLabel htmlFor="catalog-genre">Genre</FieldLabel>
