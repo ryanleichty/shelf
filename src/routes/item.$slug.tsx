@@ -3,21 +3,23 @@ import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
 import { getLastCatalogQuery } from "@/components/catalog-search"
+import { HomeCarousel } from "@/components/home-carousel"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
-import { getItemBySlug } from "@/server/items"
+import { getItemBySlug, getSimilarOwnedItems } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
   validateSearch: z.object({ from: z.literal("all").optional() }),
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    return item
+    const similarItems = await getSimilarOwnedItems({ data: { itemId: item.id } })
+    return { item, similarItems }
   },
   head: ({ loaderData }) => {
-    const item = loaderData
+    const item = loaderData?.item
     const description = item
       ? `${item.creator}, ${item.year}. A title from Shelf.`
       : "A title from Shelf."
@@ -44,7 +46,7 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const item = Route.useLoaderData()
+  const { item, similarItems } = Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
 
@@ -259,6 +261,20 @@ function ItemDetail() {
             </div>
           </div>
         </article>
+        {similarItems.length > 0 && (
+          <section className="mt-12" aria-labelledby="also-on-the-shelf">
+            <h2
+              className="mb-4 text-xl font-semibold tracking-tight"
+              id="also-on-the-shelf"
+            >
+              Also on the shelf
+            </h2>
+            <HomeCarousel
+              id={`also-on-the-shelf-${item.id}`}
+              items={similarItems}
+            />
+          </section>
+        )}
       </div>
     </main>
   )
