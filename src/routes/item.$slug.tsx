@@ -8,17 +8,22 @@ import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
-import { getItemBySlug, getSimilarOwnedItems } from "@/server/items"
+import {
+  getItemBySlug,
+  getSignedInStatus,
+  getSimilarOwnedItems,
+} from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
   validateSearch: z.object({ from: z.literal("all").optional() }),
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const similarItems = await getSimilarOwnedItems({
-      data: { itemId: item.id },
-    })
-    return { item, similarItems }
+    const [similarItems, signedIn] = await Promise.all([
+      getSimilarOwnedItems({ data: { itemId: item.id } }),
+      getSignedInStatus(),
+    ])
+    return { item, similarItems, signedIn }
   },
   head: ({ loaderData }) => {
     const item = loaderData?.item
@@ -48,7 +53,7 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const { item, similarItems } = Route.useLoaderData()
+  const { item, similarItems, signedIn } = Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
 
@@ -99,6 +104,7 @@ function ItemDetail() {
             providerId={
               item.type === "book" ? item.openLibraryKey : item.tmdbId
             }
+            signedIn={signedIn}
             title={item.title}
             type={item.type}
           />

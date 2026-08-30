@@ -2,7 +2,7 @@
 
 import { Link, useRouter } from "@tanstack/react-router"
 import { EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -21,29 +21,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteItem, getSignedInStatus, syncItem } from "@/server/items"
+import { deleteItem, syncItem } from "@/server/items"
 
 export function ItemAdminActions({
   id,
   title,
   type,
   providerId,
+  signedIn,
 }: {
   id: number
   title: string
   type: "book" | "movie" | "tv"
   providerId: string | null
+  signedIn: boolean
 }) {
   const router = useRouter()
-  const [signedIn, setSignedIn] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  useEffect(() => {
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
-  }, [])
   if (!signedIn) return null
   async function remove() {
     await deleteItem({ data: { id } })
