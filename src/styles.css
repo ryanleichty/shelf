@@ -104,6 +104,7 @@
 }
 
 .item-shelf-carousel .home-carousel {
+  width: 100%;
   padding-inline-start: max(1rem, calc((100% - 64rem) / 2 + 1rem));
   padding-inline-end: 1rem;
   scroll-padding-inline-start: max(1rem, calc((100% - 64rem) / 2 + 1rem));
