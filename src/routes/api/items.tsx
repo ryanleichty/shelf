@@ -11,6 +11,7 @@ import {
   normalizeOpenLibraryWorkKey,
   replaceItemCollection,
   replaceItemCast,
+  replaceItemCreators,
   upsertTags,
   uniqueSlug,
 } from "@/server/items"
@@ -207,8 +208,16 @@ export const Route = createFileRoute("/api/items")({
               .returning({ id: items.id, title: items.title, slug: items.slug })
             await upsertTags(created.id, "genre", resolved.genres)
             await upsertTags(created.id, "keyword", resolved.keywords ?? [])
+            await replaceItemCreators(
+              created.id,
+              input.type,
+              resolved.creatorPeople ?? resolved.creator
+            )
             if (input.type !== "book" && resolved.cast !== undefined)
-              await replaceItemCast(created.id, resolved.cast)
+              await replaceItemCast(
+                created.id,
+                resolved.castPeople ?? resolved.cast.map((name) => ({ name }))
+              )
             if (input.type === "movie")
               await replaceItemCollection(
                 created.id,

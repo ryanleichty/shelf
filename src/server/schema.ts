@@ -126,6 +126,7 @@ export const authors = sqliteTable("authors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  openLibraryKey: text("open_library_key").unique(),
 })
 
 export const itemAuthors = sqliteTable(
@@ -150,6 +151,7 @@ export const directors = sqliteTable("directors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  tmdbPersonId: text("tmdb_person_id").unique(),
 })
 
 export const itemDirectors = sqliteTable(
@@ -174,6 +176,7 @@ export const actors = sqliteTable("actors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
+  tmdbPersonId: text("tmdb_person_id").unique(),
 })
 
 export const itemActors = sqliteTable(
