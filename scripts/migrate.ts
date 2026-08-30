@@ -61,6 +61,29 @@ if (!columns.rows.some((column) => column.name === "description")) {
   await client.execute("ALTER TABLE items ADD COLUMN description TEXT")
 }
 await client.execute(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    role TEXT NOT NULL DEFAULT 'member',
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )
+`)
+await client.execute(
+  "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)"
+)
+await client.execute(`
   CREATE TABLE IF NOT EXISTS genres (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     slug TEXT NOT NULL UNIQUE,

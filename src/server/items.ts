@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { db, ensureDatabase, refreshSearchIndex } from "./db"
-import { isAgentToken, requireAdmin } from "./auth"
+import { isAgentToken, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
 import {
   items,
@@ -20,6 +20,7 @@ import {
   itemTypes,
   listItems,
   lists,
+  users,
   type Item,
   type ItemRecord,
 } from "./schema"
@@ -150,7 +151,8 @@ export const importItems = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data }) => {
-    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     await ensureDatabase()
     const added: Array<{ title: string; slug: string }> = []
     const skipped: Array<{ query: string; reason: string }> = []
@@ -345,7 +347,7 @@ export const getCoverOptions = createServerFn({ method: "GET" })
     })
   )
   .handler(async ({ data }): Promise<string[]> => {
-    requireAdmin()
+    await requireSignedIn()
     if (data.type === "book" && data.openLibraryKey) {
       const workId = data.openLibraryKey.replace(/^\/?works\//, "")
       const response = await fetch(
@@ -756,14 +758,16 @@ async function saveBarcode(itemId: number, barcode: string) {
 export const searchCollection = createServerFn({ method: "GET" })
   .validator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {
-    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     return lookupCollection(data)
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
-    if (!isAgentToken(getRequestHeader("authorization"))) requireAdmin()
+    if (!isAgentToken(getRequestHeader("authorization")))
+      await requireSignedIn()
     return getCollectionResultById(data)
   })
 
@@ -959,7 +963,7 @@ export async function syncItemFromProvider(
 export const syncItem = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     const [item] = await enrichItems(
       await db.select().from(items).where(eq(items.id, data.id))
@@ -1348,7 +1352,7 @@ const listMembershipInput = z.object({
 export const addItemToList = createServerFn({ method: "POST" })
   .validator(listMembershipInput)
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     const [list] = await db
       .select()
@@ -1371,7 +1375,7 @@ export const addItemToList = createServerFn({ method: "POST" })
 export const removeItemFromList = createServerFn({ method: "POST" })
   .validator(listMembershipInput)
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     const [list] = await db
       .select()
@@ -1479,13 +1483,20 @@ export const getItemBySlug = createServerFn({ method: "GET" })
 export const getItemById = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     const [item] = await enrichItems(
       await db.select().from(items).where(eq(items.id, data.id))
     )
     return item ?? null
   })
+
+export const getSignedInStatus = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { isSignedIn } = await import("./auth")
+    return isSignedIn()
+  }
+)
 
 export const getAdminStatus = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -1494,10 +1505,22 @@ export const getAdminStatus = createServerFn({ method: "GET" }).handler(
   }
 )
 
+export const getLoginMode = createServerFn({ method: "GET" }).handler(
+  async () => {
+    await ensureDatabase()
+    const [admin] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"))
+      .limit(1)
+    return { requiresEmail: Boolean(admin) }
+  }
+)
+
 export const saveItem = createServerFn({ method: "POST" })
   .validator(itemInput)
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     const now = new Date().toISOString()
     const coverImageUrl = await storeCover(data.coverImageUrl ?? "", data.slug)
@@ -1562,7 +1585,7 @@ export const saveItem = createServerFn({ method: "POST" })
 export const deleteItem = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
-    requireAdmin()
+    await requireSignedIn()
     await ensureDatabase()
     await db.delete(listItems).where(eq(listItems.itemId, data.id))
     await db.delete(items).where(eq(items.id, data.id))
@@ -1570,32 +1593,57 @@ export const deleteItem = createServerFn({ method: "POST" })
   })
 
 export const login = createServerFn({ method: "POST" })
-  .validator(z.object({ password: z.string() }))
+  .validator(
+    z.object({
+      email: z.string().email().optional().or(z.literal("")),
+      password: z.string().min(1),
+    })
+  )
   .handler(async ({ data }) => {
-    const { startAdminSession, verifyPassword } = await import("./auth")
-    if (!process.env.ADMIN_PASSWORD) {
+    const { startBootstrapSession, startUserSession, verifyStoredPassword } =
+      await import("./auth")
+    await ensureDatabase()
+    const [storedAdmin] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, "admin"))
+      .limit(1)
+    if (!storedAdmin) {
+      if (!process.env.ADMIN_PASSWORD) {
+        return {
+          ok: false,
+          error:
+            "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
+        }
+      }
+      const expected = process.env.ADMIN_PASSWORD.trim()
+      if (data.password !== expected)
+        return { ok: false, error: "That password doesn’t open this shelf." }
+      startBootstrapSession()
+      return { ok: true, error: "" }
+    }
+    if (!data.email) {
       return {
         ok: false,
-        error:
-          "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
+        error: "Enter your email and password.",
       }
     }
-    if (!verifyPassword(data.password))
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, data.email.trim().toLowerCase()))
+      .limit(1)
+    if (
+      !user ||
+      !(await verifyStoredPassword(data.password, user.passwordHash))
+    )
       return { ok: false, error: "That password doesn’t open this shelf." }
-    try {
-      startAdminSession()
-    } catch {
-      return {
-        ok: false,
-        error:
-          "Couldn’t start a session. Check SESSION_SECRET / ADMIN_PASSWORD.",
-      }
-    }
+    await startUserSession(user.id)
     return { ok: true, error: "" }
   })
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
-  const { endAdminSession } = await import("./auth")
-  endAdminSession()
+  const { endSession } = await import("./auth")
+  await endSession()
   return { ok: true }
 })

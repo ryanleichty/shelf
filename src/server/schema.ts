@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   sqliteTable,
   text,
@@ -16,6 +17,36 @@ export const itemStatuses = [
 export type ItemStatus = (typeof itemStatuses)[number]
 export const itemEditions = ["theatrical", "extended", "director-cut"] as const
 export type ItemEdition = (typeof itemEditions)[number]
+export const userRoles = ["admin", "member"] as const
+export type UserRole = (typeof userRoles)[number]
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    role: text("role", { enum: userRoles }).notNull().default("member"),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [uniqueIndex("users_email_unique").on(table.email)]
+)
+
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("sessions_user_id_idx").on(table.userId)]
+)
 
 export const items = sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),

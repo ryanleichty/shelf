@@ -3,10 +3,10 @@ import { Link, createFileRoute, redirect } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { importItems, getAdminStatus } from "@/server/items"
+import { importItems, getSignedInStatus } from "@/server/items"
 
 export const Route = createFileRoute("/admin/import")({
-  beforeLoad: async () => { if (!(await getAdminStatus())) throw redirect({ to: "/admin/login" }) },
+  beforeLoad: async () => { if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" }) },
   component: Import,
 })
 

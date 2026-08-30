@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/tooltip"
 import {
   addItemToList,
-  getAdminStatus,
+  getSignedInStatus,
   removeItemFromList,
 } from "@/server/items"
 
@@ -28,18 +28,18 @@ export function ItemListToggle({
   initiallyInList: boolean
 }) {
   const router = useRouter()
-  const [admin, setAdmin] = useState<boolean | undefined>(undefined)
+  const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined)
   const [inList, setInList] = useState(initiallyInList)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    getAdminStatus()
-      .then(setAdmin)
-      .catch(() => setAdmin(false))
+    getSignedInStatus()
+      .then(setSignedIn)
+      .catch(() => setSignedIn(false))
   }, [])
 
-  if (admin === undefined) {
+  if (signedIn === undefined) {
     return (
       <div className="mt-4">
         <Skeleton className="size-8 rounded-lg" />
@@ -47,7 +47,7 @@ export function ItemListToggle({
     )
   }
 
-  if (!admin) return null
+  if (!signedIn) return null
 
   const actionLabel = inList ? `Remove from ${listName}` : `Add to ${listName}`
 

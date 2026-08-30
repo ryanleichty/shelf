@@ -2,6 +2,13 @@ import { useEffect, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -49,13 +56,13 @@ export function ItemForm({
     item?.type ?? initialType ?? "book"
   )
   const [status, setStatus] = useState<
-    "" | "borrowed" | "reading" | "watching"
+    "unspecified" | "borrowed" | "reading" | "watching"
   >(
     item?.status === "reading" ||
       item?.status === "borrowed" ||
       item?.status === "watching"
       ? item.status
-      : ""
+      : "unspecified"
   )
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
@@ -160,7 +167,7 @@ export function ItemForm({
     updateValue("format", "")
     updateValue("edition", "")
     if ((nextType === "movie" || nextType === "tv") && status === "reading")
-      setStatus("")
+      setStatus("unspecified")
   }
 
   async function choose(result: LookupResult) {
@@ -209,7 +216,7 @@ export function ItemForm({
           title: values.title,
           slug: values.slug,
           type,
-          status: status || "owned",
+          status: status === "unspecified" ? "owned" : status,
           creator: values.creator,
           year: Number(values.year),
           coverImageUrl: values.coverImageUrl,
@@ -334,13 +341,9 @@ export function ItemForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="status">Status</FieldLabel>
-          <select
-            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            id="status"
-            name="status"
-            onChange={(event) => {
-              const nextStatus = event.target.value as
-                "" | "borrowed" | "reading" | "watching"
+          <Select
+            onValueChange={(value) => {
+              const nextStatus = (value ?? "unspecified") as typeof status
               setStatus(nextStatus)
               if (nextStatus !== "borrowed")
                 setValues((current) => ({
@@ -351,11 +354,20 @@ export function ItemForm({
             }}
             value={status}
           >
-            <option value="">Unspecified</option>
-            {type === "book" && <option value="reading">Reading</option>}
-            {type === "tv" && <option value="watching">Watching</option>}
-            <option value="borrowed">Borrowed</option>
-          </select>
+            <SelectTrigger id="status" name="status">
+              <SelectValue placeholder="Unspecified" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unspecified">Unspecified</SelectItem>
+              {type === "book" && (
+                <SelectItem value="reading">Reading</SelectItem>
+              )}
+              {type === "tv" && (
+                <SelectItem value="watching">Watching</SelectItem>
+              )}
+              <SelectItem value="borrowed">Borrowed</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         <Field>
           <FieldLabel htmlFor="year">Year</FieldLabel>
@@ -371,43 +383,59 @@ export function ItemForm({
         </Field>
         <Field>
           <FieldLabel htmlFor="format">Format</FieldLabel>
-          <select
-            className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            id="format"
-            name="format"
-            onChange={(event) => updateValue("format", event.target.value)}
-            value={values.format}
+          <Select
+            onValueChange={(value) =>
+              updateValue(
+                "format",
+                value === "unspecified" ? "" : (value ?? "")
+              )
+            }
+            value={values.format || "unspecified"}
           >
-            <option value="">Unspecified</option>
-            {type === "book" ? (
-              <>
-                <option value="hardcover">Hardcover</option>
-                <option value="paperback">Paperback</option>
-              </>
-            ) : (
-              <>
-                <option value="blu-ray">Blu-ray</option>
-                <option value="dvd">DVD</option>
-              </>
-            )}
-            <option value="other">Other</option>
-          </select>
+            <SelectTrigger id="format" name="format">
+              <SelectValue placeholder="Unspecified" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unspecified">Unspecified</SelectItem>
+              {type === "book" ? (
+                <>
+                  <SelectItem value="hardcover">Hardcover</SelectItem>
+                  <SelectItem value="paperback">Paperback</SelectItem>
+                </>
+              ) : (
+                <>
+                  <SelectItem value="blu-ray">Blu-ray</SelectItem>
+                  <SelectItem value="dvd">DVD</SelectItem>
+                </>
+              )}
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         {type !== "book" && (
           <Field>
             <FieldLabel htmlFor="edition">Edition</FieldLabel>
-            <select
-              className="h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              id="edition"
-              name="edition"
-              onChange={(event) => updateValue("edition", event.target.value)}
-              value={values.edition}
+            <Select
+              onValueChange={(value) =>
+                updateValue(
+                  "edition",
+                  value === "unspecified" ? "" : (value ?? "")
+                )
+              }
+              value={values.edition || "unspecified"}
             >
-              <option value="">Unspecified</option>
-              <option value="theatrical">Theatrical</option>
-              <option value="extended">Extended</option>
-              <option value="director-cut">Director&apos;s Cut</option>
-            </select>
+              <SelectTrigger id="edition" name="edition">
+                <SelectValue placeholder="Unspecified" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unspecified">Unspecified</SelectItem>
+                <SelectItem value="theatrical">Theatrical</SelectItem>
+                <SelectItem value="extended">Extended</SelectItem>
+                <SelectItem value="director-cut">
+                  Director&apos;s Cut
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
         )}
         <Field className="sm:col-span-2">
@@ -450,7 +478,9 @@ export function ItemForm({
             rows={5}
             value={values.description}
           />
-          <FieldDescription>Provider syncs may refresh this overview.</FieldDescription>
+          <FieldDescription>
+            Provider syncs may refresh this overview.
+          </FieldDescription>
         </Field>
         <Field>
           <FieldLabel htmlFor="coverImageUrl">Cover image URL</FieldLabel>
@@ -461,7 +491,9 @@ export function ItemForm({
             }
             id="coverImageUrl"
             name="coverImageUrl"
-            onChange={(event) => updateValue("coverImageUrl", event.target.value)}
+            onChange={(event) =>
+              updateValue("coverImageUrl", event.target.value)
+            }
             type="url"
             value={values.coverImageUrl}
           />
@@ -559,9 +591,7 @@ export function ItemForm({
           </>
         )}
       </FieldGroup>
-      {error && (
-        <FieldError>{error}</FieldError>
-      )}
+      {error && <FieldError>{error}</FieldError>}
       <div className="form-footer">
         <Button render={<Link to="/admin" />} variant="outline">
           Cancel

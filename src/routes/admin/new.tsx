@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 import { ItemForm } from "@/components/item-form"
-import { getAdminStatus } from "@/server/items"
+import { getSignedInStatus } from "@/server/items"
 
 export const Route = createFileRoute("/admin/new")({
   validateSearch: z.object({ type: z.enum(["book", "movie", "tv"]).optional() }),
   beforeLoad: async () => {
-    if (!(await getAdminStatus())) throw redirect({ to: "/admin/login" })
+    if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
   component: NewItem,
 })

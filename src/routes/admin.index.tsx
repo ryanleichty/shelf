@@ -1,11 +1,11 @@
 import { Link, createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import { LogOut, Pencil, Plus, Trash2, UploadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { deleteItem, getAdminStatus, getItems, logout } from "@/server/items"
+import { deleteItem, getItems, getSignedInStatus, logout } from "@/server/items"
 
 export const Route = createFileRoute("/admin/")({
   beforeLoad: async () => {
-    if (!(await getAdminStatus())) throw redirect({ to: "/admin/login" })
+    if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
   loader: () => getItems({ data: {} }),
   component: Admin,
