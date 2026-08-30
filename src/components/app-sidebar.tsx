@@ -130,10 +130,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setSearchOpen(true)}
-                  tooltip="Search"
-                >
+                  <SidebarMenuButton
+                    onClick={() => setSearchOpen(true)}
+                    tooltip="Search"
+                  >
                     <SearchIcon />
                     <span>Search</span>
                   </SidebarMenuButton>
