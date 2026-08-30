@@ -33,7 +33,7 @@ function CatalogCommandItem({
   const genre = item.genres[0]
 
   return (
-    <CommandItem onSelect={onSelect} value={item.title}>
+    <CommandItem onSelect={onSelect} value={`item:${item.id}`}>
       {item.coverImageUrl ? (
         <img
           alt=""
@@ -65,13 +65,15 @@ function CatalogFacetCommandItem({
   facet,
   kind,
   onSelect,
+  value,
 }: {
   facet: SearchFacet
   kind: "Genre" | "Director" | "Actor" | "Author"
   onSelect: () => void
+  value: string
 }) {
   return (
-    <CommandItem onSelect={onSelect} value={facet.name}>
+    <CommandItem onSelect={onSelect} value={value}>
       <span className="min-w-0 flex-1 truncate">{facet.name}</span>
       <span className="shrink-0 text-right text-xs text-muted-foreground">
         {kind}
@@ -209,6 +211,7 @@ export function CatalogCommand({
                   kind="Genre"
                   key={facet.slug}
                   onSelect={() => selectFacet("genre", facet.slug)}
+                  value={`genre:${facet.slug}`}
                 />
               ))}
             </CommandGroup>
@@ -221,6 +224,7 @@ export function CatalogCommand({
                   kind="Director"
                   key={facet.slug}
                   onSelect={() => selectFacet("director", facet.slug)}
+                  value={`director:${facet.slug}`}
                 />
               ))}
             </CommandGroup>
@@ -233,6 +237,7 @@ export function CatalogCommand({
                   kind="Actor"
                   key={facet.slug}
                   onSelect={() => selectFacet("actor", facet.slug)}
+                  value={`actor:${facet.slug}`}
                 />
               ))}
             </CommandGroup>
@@ -245,6 +250,7 @@ export function CatalogCommand({
                   kind="Author"
                   key={facet.slug}
                   onSelect={() => selectFacet("author", facet.slug)}
+                  value={`author:${facet.slug}`}
                 />
               ))}
             </CommandGroup>
