@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
-import { CoverTile } from "@/components/cover-tile"
+import { Catalog } from "@/components/catalog"
 import { getItemsByTag } from "@/server/items"
 
 export const Route = createFileRoute("/keyword/$slug")({
@@ -19,10 +19,8 @@ function KeywordPage() {
     <main className="container mx-auto max-w-6xl px-4 py-10">
       <p className="text-sm text-muted-foreground">Keyword</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{name}</h1>
-      <div className="mt-8 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-        {items.map((item) => (
-          <CoverTile item={item} key={item.id} />
-        ))}
+      <div className="mt-8">
+        <Catalog items={items} />
       </div>
     </main>
   )

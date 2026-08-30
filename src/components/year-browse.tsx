@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { CoverTile } from "@/components/cover-tile"
+import { Catalog } from "@/components/catalog"
 import type { Item } from "@/server/schema"
 
 type BrowseType = Item["type"]
@@ -75,20 +75,13 @@ export function YearBrowse({
         )}
       </nav>
 
-      {items.length ? (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {items.map((item) => (
-            <CoverTile item={item} key={item.id} />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-8 rounded-lg border border-dashed p-12 text-center">
-          <p className="font-medium">Nothing found.</p>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            No {labelFor(type).toLowerCase()} from this {mode}.
-          </span>
-        </div>
-      )}
+      <div className="mt-8">
+        <Catalog
+          emptyDescription={`No ${labelFor(type).toLowerCase()} from this ${mode}.`}
+          items={items}
+          type={type}
+        />
+      </div>
     </main>
   )
 }
@@ -116,18 +109,30 @@ function PeriodLink({
 
   if (type === "movie")
     return (
-      <Link className={className} params={{ decade: `${decade}s` }} to="/movies/decade/$decade">
+      <Link
+        className={className}
+        params={{ decade: `${decade}s` }}
+        to="/movies/decade/$decade"
+      >
         {label}
       </Link>
     )
   if (type === "tv")
     return (
-      <Link className={className} params={{ decade: `${decade}s` }} to="/tv/decade/$decade">
+      <Link
+        className={className}
+        params={{ decade: `${decade}s` }}
+        to="/tv/decade/$decade"
+      >
         {label}
       </Link>
     )
   return (
-    <Link className={className} params={{ decade: `${decade}s` }} to="/books/decade/$decade">
+    <Link
+      className={className}
+      params={{ decade: `${decade}s` }}
+      to="/books/decade/$decade"
+    >
       {label}
     </Link>
   )
@@ -150,18 +155,30 @@ function YearLink({
 
   if (type === "movie")
     return (
-      <Link className={className} params={{ year: `${year}` }} to="/movies/year/$year">
+      <Link
+        className={className}
+        params={{ year: `${year}` }}
+        to="/movies/year/$year"
+      >
         {year}
       </Link>
     )
   if (type === "tv")
     return (
-      <Link className={className} params={{ year: `${year}` }} to="/tv/year/$year">
+      <Link
+        className={className}
+        params={{ year: `${year}` }}
+        to="/tv/year/$year"
+      >
         {year}
       </Link>
     )
   return (
-    <Link className={className} params={{ year: `${year}` }} to="/books/year/$year">
+    <Link
+      className={className}
+      params={{ year: `${year}` }}
+      to="/books/year/$year"
+    >
       {year}
     </Link>
   )
