@@ -580,6 +580,12 @@ function PeopleTab({
   if (error) {
     return (
       <Card>
+        <CardHeader>
+          <CardTitle>Authors</CardTitle>
+          <CardDescription>
+            Correct names, slugs, and duplicate authors.
+          </CardDescription>
+        </CardHeader>
         <CardContent className="pt-6">
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -593,12 +599,36 @@ function PeopleTab({
     return (
       <Card>
         <CardHeader>
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-4 w-72" />
+          <CardTitle>Authors</CardTitle>
+          <CardDescription>
+            Correct names, slugs, and duplicate authors.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-32 w-full" />
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead className="text-right">Item count</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 4 }, (_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-40" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-8" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     )
@@ -618,22 +648,44 @@ function PeopleTab({
 function SettingsPending() {
   return (
     <main className="container mx-auto max-w-4xl px-4 py-10">
-      <Skeleton className="h-4 w-16" />
-      <Skeleton className="mt-2 h-9 w-32" />
-      <div className="mt-8 flex flex-col gap-4">
-        <Skeleton className="h-9 w-full max-w-sm" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-28" />
-          </CardContent>
-        </Card>
-      </div>
+      <p className="text-sm text-muted-foreground">Account</p>
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight">Settings</h1>
+      <Tabs className="mt-8" defaultValue="profile">
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="lists">Lists</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>Update your account details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Setting</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </main>
   )
 }
