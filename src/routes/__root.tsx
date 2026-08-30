@@ -115,7 +115,7 @@ function ShelfShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider className="overflow-x-hidden">
       <AppSidebar />
       <SidebarInset className="min-w-0 overflow-x-hidden">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="z-1 flex h-16 shrink-0 items-center gap-2 px-4 shadow-[0_1px_0_--alpha(var(--color-black)/10%)]">
           <SidebarTrigger className="-ml-1" />
           <Separator className="mr-2 h-4" orientation="vertical" />
           <Breadcrumb>
