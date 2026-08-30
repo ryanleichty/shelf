@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router"
 import {
   EllipsisIcon,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   InputGroup,
   InputGroupAddon,
@@ -77,15 +78,18 @@ export const Route = createFileRoute("/settings")({
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
   loader: async () => {
-    const settings = await getSettings()
+    const [settings, placements] = await Promise.all([
+      getSettings(),
+      getListPlacements(),
+    ])
     return {
       settings,
-      placements: await getListPlacements(),
-      people: settings.isAdmin
-        ? await getPeople()
-        : { authors: [], directors: [], actors: [] },
+      placements,
     }
   },
+  pendingComponent: SettingsPending,
+  pendingMs: 150,
+  staleTime: 60_000,
   component: Settings,
 })
 
@@ -99,10 +103,11 @@ type UserForm = {
 }
 
 function Settings() {
-  const { settings: data, placements, people } = Route.useLoaderData()
+  const { settings: data, placements } = Route.useLoaderData()
   const router = useRouter()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const [activeTab, setActiveTab] = useState("profile")
   const [editing, setEditing] = useState<UserForm | null>(null)
   const [deletingUser, setDeletingUser] = useState<{
     id: number
@@ -179,7 +184,7 @@ function Settings() {
         </p>
       )}
 
-      <Tabs className="mt-8" defaultValue="profile">
+      <Tabs className="mt-8" onValueChange={setActiveTab} value={activeTab}>
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="lists">Lists</TabsTrigger>
@@ -413,10 +418,9 @@ function Settings() {
         )}
         {data.isAdmin && (
           <TabsContent value="people">
-            <PeopleSettings
-              people={people}
-              onChange={() => router.invalidate()}
-            />
+            {activeTab === "people" && (
+              <PeopleTab onSettingsChange={() => router.invalidate()} />
+            )}
           </TabsContent>
         )}
       </Tabs>
@@ -548,6 +552,88 @@ function Settings() {
           )}
         </SheetContent>
       </Sheet>
+    </main>
+  )
+}
+
+function PeopleTab({
+  onSettingsChange,
+}: {
+  onSettingsChange: () => Promise<void>
+}) {
+  const [people, setPeople] = useState<Awaited<ReturnType<typeof getPeople>>>()
+  const [error, setError] = useState("")
+
+  const loadPeople = useCallback(async () => {
+    setError("")
+    try {
+      setPeople(await getPeople())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn’t load people.")
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPeople()
+  }, [loadPeople])
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!people) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-4 w-72" />
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <PeopleSettings
+      people={people}
+      onChange={async () => {
+        await onSettingsChange()
+        await loadPeople()
+      }}
+    />
+  )
+}
+
+function SettingsPending() {
+  return (
+    <main className="container mx-auto max-w-4xl px-4 py-10">
+      <Skeleton className="h-4 w-16" />
+      <Skeleton className="mt-2 h-9 w-32" />
+      <div className="mt-8 flex flex-col gap-4">
+        <Skeleton className="h-9 w-full max-w-sm" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-28" />
+          </CardContent>
+        </Card>
+      </div>
     </main>
   )
 }
