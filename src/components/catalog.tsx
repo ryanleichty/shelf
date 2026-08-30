@@ -130,7 +130,10 @@ export function Catalog({
             <FieldLabel htmlFor="catalog-genre">Genre</FieldLabel>
             {genreOptions.length >= 8 ? (
               <Combobox
-                items={genreItems}
+                items={["all", ...genreOptions]}
+                itemToStringLabel={(item) =>
+                  item === "all" ? "All genres" : item
+                }
                 onValueChange={(value) => setGenre(value ?? "all")}
                 value={genre}
               >
@@ -139,8 +142,8 @@ export function Catalog({
                   <ComboboxEmpty>No genres found.</ComboboxEmpty>
                   <ComboboxList>
                     {(option) => (
-                      <ComboboxItem key={option.value} value={option.value}>
-                        {option.label}
+                      <ComboboxItem key={option} value={option}>
+                        {option === "all" ? "All genres" : option}
                       </ComboboxItem>
                     )}
                   </ComboboxList>
