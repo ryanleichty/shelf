@@ -29,6 +29,14 @@ import type { Item } from "@/server/schema"
 type Sort =
   "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
 
+const sortItems: Record<Sort, string> = {
+  "title-asc": "Title A–Z",
+  "title-desc": "Title Z–A",
+  "year-desc": "Year newest",
+  "year-asc": "Year oldest",
+  "updated-desc": "Recently updated",
+}
+
 export function Catalog({
   items,
   type,
@@ -55,6 +63,10 @@ export function Catalog({
   const genreOptions = [
     ...new Set(catalogItems.flatMap((item) => item.genres)),
   ].sort((left, right) => left.localeCompare(right))
+  const genreItems = [
+    { value: "all", label: "All genres" },
+    ...genreOptions.map((option) => ({ value: option, label: option })),
+  ]
   const visibleItems = useMemo(() => {
     const localQuery = onQueryChange ? "" : draftQuery.trim().toLowerCase()
     return [...catalogItems]
@@ -119,6 +131,9 @@ export function Catalog({
             {genreOptions.length >= 8 ? (
               <Combobox
                 items={["all", ...genreOptions]}
+                itemToStringLabel={(item) =>
+                  item === "all" ? "All genres" : item
+                }
                 onValueChange={(value) => setGenre(value ?? "all")}
                 value={genre}
               >
@@ -136,6 +151,7 @@ export function Catalog({
               </Combobox>
             ) : (
               <Select
+                items={genreItems}
                 onValueChange={(value) => setGenre(value ?? "all")}
                 value={genre}
               >
@@ -159,6 +175,7 @@ export function Catalog({
         <Field>
           <FieldLabel htmlFor="catalog-sort">Sort</FieldLabel>
           <Select
+            items={sortItems}
             onValueChange={(value) => setSort(value ?? "title-asc")}
             value={sort}
           >
