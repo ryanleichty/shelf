@@ -18,9 +18,11 @@ import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
 import {
   items,
+  actors,
   authors,
   collections,
   directors,
+  itemActors,
   itemAuthors,
   itemCollections,
   itemDirectors,
@@ -233,6 +235,8 @@ export const importItems = createServerFn({ method: "POST" })
           keywords: resolved.keywords,
         })
         await replaceItemCreators(created.id, data.type, resolved.creator)
+        if (data.type !== "book" && resolved.cast !== undefined)
+          await replaceItemCast(created.id, resolved.cast)
         if (data.type === "movie")
           await replaceItemCollection(created.id, resolved.collection ?? null)
         added.push({ title: resolved.title, slug })
@@ -256,6 +260,7 @@ export type LookupResult = {
   genres: string[]
   description?: string
   keywords?: string[]
+  cast?: string[]
   collection?: CollectionInput
 }
 
@@ -538,6 +543,30 @@ async function replaceItemCreators(
   )
 }
 
+export async function replaceItemCast(itemId: number, names: string[]) {
+  const normalized = [
+    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
+  ]
+  await db.delete(itemActors).where(eq(itemActors.itemId, itemId))
+  for (const [position, name] of normalized.entries()) {
+    const slug = slugify(name)
+    if (!slug) continue
+    await db
+      .insert(actors)
+      .values({ slug, name })
+      .onConflictDoNothing({ target: actors.slug })
+    const [actor] = await db
+      .select({ id: actors.id })
+      .from(actors)
+      .where(eq(actors.slug, slug))
+    if (!actor) continue
+    await db
+      .insert(itemActors)
+      .values({ itemId, actorId: actor.id, position })
+      .onConflictDoNothing()
+  }
+}
+
 async function replaceItemTags(
   itemId: number,
   tags: { genres?: string[]; keywords?: string[] }
@@ -597,44 +626,57 @@ async function uniqueCollectionSlug(name: string) {
 async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   if (!records.length) return []
   const itemIds = records.map((item) => item.id)
-  const [genreRows, keywordRows, authorRows, directorRows, collectionRows] =
-    await Promise.all([
-      db
-        .select({ itemId: itemGenres.itemId, name: genres.name })
-        .from(itemGenres)
-        .innerJoin(genres, eq(itemGenres.genreId, genres.id))
-        .where(inArray(itemGenres.itemId, itemIds)),
-      db
-        .select({ itemId: itemKeywords.itemId, name: keywords.name })
-        .from(itemKeywords)
-        .innerJoin(keywords, eq(itemKeywords.keywordId, keywords.id))
-        .where(inArray(itemKeywords.itemId, itemIds)),
-      db
-        .select({ itemId: itemAuthors.itemId, name: authors.name })
-        .from(itemAuthors)
-        .innerJoin(authors, eq(itemAuthors.authorId, authors.id))
-        .where(inArray(itemAuthors.itemId, itemIds)),
-      db
-        .select({ itemId: itemDirectors.itemId, name: directors.name })
-        .from(itemDirectors)
-        .innerJoin(directors, eq(itemDirectors.directorId, directors.id))
-        .where(inArray(itemDirectors.itemId, itemIds)),
-      db
-        .select({
-          itemId: itemCollections.itemId,
-          id: collections.id,
-          slug: collections.slug,
-          name: collections.name,
-          tmdbCollectionId: collections.tmdbCollectionId,
-          overview: collections.overview,
-        })
-        .from(itemCollections)
-        .innerJoin(
-          collections,
-          eq(itemCollections.collectionId, collections.id)
-        )
-        .where(inArray(itemCollections.itemId, itemIds)),
-    ])
+  const [
+    genreRows,
+    keywordRows,
+    authorRows,
+    directorRows,
+    actorRows,
+    collectionRows,
+  ] = await Promise.all([
+    db
+      .select({ itemId: itemGenres.itemId, name: genres.name })
+      .from(itemGenres)
+      .innerJoin(genres, eq(itemGenres.genreId, genres.id))
+      .where(inArray(itemGenres.itemId, itemIds)),
+    db
+      .select({ itemId: itemKeywords.itemId, name: keywords.name })
+      .from(itemKeywords)
+      .innerJoin(keywords, eq(itemKeywords.keywordId, keywords.id))
+      .where(inArray(itemKeywords.itemId, itemIds)),
+    db
+      .select({ itemId: itemAuthors.itemId, name: authors.name })
+      .from(itemAuthors)
+      .innerJoin(authors, eq(itemAuthors.authorId, authors.id))
+      .where(inArray(itemAuthors.itemId, itemIds)),
+    db
+      .select({ itemId: itemDirectors.itemId, name: directors.name })
+      .from(itemDirectors)
+      .innerJoin(directors, eq(itemDirectors.directorId, directors.id))
+      .where(inArray(itemDirectors.itemId, itemIds)),
+    db
+      .select({
+        itemId: itemActors.itemId,
+        name: actors.name,
+        position: itemActors.position,
+      })
+      .from(itemActors)
+      .innerJoin(actors, eq(itemActors.actorId, actors.id))
+      .where(inArray(itemActors.itemId, itemIds))
+      .orderBy(asc(itemActors.position)),
+    db
+      .select({
+        itemId: itemCollections.itemId,
+        id: collections.id,
+        slug: collections.slug,
+        name: collections.name,
+        tmdbCollectionId: collections.tmdbCollectionId,
+        overview: collections.overview,
+      })
+      .from(itemCollections)
+      .innerJoin(collections, eq(itemCollections.collectionId, collections.id))
+      .where(inArray(itemCollections.itemId, itemIds)),
+  ])
   const namesById = (rows: Array<{ itemId: number; name: string }>) => {
     const grouped = new Map<number, Array<{ itemId: number; name: string }>>()
     for (const row of rows)
@@ -645,6 +687,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   const keywordNames = namesById(keywordRows)
   const authorNames = namesById(authorRows)
   const directorNames = namesById(directorRows)
+  const actorNames = namesById(actorRows)
   const collectionsByItem = new Map<number, Collection>(
     collectionRows.map(({ itemId, ...collection }) => [itemId, collection])
   )
@@ -654,6 +697,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     keywords: (keywordNames.get(item.id) ?? []).map((tag) => tag.name),
     authors: (authorNames.get(item.id) ?? []).map((person) => person.name),
     directors: (directorNames.get(item.id) ?? []).map((person) => person.name),
+    actors: (actorNames.get(item.id) ?? []).map((person) => person.name),
     ...(item.type === "movie" && collectionsByItem.has(item.id)
       ? { collection: collectionsByItem.get(item.id) }
       : {}),
@@ -1021,7 +1065,10 @@ export async function getCollectionResultById(data: {
       "TMDB lookup needs TMDB_API_KEY. Add a free TMDB API key to your environment."
     )
   const url = new URL(`https://api.themoviedb.org/3/${data.type}/${data.id}`)
-  url.searchParams.set("append_to_response", "credits,keywords")
+  url.searchParams.set(
+    "append_to_response",
+    data.type === "tv" ? "aggregate_credits,keywords" : "credits,keywords"
+  )
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
   if (response.status === 404)
@@ -1046,7 +1093,17 @@ export async function getCollectionResultById(data: {
       overview?: string
     } | null
     created_by?: Array<{ name?: string }>
-    credits?: { crew?: Array<{ job?: string; name?: string }> }
+    credits?: {
+      cast?: Array<{ name?: string; order?: number }>
+      crew?: Array<{ job?: string; name?: string }>
+    }
+    aggregate_credits?: {
+      cast?: Array<{
+        name?: string
+        order?: number
+        roles?: Array<{ character?: string }>
+      }>
+    }
   }
   const title =
     data.type === "tv"
@@ -1080,6 +1137,9 @@ export async function getCollectionResultById(data: {
         ? result.keywords?.results
         : result.keywords?.keywords
       )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
+    ...(tmdbCast(data.type, result) !== undefined
+      ? { cast: tmdbCast(data.type, result) }
+      : {}),
     ...(data.type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) }
       : {}),
@@ -1098,6 +1158,34 @@ function tmdbCollection(
   }
 }
 
+function tmdbCast(
+  type: "movie" | "tv",
+  result: {
+    credits?: { cast?: Array<{ name?: string; order?: number }> }
+    aggregate_credits?: {
+      cast?: Array<{
+        name?: string
+        order?: number
+        roles?: Array<{ character?: string }>
+      }>
+    }
+  }
+): string[] | undefined {
+  const cast =
+    type === "movie" ? result.credits?.cast : result.aggregate_credits?.cast
+  if (!cast) return undefined
+  return cast
+    .map((person, index) => ({
+      name: person.name?.trim(),
+      order: person.order ?? index,
+    }))
+    .filter((person): person is { name: string; order: number } =>
+      Boolean(person.name)
+    )
+    .sort((a, b) => a.order - b.order)
+    .map((person) => person.name)
+}
+
 type SyncedFields = {
   title?: string
   creator?: string
@@ -1105,6 +1193,7 @@ type SyncedFields = {
   genres?: string[]
   description?: string
   keywords?: string[]
+  cast?: string[]
   collection?: CollectionInput | null
 }
 
@@ -1167,6 +1256,7 @@ export async function syncItemFromProvider(
     const {
       genres: nextGenres,
       keywords: nextKeywords,
+      cast: nextCast,
       collection: nextCollection,
       ...itemFields
     } = Object.fromEntries(
@@ -1183,6 +1273,8 @@ export async function syncItemFromProvider(
       genres: nextGenres,
       keywords: nextKeywords,
     })
+    if (syncedItem.type !== "book" && nextCast !== undefined)
+      await replaceItemCast(syncedItem.id, nextCast)
     if (syncedItem.type === "movie" && nextCollection !== undefined)
       await replaceItemCollection(syncedItem.id, nextCollection)
     await replaceItemCreators(
@@ -1213,7 +1305,10 @@ async function getTmdbSyncMetadata(
   const apiKey = process.env.TMDB_API_KEY
   if (!apiKey) throw new Error("TMDB sync needs TMDB_API_KEY.")
   const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
-  url.searchParams.set("append_to_response", "credits,keywords")
+  url.searchParams.set(
+    "append_to_response",
+    type === "tv" ? "aggregate_credits,keywords" : "credits,keywords"
+  )
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
   if (response.status === 404)
@@ -1236,7 +1331,17 @@ async function getTmdbSyncMetadata(
       overview?: string
     } | null
     created_by?: Array<{ name?: string }>
-    credits?: { crew?: Array<{ job?: string; name?: string }> }
+    credits?: {
+      cast?: Array<{ name?: string; order?: number }>
+      crew?: Array<{ job?: string; name?: string }>
+    }
+    aggregate_credits?: {
+      cast?: Array<{
+        name?: string
+        order?: number
+        roles?: Array<{ character?: string }>
+      }>
+    }
   }
   const creator =
     type === "tv"
@@ -1271,6 +1376,9 @@ async function getTmdbSyncMetadata(
         ? result.keywords?.results
         : result.keywords?.keywords
       )?.flatMap((keyword) => (keyword.name ? [keyword.name] : [])) ?? [],
+    ...(tmdbCast(type, result) !== undefined
+      ? { cast: tmdbCast(type, result) }
+      : {}),
     ...(type === "movie"
       ? { collection: tmdbCollection(result.belongs_to_collection) ?? null }
       : {}),
@@ -1341,12 +1449,19 @@ function changedFields(
     "genres",
     "description",
     "keywords",
+    "cast",
     "collection",
   ] as const) {
     if (field === "collection" && item.type !== "movie") continue
+    if (field === "cast" && item.type === "book") continue
     const next = metadata[field]
     if (next === undefined) continue
-    const previous = field === "collection" ? item.collection ?? null : item[field]
+    const previous =
+      field === "collection"
+        ? (item.collection ?? null)
+        : field === "cast"
+          ? item.actors
+          : item[field]
     if (JSON.stringify(previous) !== JSON.stringify(next))
       changes[field] = { before: previous, after: next }
   }
@@ -1492,7 +1607,10 @@ export const getItemsByTag = createServerFn({ method: "GET" })
 
 export const getItemsByPerson = createServerFn({ method: "GET" })
   .inputValidator(
-    z.object({ kind: z.enum(["author", "director"]), slug: z.string() })
+    z.object({
+      kind: z.enum(["author", "director", "actor"]),
+      slug: z.string(),
+    })
   )
   .handler(async ({ data }) => {
     await ensureDatabase()
@@ -1511,6 +1629,25 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
         .orderBy(asc(items.title))
       return {
         name: author.name,
+        items: await enrichItems(records.map((row) => row.items)),
+      }
+    }
+
+    if (data.kind === "actor") {
+      const [actor] = await db
+        .select({ id: actors.id, name: actors.name })
+        .from(actors)
+        .where(eq(actors.slug, data.slug))
+        .limit(1)
+      if (!actor) return null
+      const records = await db
+        .select()
+        .from(items)
+        .innerJoin(itemActors, eq(itemActors.itemId, items.id))
+        .where(eq(itemActors.actorId, actor.id))
+        .orderBy(asc(items.title))
+      return {
+        name: actor.name,
         items: await enrichItems(records.map((row) => row.items)),
       }
     }

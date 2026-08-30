@@ -112,6 +112,21 @@ await client.execute(`
   )
 `)
 await client.execute(`
+  CREATE TABLE IF NOT EXISTS actors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL
+  )
+`)
+await client.execute(`
+  CREATE TABLE IF NOT EXISTS item_actors (
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    actor_id INTEGER NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    UNIQUE(item_id, actor_id)
+  )
+`)
+await client.execute(`
   CREATE TABLE IF NOT EXISTS collections (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
