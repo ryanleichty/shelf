@@ -109,6 +109,10 @@
   display: none;
 }
 
+.home-carousel-controls > div:has(:disabled) {
+  display: none;
+}
+
 @media (pointer: coarse) {
   .home-carousel-controls {
     display: none;
