@@ -71,7 +71,10 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background font-sans text-foreground antialiased; }
+  body {
+    position: relative;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
 }
 
 .item-form { @apply mt-8 grid gap-6; }
