@@ -129,6 +129,9 @@ function ItemDetail() {
               {item.type !== "book" && validRuntime(item.runtime) && (
                 <span>{formatRuntime(item.runtime)}</span>
               )}
+              {item.type === "book" && validPageCount(item.pageCount) && (
+                <span>{item.pageCount} pages</span>
+              )}
               {item.status !== "owned" && (
                 <Badge variant="outline">
                   {item.status === "reading"
@@ -142,6 +145,11 @@ function ItemDetail() {
             <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
               {item.title}
             </h1>
+            {item.type === "book" && item.subtitle?.trim() && (
+              <p className="mt-2 text-lg text-muted-foreground">
+                {item.subtitle.trim()}
+              </p>
+            )}
             <p className="mt-2 text-lg text-muted-foreground">
               {(item.type === "book" ? item.authors : item.directors).length
                 ? (item.type === "book" ? item.authors : item.directors).map(
@@ -199,21 +207,22 @@ function ItemDetail() {
                 ))}
               </div>
             )}
-            {item.type === "movie" && item.collection && (
-              <div className="mt-4">
-                <Badge
-                  render={
-                    <Link
-                      params={{ slug: item.collection.slug }}
-                      to="/collection/$slug"
-                    />
-                  }
-                  variant="secondary"
-                >
-                  {item.collection.name}
-                </Badge>
-              </div>
-            )}
+            {(item.type === "movie" || item.type === "book") &&
+              item.collection && (
+                <div className="mt-4">
+                  <Badge
+                    render={
+                      <Link
+                        params={{ slug: item.collection.slug }}
+                        to="/collection/$slug"
+                      />
+                    }
+                    variant="secondary"
+                  >
+                    {item.collection.name}
+                  </Badge>
+                </div>
+              )}
             {item.description && (
               <p className="mt-6 max-w-prose leading-7 text-muted-foreground">
                 {item.description}
@@ -237,7 +246,7 @@ function ItemDetail() {
                 ))}
               </div>
             )}
-            <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+            <div className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
               {(item.format || item.edition) && (
                 <p className="flex items-center gap-2">
                   {item.format && (
@@ -248,6 +257,12 @@ function ItemDetail() {
                   )}
                   {item.edition && <span>{editionLabel(item.edition)}</span>}
                 </p>
+              )}
+              {item.type === "book" && item.publisher?.trim() && (
+                <p>{item.publisher.trim()}</p>
+              )}
+              {item.type === "book" && item.isbn13?.trim() && (
+                <p>ISBN-13: {item.isbn13.trim()}</p>
               )}
               {item.status === "borrowed" && item.borrower && (
                 <p>
@@ -290,6 +305,14 @@ function formatLabel(format: string) {
 
 function validRuntime(runtime: number | null): runtime is number {
   return typeof runtime === "number" && Number.isInteger(runtime) && runtime > 0
+}
+
+function validPageCount(pageCount: number | null): pageCount is number {
+  return (
+    typeof pageCount === "number" &&
+    Number.isInteger(pageCount) &&
+    pageCount > 0
+  )
 }
 
 function formatRuntime(runtime: number) {

@@ -294,6 +294,10 @@ export type LookupResult = {
   collection?: CollectionInput
   certification?: string
   runtime?: number
+  subtitle?: string
+  pageCount?: number
+  publisher?: string
+  isbn13?: string
 }
 
 type ProviderPerson = {
@@ -302,7 +306,7 @@ type ProviderPerson = {
 }
 
 type CollectionInput = {
-  tmdbCollectionId: string
+  tmdbCollectionId?: string
   name: string
   overview?: string
 }
@@ -827,7 +831,11 @@ export async function replaceItemCollection(
   const [existing] = await db
     .select({ id: collections.id })
     .from(collections)
-    .where(eq(collections.tmdbCollectionId, collection.tmdbCollectionId))
+    .where(
+      collection.tmdbCollectionId
+        ? eq(collections.tmdbCollectionId, collection.tmdbCollectionId)
+        : eq(collections.slug, slugify(collection.name))
+    )
     .limit(1)
   const collectionId =
     existing?.id ??
@@ -837,7 +845,7 @@ export async function replaceItemCollection(
         .values({
           slug: await uniqueCollectionSlug(collection.name),
           name: collection.name,
-          tmdbCollectionId: collection.tmdbCollectionId,
+          tmdbCollectionId: collection.tmdbCollectionId ?? null,
           overview: collection.overview || null,
         })
         .returning({ id: collections.id })
@@ -956,7 +964,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     directors: (directorNames.get(item.id) ?? []).map((person) => person.name),
     actors: (actorNames.get(item.id) ?? []).map((person) => person.name),
     isInSystemList: systemListItemIds.has(item.id),
-    ...(item.type === "movie" && collectionsByItem.has(item.id)
+    ...(collectionsByItem.has(item.id)
       ? { collection: collectionsByItem.get(item.id) }
       : {}),
   }))
@@ -1597,6 +1605,10 @@ type SyncedFields = {
   certification?: string | null
   runtime?: number | null
   backdropImageUrl?: string | null
+  subtitle?: string | null
+  pageCount?: number | null
+  publisher?: string | null
+  isbn13?: string | null
 }
 
 export type ProviderSyncResult = {
@@ -1637,7 +1649,11 @@ export async function syncItemFromProvider(
 
   const metadata =
     syncedItem.type === "book"
-      ? await getBookSyncMetadata(providerId)
+      ? await getBookSyncMetadata(
+          providerId,
+          syncedItem.coverImageUrl,
+          syncedItem.isbn13
+        )
       : await getTmdbSyncMetadata(syncedItem.type, providerId)
 
   const changes = changedFields(syncedItem, metadata)
@@ -1685,7 +1701,10 @@ export async function syncItemFromProvider(
         syncedItem.id,
         nextCastPeople ?? nextCast.map((name) => ({ name }))
       )
-    if (syncedItem.type === "movie" && nextCollection !== undefined)
+    if (
+      (syncedItem.type === "movie" || syncedItem.type === "book") &&
+      nextCollection !== undefined
+    )
       await replaceItemCollection(syncedItem.id, nextCollection)
     await replaceItemCreators(
       syncedItem.id,
@@ -1834,7 +1853,9 @@ async function getTmdbSyncMetadata(
 }
 
 async function getBookSyncMetadata(
-  openLibraryKey: string
+  openLibraryKey: string,
+  coverImageUrl?: string | null,
+  isbn13?: string | null
 ): Promise<SyncedFields> {
   const response = await fetch(
     `https://openlibrary.org${openLibraryKey}.json`,
@@ -1857,6 +1878,11 @@ async function getBookSyncMetadata(
   }
   const authorPeople = await openLibraryAuthors(book.authors)
   const year = yearFromDate(book.first_publish_date)
+  const edition = await openLibraryEditionForCopy(
+    openLibraryKey,
+    coverImageUrl,
+    isbn13
+  )
   return {
     ...(book.title ? { title: book.title } : {}),
     ...(authorPeople.length
@@ -1870,7 +1896,112 @@ async function getBookSyncMetadata(
     ...(openLibraryDescription(book.description) !== undefined
       ? { description: openLibraryDescription(book.description) }
       : {}),
+    ...edition,
   }
+}
+
+type OpenLibraryEdition = {
+  works?: Array<{ key?: string }>
+  covers?: number[]
+  subtitle?: string
+  number_of_pages?: number
+  publishers?: string[]
+  isbn_13?: string[]
+  series?: string | string[]
+}
+
+async function openLibraryEditionForCopy(
+  workKey: string,
+  coverImageUrl?: string | null,
+  isbn13?: string | null
+): Promise<
+  Pick<
+    SyncedFields,
+    "subtitle" | "pageCount" | "publisher" | "isbn13" | "collection"
+  >
+> {
+  const normalizedWorkKey = normalizeOpenLibraryWorkKey(workKey)
+  const existingIsbn = normalizeIsbn13(isbn13)
+  let edition: OpenLibraryEdition | undefined
+
+  if (existingIsbn) {
+    const response = await fetch(
+      `https://openlibrary.org/isbn/${existingIsbn}.json`,
+      {
+        headers: {
+          "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
+        },
+      }
+    )
+    if (response.ok) {
+      const candidate = (await response.json()) as OpenLibraryEdition
+      if (
+        candidate.works?.some(
+          (work) =>
+            work.key &&
+            normalizeOpenLibraryWorkKey(work.key) === normalizedWorkKey
+        )
+      )
+        edition = candidate
+    }
+  }
+
+  if (!edition) {
+    const coverId = openLibraryCoverId(coverImageUrl)
+    if (!coverId) return {}
+    const response = await fetch(
+      `https://openlibrary.org${normalizedWorkKey}/editions.json?limit=1000`,
+      {
+        headers: {
+          "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
+        },
+      }
+    )
+    if (!response.ok)
+      throw new Error(
+        `Open Library could not load editions for ${normalizedWorkKey}.`
+      )
+    const body = (await response.json()) as { entries?: OpenLibraryEdition[] }
+    edition = body.entries?.find((candidate) =>
+      candidate.covers?.includes(coverId)
+    )
+    if (!edition) return {}
+  }
+
+  const subtitle = edition.subtitle?.trim()
+  const publisher = edition.publishers?.find((value) => value.trim())?.trim()
+  const editionIsbn = [
+    ...(edition.isbn_13 ?? []),
+    ...(existingIsbn ? [existingIsbn] : []),
+  ]
+    .map(normalizeIsbn13)
+    .find(Boolean)
+  const series = Array.isArray(edition.series)
+    ? edition.series[0]
+    : edition.series
+  const seriesName = series?.trim()
+  return {
+    subtitle: subtitle || null,
+    pageCount:
+      typeof edition.number_of_pages === "number" &&
+      Number.isInteger(edition.number_of_pages) &&
+      edition.number_of_pages > 0
+        ? edition.number_of_pages
+        : null,
+    publisher: publisher || null,
+    isbn13: editionIsbn ?? null,
+    collection: seriesName ? { name: seriesName } : null,
+  }
+}
+
+function openLibraryCoverId(url?: string | null) {
+  const match = url?.match(/covers\.openlibrary\.org\/b\/id\/(\d+)-/i)
+  return match ? Number(match[1]) : undefined
+}
+
+function normalizeIsbn13(value?: string | null) {
+  const normalized = value?.replace(/[\s-]/g, "")
+  return normalized && /^\d{13}$/.test(normalized) ? normalized : undefined
 }
 
 async function openLibraryAuthors(
@@ -1915,8 +2046,13 @@ function changedFields(
     "certification",
     "runtime",
     "backdropImageUrl",
+    "subtitle",
+    "pageCount",
+    "publisher",
+    "isbn13",
   ] as const) {
-    if (field === "collection" && item.type !== "movie") continue
+    if (field === "collection" && item.type !== "movie" && item.type !== "book")
+      continue
     if (field === "cast" && item.type === "book") continue
     if (
       (field === "certification" || field === "runtime") &&
@@ -2180,12 +2316,7 @@ export const getItemsByCollection = createServerFn({ method: "GET" })
       .select()
       .from(items)
       .innerJoin(itemCollections, eq(itemCollections.itemId, items.id))
-      .where(
-        and(
-          eq(itemCollections.collectionId, collection.id),
-          eq(items.type, "movie")
-        )
-      )
+      .where(and(eq(itemCollections.collectionId, collection.id)))
       .orderBy(asc(items.title))
     return {
       ...collection,
