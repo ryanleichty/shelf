@@ -54,10 +54,8 @@ export function TypeHome({
               isSystemListRow && type !== "book"
                 ? row.items.reduce(
                     (total, item) =>
-                      validRuntime(item.runtime)
-                        ? total + item.runtime
-                        : total,
-                    0,
+                      validRuntime(item.runtime) ? total + item.runtime : total,
+                    0
                   )
                 : null
             const systemListDetail = isSystemListRow
