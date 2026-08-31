@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { type CSSProperties, useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
 import { TrailerDialog } from "@/components/trailer-dialog"
@@ -18,6 +18,11 @@ type Billboard = {
   details: { logoUrl: string | null; tagline: string | null }
   trailer: { key: string } | null
 }
+
+const heroButtonTokens = {
+  "--primary": "var(--hero-foreground)",
+  "--primary-foreground": "var(--hero)",
+} as CSSProperties
 
 export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
   const { signedIn } = useSignedInStatus()
@@ -69,6 +74,7 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       onFocusCapture={() => setIsPaused(true)}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      style={heroButtonTokens}
     >
       {billboards.map((candidate, index) => (
         <img
@@ -85,18 +91,20 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       <div className="absolute inset-0 bg-linear-to-r from-hero to-transparent" />
       <div className="relative flex min-h-[70svh] items-end px-6 py-12 sm:items-center sm:px-10">
         <div className="max-w-md">
-          <h2 className="sr-only">{billboard.item.title}</h2>
           {billboard.details.logoUrl ? (
-            <img
-              alt={billboard.item.title}
-              className="max-h-28 max-w-70 object-contain object-left drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)]"
-              referrerPolicy="no-referrer"
-              src={billboard.details.logoUrl}
-            />
+            <>
+              <h1 className="sr-only">{billboard.item.title}</h1>
+              <img
+                alt={billboard.item.title}
+                className="max-h-28 max-w-70 object-contain object-left drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)]"
+                referrerPolicy="no-referrer"
+                src={billboard.details.logoUrl}
+              />
+            </>
           ) : (
-            <p className="text-4xl font-semibold tracking-tight drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)] sm:text-5xl">
+            <h1 className="text-4xl font-semibold tracking-tight drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)] sm:text-5xl">
               {billboard.item.title}
-            </p>
+            </h1>
           )}
           <p className="mt-4 text-sm text-hero-foreground/75">
             {billboard.item.year}
@@ -114,7 +122,6 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
           <div className="mt-6 flex flex-wrap gap-2">
             {billboard.trailer && (
               <TrailerDialog
-                className="bg-hero-foreground text-hero hover:bg-hero-foreground/90"
                 showLabel
                 title={billboard.item.title}
                 trailerKey={billboard.trailer.key}
@@ -123,7 +130,7 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
             )}
             {signedIn && (
               <SystemListToggle
-                className="border-hero-foreground/60 text-hero-foreground hover:bg-hero-foreground/10 hover:text-hero-foreground"
+                className="border-hero-foreground/60 bg-transparent text-hero-foreground hover:bg-hero-foreground/10 hover:text-hero-foreground"
                 itemId={billboard.item.id}
                 list={{
                   slug: "watchlist",
