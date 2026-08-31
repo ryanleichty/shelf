@@ -17,6 +17,6 @@ export default [
     },
   },
   {
-    ignores: ["eslint.config.js", ".prettierrc", ".output/**"],
+    ignores: ["eslint.config.js", ".prettierrc", ".output/**", "src/routeTree.gen.ts"],
   },
 ]
