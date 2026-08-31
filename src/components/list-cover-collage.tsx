@@ -19,14 +19,20 @@ export function ListCoverCollage({ items }: { items: Item[] }) {
     >
       {covers.length === 1 ? (
         <CoverImage item={covers[0]} />
+      ) : covers.length === 2 ? (
+        <div className="absolute inset-0 grid grid-rows-2 gap-px">
+          {covers.map((item) => (
+            <CoverImage item={item} key={item.id} />
+          ))}
+        </div>
       ) : covers.length === 3 ? (
-        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
+        <div className="absolute inset-0 grid grid-cols-[2fr_1fr] grid-rows-2 gap-px">
           <CoverImage className="row-span-2" item={covers[0]} />
           <CoverImage item={covers[1]} />
           <CoverImage item={covers[2]} />
         </div>
       ) : (
-        <div className="absolute inset-0 grid grid-cols-2 gap-px">
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
           {covers.map((item) => (
             <CoverImage item={item} key={item.id} />
           ))}
