@@ -23,8 +23,10 @@ export const Route = createFileRoute("/")({
         .slice(0, 12)
     const tonightItems = items
       .filter(
-        (item) =>
-          item.isInSystemList && (item.type === "movie" || item.type === "tv")
+        (item): item is typeof item & { runtime: number } =>
+          item.isInSystemList &&
+          (item.type === "movie" || item.type === "tv") &&
+          validRuntime(item.runtime)
       )
       .sort(compareTonightItems)
 
@@ -81,12 +83,39 @@ function Home() {
                   Tonight
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {tonightItems.length}{" "}
-                  {tonightItems.length === 1 ? "title" : "titles"}
                   {formatTonightRuntime(tonightItems)}
                 </p>
               </div>
-              <HomeCarousel id="home-tonight" items={tonightItems} />
+              <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4">
+                {tonightItems.map((item) => (
+                  <Link
+                    className="flex items-center gap-3"
+                    key={item.id}
+                    params={{ slug: item.slug }}
+                    to="/item/$slug"
+                  >
+                    <div className="aspect-2/3 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {item.coverImageUrl && (
+                        <img
+                          alt=""
+                          className="h-full w-full object-cover"
+                          referrerPolicy="no-referrer"
+                          src={item.coverImageUrl}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <p>{item.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.certification?.trim()
+                          ? `${item.certification.trim()} · `
+                          : ""}
+                        {formatRuntime(item.runtime)}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </section>
           )}
           {rows.map((row, index) => (
@@ -118,24 +147,17 @@ function validRuntime(runtime: number | null): runtime is number {
 }
 
 function compareTonightItems(
-  left: { runtime: number | null },
-  right: { runtime: number | null }
+  left: { runtime: number },
+  right: { runtime: number }
 ) {
-  const leftRuntime = validRuntime(left.runtime) ? left.runtime : Infinity
-  const rightRuntime = validRuntime(right.runtime) ? right.runtime : Infinity
-  const leftGroup = leftRuntime <= 120 ? 0 : leftRuntime === Infinity ? 2 : 1
-  const rightGroup = rightRuntime <= 120 ? 0 : rightRuntime === Infinity ? 2 : 1
+  const leftGroup = left.runtime <= 120 ? 0 : 1
+  const rightGroup = right.runtime <= 120 ? 0 : 1
 
-  return leftGroup - rightGroup || leftRuntime - rightRuntime
+  return leftGroup - rightGroup || left.runtime - right.runtime
 }
 
-function formatTonightRuntime(items: Array<{ runtime: number | null }>) {
-  const runtime = items.reduce(
-    (total, item) => total + (validRuntime(item.runtime) ? item.runtime : 0),
-    0
-  )
-
-  return runtime ? ` · ${formatRuntime(runtime)}` : ""
+function formatTonightRuntime(items: Array<{ runtime: number }>) {
+  return formatRuntime(items.reduce((total, item) => total + item.runtime, 0))
 }
 
 function formatRuntime(runtime: number) {
