@@ -206,10 +206,10 @@ function Home() {
                   />
                 ))}
               </div>
-              <div className="absolute inset-y-0 right-0 left-0 flex items-center justify-between px-3">
+              <div className="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center justify-between px-3">
                 <Button
                   aria-label="Previous featured title"
-                  className="bg-hero/50 text-hero-foreground hover:bg-hero/80 hover:text-hero-foreground"
+                  className="pointer-events-auto bg-hero/50 text-hero-foreground hover:bg-hero/80 hover:text-hero-foreground"
                   onClick={() => showBillboard(activeBillboardIndex - 1)}
                   size="icon"
                   variant="ghost"
@@ -218,7 +218,7 @@ function Home() {
                 </Button>
                 <Button
                   aria-label="Next featured title"
-                  className="bg-hero/50 text-hero-foreground hover:bg-hero/80 hover:text-hero-foreground"
+                  className="pointer-events-auto bg-hero/50 text-hero-foreground hover:bg-hero/80 hover:text-hero-foreground"
                   onClick={() => showBillboard(activeBillboardIndex + 1)}
                   size="icon"
                   variant="ghost"
