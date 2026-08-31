@@ -33,8 +33,9 @@ export const Route = createFileRoute("/item/$slug")({
         : Promise.resolve(null),
     ])
     const collectionItems =
-      collection?.items.filter((collectionItem) => collectionItem.status === "owned") ??
-      []
+      collection?.items.filter(
+        (collectionItem) => collectionItem.status === "owned"
+      ) ?? []
     return { item, similarItems, collectionItems, signedIn, trailer }
   },
   head: ({ loaderData }) => {
