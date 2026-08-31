@@ -2378,7 +2378,7 @@ export const getItemsByCollection = createServerFn({ method: "GET" })
       .from(items)
       .innerJoin(itemCollections, eq(itemCollections.itemId, items.id))
       .where(and(eq(itemCollections.collectionId, collection.id)))
-      .orderBy(asc(items.title))
+      .orderBy(asc(items.year), asc(items.title))
     return {
       ...collection,
       items: await enrichItems(records.map((row) => row.items)),
