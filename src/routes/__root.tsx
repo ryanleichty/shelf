@@ -96,6 +96,7 @@ function ShelfShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const isHome = pathname === "/"
   const label = pathname.startsWith("/movies")
     ? "Movies"
     : pathname.startsWith("/tv")
@@ -115,21 +116,27 @@ function ShelfShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider className="overflow-x-hidden">
       <AppSidebar />
       <SidebarInset className="min-w-0 overflow-x-hidden">
-        <header className="z-1 flex h-16 shrink-0 items-center gap-2 px-4 shadow-[0_1px_0_--alpha(var(--color-black)/10%)]">
-          <SidebarTrigger className="-ml-1" />
-          <Separator className="mr-2 h-4" orientation="vertical" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link to="/" />}>Shelf</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{label}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
+        {isHome ? (
+          <SidebarTrigger className="absolute top-4 left-4 z-10 bg-background/90 ring-1 ring-black/10" />
+        ) : (
+          <header className="z-1 flex h-16 shrink-0 items-center gap-2 px-4 shadow-[0_1px_0_--alpha(var(--color-black)/10%)]">
+            <SidebarTrigger className="-ml-1" />
+            <Separator className="mr-2 h-4" orientation="vertical" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link to="/" />}>
+                    Shelf
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{label}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </header>
+        )}
         {children}
       </SidebarInset>
     </SidebarProvider>

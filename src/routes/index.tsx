@@ -1,6 +1,17 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { HomeBillboard } from "@/components/home-billboard"
 import { HomeCarousel } from "@/components/home-carousel"
-import { getItems } from "@/server/items"
+import {
+  getItems,
+  getTmdbBillboardDetails,
+  getTmdbTrailer,
+} from "@/server/items"
+
+type BillboardItem = {
+  type: "movie" | "tv"
+  tmdbId: string
+  backdropImageUrl: string
+}
 
 export const Route = createFileRoute("/")({
   loader: async () => {
@@ -11,7 +22,28 @@ export const Route = createFileRoute("/")({
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
         .slice(0, 12)
 
-    return [
+    const billboardItems = items
+      .filter(
+        (item): item is typeof item & BillboardItem =>
+          item.status === "owned" &&
+          (item.type === "movie" || item.type === "tv") &&
+          Boolean(item.backdropImageUrl) &&
+          Boolean(item.tmdbId)
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, 5)
+    const billboards = await Promise.all(
+      billboardItems.map(async (item) => {
+        const [details, trailer] = await Promise.all([
+          getTmdbBillboardDetails({
+            data: { tmdbId: item.tmdbId, type: item.type },
+          }),
+          getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } }),
+        ])
+        return { item, details, trailer }
+      })
+    )
+    const rows = [
       { title: "Books", to: "/books" as const, items: recentItemsFor("book") },
       {
         title: "Movies",
@@ -20,22 +52,21 @@ export const Route = createFileRoute("/")({
       },
       { title: "TV", to: "/tv" as const, items: recentItemsFor("tv") },
     ].filter((row) => row.items.length)
+    return {
+      billboards,
+      rows,
+    }
   },
   component: Home,
 })
 
 function Home() {
-  const rows = Route.useLoaderData()
+  const { billboards, rows } = Route.useLoaderData()
   return (
-    <main className="overflow-x-hidden py-10">
-      <div className="container mx-auto mb-10 max-w-6xl px-4">
-        <p className="text-sm text-muted-foreground">
-          Ryan Leichty&apos;s collection
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Shelf</h1>
-      </div>
+    <main className="overflow-x-hidden">
+      <HomeBillboard billboards={billboards} />
       {rows.length ? (
-        <div className="flex flex-col gap-10">
+        <div className="mt-10 flex flex-col gap-10 pb-10">
           {rows.map((row, index) => (
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">

@@ -18,28 +18,45 @@ import {
 export function TrailerDialog({
   title,
   trailerKey,
+  className,
+  showLabel = false,
+  showTooltip = !showLabel,
+  variant = "outline",
 }: {
   title: string
   trailerKey: string
+  className?: string
+  showLabel?: boolean
+  showTooltip?: boolean
+  variant?: "default" | "outline"
 }) {
   const [open, setOpen] = useState(false)
+  const trigger = (
+    <DialogTrigger
+      render={
+        <Button
+          aria-label={showLabel ? undefined : "Trailer"}
+          className={className}
+          size={showLabel ? "default" : "icon"}
+          variant={variant}
+        >
+          <PlayIcon data-icon={showLabel ? "inline-start" : undefined} />
+          {showLabel && "Play trailer"}
+        </Button>
+      }
+    />
+  )
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <DialogTrigger
-              render={
-                <Button aria-label="Trailer" size="icon" variant="outline">
-                  <PlayIcon />
-                </Button>
-              }
-            />
-          }
-        />
-        <TooltipContent>Trailer</TooltipContent>
-      </Tooltip>
+      {showTooltip ? (
+        <Tooltip>
+          <TooltipTrigger render={trigger} />
+          <TooltipContent>Trailer</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
       <DialogContent className="gap-0 overflow-hidden bg-black p-0 sm:max-w-3xl">
         <DialogTitle className="sr-only">{title}</DialogTitle>
         {open && (
