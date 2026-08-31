@@ -2763,8 +2763,9 @@ export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
           (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
         )
         const logo =
-          englishLogos.find((image) => image.file_type === "svg") ??
-          englishLogos.find((image) => image.file_type === "png") ??
+          englishLogos.find((image) => image.file_path?.endsWith(".svg")) ??
+          englishLogos.find((image) => image.file_path?.endsWith(".png")) ??
+          englishLogos[0] ??
           null
 
         return {

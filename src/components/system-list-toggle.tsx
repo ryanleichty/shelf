@@ -24,6 +24,8 @@ export function SystemListToggle({
   onError,
   onMembershipChange,
   showLabel = false,
+  showTooltip = !showLabel,
+  variant,
 }: {
   className?: string
   itemId: number
@@ -31,6 +33,8 @@ export function SystemListToggle({
   onError?: (message: string) => void
   onMembershipChange?: (containsItem: boolean) => void
   showLabel?: boolean
+  showTooltip?: boolean
+  variant?: "default" | "outline"
 }) {
   const router = useRouter()
   const [containsItem, setContainsItem] = useState(list.containsItem)
@@ -75,26 +79,28 @@ export function SystemListToggle({
     }
   }
 
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            aria-label={`${containsItem ? "Remove from" : "Add to"} ${list.name}`}
-            className={className}
-            onClick={() => void toggle()}
-            size={showLabel ? "default" : "icon"}
-            variant={showLabel && containsItem ? "default" : "outline"}
-          >
-            <BookmarkIcon
-              data-icon={showLabel ? "inline-start" : undefined}
-              fill={containsItem ? "currentColor" : "none"}
-            />
-            {showLabel && list.name}
-          </Button>
-        }
+  const button = (
+    <Button
+      aria-label={`${containsItem ? "Remove from" : "Add to"} ${list.name}`}
+      className={className}
+      onClick={() => void toggle()}
+      size={showLabel ? "default" : "icon"}
+      variant={variant ?? (showLabel && containsItem ? "default" : "outline")}
+    >
+      <BookmarkIcon
+        data-icon={showLabel ? "inline-start" : undefined}
+        fill={containsItem ? "currentColor" : "none"}
       />
+      {showLabel && list.name}
+    </Button>
+  )
+
+  return showTooltip ? (
+    <Tooltip>
+      <TooltipTrigger render={button} />
       <TooltipContent>{list.name}</TooltipContent>
     </Tooltip>
+  ) : (
+    button
   )
 }
