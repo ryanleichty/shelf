@@ -103,7 +103,7 @@ function Home() {
               {billboard.details?.logoUrl ? (
                 <img
                   alt={billboard.item.title}
-                  className="max-h-28 max-w-70 object-contain object-left"
+                  className="max-h-28 max-w-70 object-contain object-left drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)]"
                   referrerPolicy="no-referrer"
                   src={billboard.details.logoUrl}
                 />
