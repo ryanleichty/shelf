@@ -146,7 +146,7 @@ export function CoverTile({
                 isBackdropVisible ? "opacity-100" : "opacity-0"
               )}
               referrerPolicy="no-referrer"
-              src={backdropImageUrl}
+              src={backdropImageUrl ?? undefined}
             />
           )}
           {item.edition && (
