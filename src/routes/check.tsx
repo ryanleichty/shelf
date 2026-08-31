@@ -2,7 +2,8 @@ import { useState } from "react"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { CheckBarcodeForm } from "@/components/check-barcode-form"
 import { CheckBarcodeResult } from "@/components/check-barcode-result"
-import { checkBarcode, getAdminStatus } from "@/server/items"
+import { getAdminStatus } from "@/server/items"
+import type { checkBarcode } from "@/server/items"
 
 type CheckResult = Awaited<ReturnType<typeof checkBarcode>>
 

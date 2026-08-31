@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent } from "@/components/ui/card"
-import { checkBarcode } from "@/server/items"
+import type { checkBarcode } from "@/server/items"
 
 type CheckBarcodeResult = Awaited<ReturnType<typeof checkBarcode>>
 
