@@ -13,20 +13,42 @@ export function ListCoverCollage({ items }: { items: Item[] }) {
   if (covers.length === 0) return null
 
   return (
-    <div className={cn(covers.length > 1 && "grid grid-cols-2 gap-1.5")}>
-      {covers.map((item) => (
-        <div
-          className="aspect-2/3 w-20 overflow-hidden rounded-md sm:w-24"
-          key={item.id}
-        >
-          <img
-            alt={item.title}
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-            src={item.coverImageUrl}
-          />
+    <div
+      aria-hidden="true"
+      className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10"
+    >
+      {covers.length === 1 ? (
+        <CoverImage item={covers[0]} />
+      ) : covers.length === 3 ? (
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px">
+          <CoverImage className="row-span-2" item={covers[0]} />
+          <CoverImage item={covers[1]} />
+          <CoverImage item={covers[2]} />
         </div>
-      ))}
+      ) : (
+        <div className="absolute inset-0 grid grid-cols-2 gap-px">
+          {covers.map((item) => (
+            <CoverImage item={item} key={item.id} />
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+function CoverImage({
+  className,
+  item,
+}: {
+  className?: string
+  item: ItemWithCover
+}) {
+  return (
+    <img
+      alt=""
+      className={cn("h-full w-full object-cover", className)}
+      referrerPolicy="no-referrer"
+      src={item.coverImageUrl}
+    />
   )
 }

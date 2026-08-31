@@ -19,7 +19,7 @@ export function ListCatalog({
 }) {
   return (
     <main className="container mx-auto max-w-6xl px-4 py-10">
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-center">
+      <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
         <ListCoverCollage items={items} />
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
@@ -27,7 +27,7 @@ export function ListCatalog({
             {items.length} {items.length === 1 ? "title" : "titles"}
           </p>
         </div>
-      </header>
+      </article>
       <div className="mt-8">
         <Catalog
           items={items}
