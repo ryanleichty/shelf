@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { useSignedInStatus } from "@/components/signed-in-status"
@@ -26,6 +27,16 @@ export function CoverTile({
     : item.title
   const isCarouselTile = variant === "carousel"
   const { signedIn } = useSignedInStatus()
+  const [isHovering, setIsHovering] = useState(false)
+  const [isFocusWithin, setIsFocusWithin] = useState(false)
+  const [isBackdropVisible, setIsBackdropVisible] = useState(false)
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+  const hasBackdropPreview =
+    item.type !== "book" && Boolean(item.backdropImageUrl)
+  const shouldMountBackdrop =
+    hasBackdropPreview &&
+    !prefersReducedMotion &&
+    (isHovering || isFocusWithin)
   const systemList =
     item.type === "book"
       ? {
@@ -39,6 +50,25 @@ export function CoverTile({
           containsItem: item.isInSystemList,
         }
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
+
+    updatePreference()
+    mediaQuery.addEventListener("change", updatePreference)
+    return () => mediaQuery.removeEventListener("change", updatePreference)
+  }, [])
+
+  useEffect(() => {
+    if (!shouldMountBackdrop) {
+      setIsBackdropVisible(false)
+      return
+    }
+
+    const frame = requestAnimationFrame(() => setIsBackdropVisible(true))
+    return () => cancelAnimationFrame(frame)
+  }, [shouldMountBackdrop])
+
   return (
     <div
       className={cn(
@@ -46,6 +76,14 @@ export function CoverTile({
         isCarouselTile && "z-0 focus-within:z-10 hover:z-10",
         className
       )}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsFocusWithin(false)
+        }
+      }}
+      onFocus={() => setIsFocusWithin(true)}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       <Link
         aria-label={accessibleName}
@@ -69,6 +107,18 @@ export function CoverTile({
             >
               S
             </div>
+          )}
+          {shouldMountBackdrop && (
+            <img
+              alt=""
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none absolute inset-0 h-full w-full rounded-[inherit] object-cover transition-opacity duration-200 ease-out",
+                isBackdropVisible ? "opacity-100" : "opacity-0"
+              )}
+              referrerPolicy="no-referrer"
+              src={item.backdropImageUrl!}
+            />
           )}
           {item.edition && (
             <Badge
