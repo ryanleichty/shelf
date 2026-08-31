@@ -21,8 +21,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
       - run: pnpm build
+      - run: pnpm typecheck
       - name: Smoke test production SSR
         run: |
           PORT=3000 node .output/server/index.mjs > server.log 2>&1 &
