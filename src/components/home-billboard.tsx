@@ -85,7 +85,7 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       <div className="absolute inset-0 bg-linear-to-r from-hero to-transparent" />
       <div className="relative flex min-h-[70svh] items-end px-6 py-12 sm:items-center sm:px-10">
         <div className="max-w-md">
-          <h1 className="sr-only">{billboard.item.title}</h1>
+          <h2 className="sr-only">{billboard.item.title}</h2>
           {billboard.details.logoUrl ? (
             <img
               alt={billboard.item.title}
