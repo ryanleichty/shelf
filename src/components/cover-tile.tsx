@@ -26,6 +26,7 @@ export function CoverTile({
     : item.title
   const isCarouselTile = variant === "carousel"
   const { signedIn } = useSignedInStatus()
+  const format = formatLabel(item.format)
   const systemList =
     item.type === "book"
       ? {
@@ -70,13 +71,25 @@ export function CoverTile({
               S
             </div>
           )}
-          {item.edition && (
-            <Badge
-              className="absolute top-2 left-2 bg-background/90 text-[0.625rem]"
-              variant="outline"
-            >
-              {editionLabel(item.edition)}
-            </Badge>
+          {(item.edition || format) && (
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              {item.edition && (
+                <Badge
+                  className="bg-background/90 text-[0.625rem]"
+                  variant="outline"
+                >
+                  {editionLabel(item.edition)}
+                </Badge>
+              )}
+              {format && (
+                <Badge
+                  className="bg-background/90 text-[0.625rem]"
+                  variant="outline"
+                >
+                  {format}
+                </Badge>
+              )}
+            </div>
           )}
           {item.status !== "owned" && (
             <Badge
@@ -114,4 +127,16 @@ function editionLabel(edition: string) {
   return edition === "director-cut"
     ? "Director's Cut"
     : edition[0].toUpperCase() + edition.slice(1)
+}
+
+function formatLabel(format: string | null) {
+  return format === "blu-ray"
+    ? "Blu-ray"
+    : format === "dvd"
+      ? "DVD"
+      : format === "hardcover"
+        ? "Hardcover"
+        : format === "paperback"
+          ? "Paperback"
+          : null
 }
