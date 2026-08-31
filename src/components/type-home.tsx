@@ -50,6 +50,23 @@ export function TypeHome({
           {rows.map((row, index) => {
             const isSystemListRow =
               row.kind === "list" && row.slug === systemListSlug
+            const totalRuntime =
+              isSystemListRow && type !== "book"
+                ? row.items.reduce(
+                    (total, item) =>
+                      validRuntime(item.runtime)
+                        ? total + item.runtime
+                        : total,
+                    0,
+                  )
+                : null
+            const systemListDetail = isSystemListRow
+              ? type === "book"
+                ? `${row.items.length} ${row.items.length === 1 ? "title" : "titles"}`
+                : totalRuntime
+                  ? formatRuntime(totalRuntime)
+                  : null
+              : null
 
             function renderSection(carousel: ReactNode) {
               return (
@@ -84,6 +101,11 @@ export function TypeHome({
                         row.title
                       )}
                     </h2>
+                    {systemListDetail && (
+                      <p className="text-sm text-muted-foreground">
+                        {systemListDetail}
+                      </p>
+                    )}
                   </div>
                   {carousel}
                 </section>
@@ -110,4 +132,14 @@ export function TypeHome({
       )}
     </main>
   )
+}
+
+function validRuntime(runtime: number | null): runtime is number {
+  return typeof runtime === "number" && Number.isInteger(runtime) && runtime > 0
+}
+
+function formatRuntime(runtime: number) {
+  const hours = Math.floor(runtime / 60)
+  const minutes = runtime % 60
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }
