@@ -127,7 +127,7 @@ export function TypeHome({
                     <div className="flex items-start py-2">
                       {row.items.slice(0, 6).map((item, pileIndex) => (
                         <div
-                          className="-ml-12 first:ml-0 w-24 sm:w-36"
+                          className="-ml-12 w-24 first:ml-0 sm:w-36"
                           key={item.id}
                           style={{ zIndex: 6 - pileIndex }}
                         >
