@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { HomeBillboard } from "@/components/home-billboard"
 import { HomeCarousel } from "@/components/home-carousel"
+import { Tonight } from "@/components/home-tonight"
 import {
   getItems,
   getTmdbBillboardDetails,
@@ -76,48 +77,7 @@ function Home() {
       <HomeBillboard billboards={billboards} />
       {tonightItems.length || rows.length ? (
         <div className="mt-10 flex flex-col gap-10 pb-10">
-          {tonightItems.length > 0 && (
-            <section className="overflow-x-hidden">
-              <div className="container mx-auto mb-4 max-w-6xl px-4">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  Tonight
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {formatTonightRuntime(tonightItems)}
-                </p>
-              </div>
-              <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4">
-                {tonightItems.map((item) => (
-                  <Link
-                    className="flex items-center gap-3"
-                    key={item.id}
-                    params={{ slug: item.slug }}
-                    to="/item/$slug"
-                  >
-                    <div className="aspect-2/3 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {item.coverImageUrl && (
-                        <img
-                          alt=""
-                          className="h-full w-full object-cover"
-                          referrerPolicy="no-referrer"
-                          src={item.coverImageUrl}
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <p>{item.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.certification?.trim()
-                          ? `${item.certification.trim()} · `
-                          : ""}
-                        {formatRuntime(item.runtime)}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+          <Tonight items={tonightItems} />
           {rows.map((row, index) => (
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
@@ -154,14 +114,4 @@ function compareTonightItems(
   const rightGroup = right.runtime <= 120 ? 0 : 1
 
   return leftGroup - rightGroup || left.runtime - right.runtime
-}
-
-function formatTonightRuntime(items: Array<{ runtime: number }>) {
-  return formatRuntime(items.reduce((total, item) => total + item.runtime, 0))
-}
-
-function formatRuntime(runtime: number) {
-  const hours = Math.floor(runtime / 60)
-  const minutes = runtime % 60
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }
