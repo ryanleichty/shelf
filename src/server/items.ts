@@ -2129,6 +2129,66 @@ export const getItems = createServerFn({ method: "GET" })
     return enrichItems(records)
   })
 
+export type SearchFacets = {
+  genres: Array<{ name: string; slug: string }>
+  directors: Array<{ name: string; slug: string }>
+  actors: Array<{ name: string; slug: string }>
+  authors: Array<{ name: string; slug: string }>
+}
+
+function normalizeFacetQuery(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase()
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ")
+}
+
+export const getSearchFacets = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ query: z.string().max(100) }))
+  .handler(async ({ data }): Promise<SearchFacets> => {
+    await ensureDatabase()
+    const query = normalizeFacetQuery(data.query)
+    if (!query) return { genres: [], directors: [], actors: [], authors: [] }
+
+    const [genreRows, directorRows, actorRows, authorRows] = await Promise.all([
+      db
+        .select({ name: genres.name, slug: genres.slug })
+        .from(genres)
+        .innerJoin(itemGenres, eq(genres.id, itemGenres.genreId))
+        .groupBy(genres.id)
+        .orderBy(asc(genres.name)),
+      db
+        .select({ name: directors.name, slug: directors.slug })
+        .from(directors)
+        .innerJoin(itemDirectors, eq(directors.id, itemDirectors.directorId))
+        .groupBy(directors.id)
+        .orderBy(asc(directors.name)),
+      db
+        .select({ name: actors.name, slug: actors.slug })
+        .from(actors)
+        .innerJoin(itemActors, eq(actors.id, itemActors.actorId))
+        .groupBy(actors.id)
+        .orderBy(asc(actors.name)),
+      db
+        .select({ name: authors.name, slug: authors.slug })
+        .from(authors)
+        .innerJoin(itemAuthors, eq(authors.id, itemAuthors.authorId))
+        .groupBy(authors.id)
+        .orderBy(asc(authors.name)),
+    ])
+    const matches = (rows: Array<{ name: string; slug: string }>) =>
+      rows.filter((row) => normalizeFacetQuery(row.name).includes(query))
+
+    return {
+      genres: matches(genreRows),
+      directors: matches(directorRows),
+      actors: matches(actorRows),
+      authors: matches(authorRows),
+    }
+  })
+
 export const getPersonOptions = createServerFn({ method: "GET" }).handler(
   async (): Promise<PersonOptions> => {
     await requireSignedIn()

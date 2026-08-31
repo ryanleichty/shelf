@@ -9,10 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  InputGroup,
-  InputGroupAddon,
-} from "@/components/ui/input-group"
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group"
 import { SearchIcon, CheckIcon } from "lucide-react"
 
 function Command({
@@ -145,11 +142,14 @@ function CommandSeparator({
   )
 }
 
-function CommandItem({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+type CommandItemProps = React.ComponentProps<typeof CommandPrimitive.Item> & {
+  "data-checked"?: boolean | "true" | "false"
+}
+
+function CommandItem({ className, children, ...props }: CommandItemProps) {
+  const isChecked =
+    props["data-checked"] === true || props["data-checked"] === "true"
+
   return (
     <CommandPrimitive.Item
       data-slot="command-item"
@@ -160,7 +160,9 @@ function CommandItem({
       {...props}
     >
       {children}
-      <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
+      {isChecked && (
+        <CheckIcon className="ml-auto opacity-0 group-has-data-[slot=command-shortcut]/command-item:hidden group-data-[checked=true]/command-item:opacity-100" />
+      )}
     </CommandPrimitive.Item>
   )
 }
