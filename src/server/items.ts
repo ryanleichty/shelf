@@ -2716,6 +2716,69 @@ export const getTmdbTrailer = createServerFn({ method: "GET" })
     }
   })
 
+export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
+  .inputValidator(
+    z.object({
+      tmdbId: z.string().min(1).max(40),
+      type: z.enum(["movie", "tv"]),
+    })
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{ logoUrl: string | null; tagline: string | null }> => {
+      const apiKey = process.env.TMDB_API_KEY
+      if (!apiKey) return { logoUrl: null, tagline: null }
+
+      try {
+        const imageUrl = new URL(
+          `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/images`
+        )
+        imageUrl.searchParams.set("api_key", apiKey)
+        imageUrl.searchParams.set("include_image_language", "en")
+
+        const detailsUrl = new URL(
+          `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}`
+        )
+        detailsUrl.searchParams.set("api_key", apiKey)
+        detailsUrl.searchParams.set("language", "en-US")
+
+        const [imagesResponse, detailsResponse] = await Promise.all([
+          fetch(imageUrl),
+          fetch(detailsUrl),
+        ])
+        const imageBody = imagesResponse.ok
+          ? ((await imagesResponse.json()) as {
+              logos?: Array<{
+                file_path?: string
+                file_type?: string
+                iso_639_1?: string | null
+              }>
+            })
+          : null
+        const detailsBody = detailsResponse.ok
+          ? ((await detailsResponse.json()) as { tagline?: string | null })
+          : null
+        const englishLogos = (imageBody?.logos ?? []).filter(
+          (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
+        )
+        const logo =
+          englishLogos.find((logo) => logo.file_type === "svg") ??
+          englishLogos.find((logo) => logo.file_type === "png") ??
+          null
+
+        return {
+          logoUrl: logo?.file_path
+            ? `https://image.tmdb.org/t/p/original${logo.file_path}`
+            : null,
+          tagline: detailsBody?.tagline?.trim() || null,
+        }
+      } catch {
+        return { logoUrl: null, tagline: null }
+      }
+    }
+  )
+
 async function getTmdbRelatedIds(
   type: "movie" | "tv",
   tmdbId: string

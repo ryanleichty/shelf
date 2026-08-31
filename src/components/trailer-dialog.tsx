@@ -18,9 +18,11 @@ import {
 export function TrailerDialog({
   title,
   trailerKey,
+  showLabel = false,
 }: {
   title: string
   trailerKey: string
+  showLabel?: boolean
 }) {
   const [open, setOpen] = useState(false)
 
@@ -31,8 +33,15 @@ export function TrailerDialog({
           render={
             <DialogTrigger
               render={
-                <Button aria-label="Trailer" size="icon" variant="outline">
-                  <PlayIcon />
+                <Button
+                  aria-label={showLabel ? undefined : "Trailer"}
+                  size={showLabel ? "default" : "icon"}
+                  variant="outline"
+                >
+                  <PlayIcon
+                    data-icon={showLabel ? "inline-start" : undefined}
+                  />
+                  {showLabel && "Play trailer"}
                 </Button>
               }
             />
