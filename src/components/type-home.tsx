@@ -3,6 +3,7 @@
 import { Link } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import type { ReactNode } from "react"
+import { CoverTile } from "@/components/cover-tile"
 import { HomeCarousel } from "@/components/home-carousel"
 import { Button } from "@/components/ui/button"
 import type { Item } from "@/server/schema"
@@ -66,46 +67,75 @@ export function TypeHome({
                   : null
               : null
 
-            function renderSection(carousel: ReactNode) {
+            function renderHeading() {
+              return (
+                <div className="container mx-auto mb-4 max-w-6xl px-4">
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    {row.kind !== "recent" ? (
+                      <Link
+                        className="hover:underline"
+                        params={{ slug: row.slug }}
+                        to={
+                          row.kind === "genre"
+                            ? "/genre/$slug"
+                            : row.kind === "collection"
+                              ? "/collection/$slug"
+                              : row.kind === "director"
+                                ? "/director/$slug"
+                                : row.kind === "actor"
+                                  ? "/actor/$slug"
+                                  : row.kind === "author"
+                                    ? "/author/$slug"
+                                    : type === "book"
+                                      ? "/books/list/$slug"
+                                      : type === "movie"
+                                        ? "/movies/list/$slug"
+                                        : "/tv/list/$slug"
+                        }
+                      >
+                        {row.title}
+                      </Link>
+                    ) : (
+                      row.title
+                    )}
+                  </h2>
+                  {systemListDetail && (
+                    <p className="text-sm text-muted-foreground">
+                      {systemListDetail}
+                    </p>
+                  )}
+                </div>
+              )
+            }
+
+            function renderSection(content: ReactNode) {
               return (
                 <section className="overflow-x-hidden">
-                  <div className="container mx-auto mb-4 max-w-6xl px-4">
-                    <h2 className="text-xl font-semibold tracking-tight">
-                      {row.kind !== "recent" ? (
-                        <Link
-                          className="hover:underline"
-                          params={{ slug: row.slug }}
-                          to={
-                            row.kind === "genre"
-                              ? "/genre/$slug"
-                              : row.kind === "collection"
-                                ? "/collection/$slug"
-                                : row.kind === "director"
-                                  ? "/director/$slug"
-                                  : row.kind === "actor"
-                                    ? "/actor/$slug"
-                                    : row.kind === "author"
-                                      ? "/author/$slug"
-                                      : type === "book"
-                                        ? "/books/list/$slug"
-                                        : type === "movie"
-                                          ? "/movies/list/$slug"
-                                          : "/tv/list/$slug"
-                          }
+                  {renderHeading()}
+                  {content}
+                </section>
+              )
+            }
+
+            if (isSystemListRow && type === "book") {
+              if (row.items.length === 0) return null
+
+              return (
+                <section className="overflow-x-hidden" key={row.title}>
+                  {renderHeading()}
+                  <div className="container mx-auto max-w-6xl px-4">
+                    <div className="flex items-start py-2">
+                      {row.items.slice(0, 6).map((item, pileIndex) => (
+                        <div
+                          className="-ml-12 first:ml-0 w-24 sm:w-36"
+                          key={item.id}
+                          style={{ zIndex: 6 - pileIndex }}
                         >
-                          {row.title}
-                        </Link>
-                      ) : (
-                        row.title
-                      )}
-                    </h2>
-                    {systemListDetail && (
-                      <p className="text-sm text-muted-foreground">
-                        {systemListDetail}
-                      </p>
-                    )}
+                          <CoverTile className="w-full" item={item} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  {carousel}
                 </section>
               )
             }
