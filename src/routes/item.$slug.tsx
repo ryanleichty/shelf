@@ -327,7 +327,6 @@ function ItemDetail() {
             </Link>
           </h2>
           <HomeCarousel
-            contained
             id={`collection-story-${item.id}`}
             items={collectionItems.filter(
               (collectionItem) => collectionItem.id !== item.id
