@@ -1,6 +1,7 @@
 "use client"
 
 import { Catalog } from "@/components/catalog"
+import { ListCoverCollage } from "@/components/list-cover-collage"
 import type { Item } from "@/server/schema"
 
 export function ListCatalog({
@@ -18,8 +19,15 @@ export function ListCatalog({
 }) {
   return (
     <main className="container mx-auto max-w-6xl px-4 py-10">
-      <p className="text-sm text-muted-foreground">{name}</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{name}</h1>
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <ListCoverCollage items={items} />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">{name}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {items.length} {items.length === 1 ? "title" : "titles"}
+          </p>
+        </div>
+      </header>
       <div className="mt-8">
         <Catalog
           items={items}
