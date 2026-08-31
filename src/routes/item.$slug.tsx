@@ -115,14 +115,20 @@ function ItemDetail() {
           />
         </div>
         <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
-          <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10">
+          <div
+            className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10"
+            style={
+              item.coverImageUrl
+                ? { viewTransitionName: `cover-${item.slug}` }
+                : undefined
+            }
+          >
             {item.coverImageUrl ? (
               <img
                 alt={item.title}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
                 src={item.coverImageUrl}
-                style={{ viewTransitionName: `cover-${item.slug}` }}
               />
             ) : (
               <span className="flex h-full items-center justify-center text-sm text-muted-foreground">
