@@ -122,6 +122,7 @@ function ItemDetail() {
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
                 src={item.coverImageUrl}
+                style={{ viewTransitionName: `cover-${item.slug}` }}
               />
             ) : (
               <span className="flex h-full items-center justify-center text-sm text-muted-foreground">
