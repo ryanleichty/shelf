@@ -65,9 +65,12 @@ export function CoverTile({
           ) : (
             <div
               aria-hidden="true"
-              className="flex h-full items-center justify-center bg-muted text-2xl font-semibold text-muted-foreground/50"
+              className="flex h-full flex-col items-center justify-center gap-1 bg-muted"
             >
-              S
+              <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
+                {item.title}
+              </span>
+              <span className="text-sm text-muted-foreground">{item.type}</span>
             </div>
           )}
           {item.edition && (
