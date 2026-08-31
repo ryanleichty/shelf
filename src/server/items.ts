@@ -2753,6 +2753,7 @@ export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
                 file_path?: string
                 file_type?: string
                 iso_639_1?: string | null
+                width?: number
               }>
             })
           : null
@@ -2763,8 +2764,14 @@ export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
           (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
         )
         const logo =
-          englishLogos.find((image) => image.file_path?.endsWith(".svg")) ??
-          englishLogos.find((image) => image.file_path?.endsWith(".png")) ??
+          englishLogos.find((image) =>
+            image.file_path?.toLocaleLowerCase().endsWith(".svg")
+          ) ??
+          [...englishLogos]
+            .filter((image) =>
+              image.file_path?.toLocaleLowerCase().endsWith(".png")
+            )
+            .sort((left, right) => (right.width ?? 0) - (left.width ?? 0))[0] ??
           englishLogos[0] ??
           null
 

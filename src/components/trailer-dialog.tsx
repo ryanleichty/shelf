@@ -21,12 +21,14 @@ export function TrailerDialog({
   className,
   showLabel = false,
   showTooltip = !showLabel,
+  variant = "outline",
 }: {
   title: string
   trailerKey: string
   className?: string
   showLabel?: boolean
   showTooltip?: boolean
+  variant?: "default" | "outline"
 }) {
   const [open, setOpen] = useState(false)
   const trigger = (
@@ -36,7 +38,7 @@ export function TrailerDialog({
           aria-label={showLabel ? undefined : "Trailer"}
           className={className}
           size={showLabel ? "default" : "icon"}
-          variant="outline"
+          variant={variant}
         >
           <PlayIcon data-icon={showLabel ? "inline-start" : undefined} />
           {showLabel && "Play trailer"}
