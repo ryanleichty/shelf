@@ -9,6 +9,12 @@ import {
   getTmdbTrailer,
 } from "@/server/items"
 
+type BillboardItem = {
+  type: "movie" | "tv"
+  tmdbId: string
+  backdropImageUrl: string
+}
+
 export const Route = createFileRoute("/")({
   loader: async () => {
     const items = await getItems({ data: {} })
@@ -20,20 +26,20 @@ export const Route = createFileRoute("/")({
 
     const billboardItem = items
       .filter(
-        (item) =>
+        (item): item is typeof item & BillboardItem =>
           item.status === "owned" &&
           (item.type === "movie" || item.type === "tv") &&
-          item.backdropImageUrl &&
-          item.tmdbId
+          Boolean(item.backdropImageUrl) &&
+          Boolean(item.tmdbId)
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0]
     const [billboardDetails, trailer] = billboardItem
       ? await Promise.all([
           getTmdbBillboardDetails({
-            data: { tmdbId: billboardItem.tmdbId!, type: billboardItem.type },
+            data: { tmdbId: billboardItem.tmdbId, type: billboardItem.type },
           }),
           getTmdbTrailer({
-            data: { tmdbId: billboardItem.tmdbId!, type: billboardItem.type },
+            data: { tmdbId: billboardItem.tmdbId, type: billboardItem.type },
           }),
         ])
       : [null, null]
@@ -76,7 +82,7 @@ function Home() {
             alt=""
             className="absolute inset-0 size-full object-cover opacity-70"
             referrerPolicy="no-referrer"
-            src={billboard.item.backdropImageUrl!}
+            src={billboard.item.backdropImageUrl}
           />
           {billboard.item.coverImageUrl && (
             <div className="absolute inset-y-0 right-0 hidden w-1/2 md:block">
