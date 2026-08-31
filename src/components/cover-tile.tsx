@@ -34,9 +34,7 @@ export function CoverTile({
   const hasBackdropPreview =
     item.type !== "book" && Boolean(item.backdropImageUrl)
   const shouldMountBackdrop =
-    hasBackdropPreview &&
-    !prefersReducedMotion &&
-    (isHovering || isFocusWithin)
+    hasBackdropPreview && !prefersReducedMotion && (isHovering || isFocusWithin)
   const systemList =
     item.type === "book"
       ? {
