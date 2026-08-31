@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/command"
 import { getItems, getSearchFacets } from "@/server/items"
 import type { SearchFacets } from "@/server/items"
-import type { Item } from "@/server/schema"
+import type { TileItem } from "@/server/schema"
 
 type SearchFacet = { name: string; slug: string }
 const emptySearchFacets: SearchFacets = {
@@ -27,7 +27,7 @@ function CatalogCommandItem({
   item,
   onSelect,
 }: {
-  item: Item
+  item: TileItem
   onSelect: () => void
 }) {
   const genre = item.genres[0]
@@ -91,7 +91,7 @@ export function CatalogCommand({
 }) {
   const router = useRouter()
   const [query, setQuery] = useState("")
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<TileItem[]>([])
   const [facets, setFacets] = useState<SearchFacets>(emptySearchFacets)
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export function CatalogCommand({
     [items]
   )
   const tv = useMemo(() => items.filter((item) => item.type === "tv"), [items])
-  const select = (item: Item) => {
+  const select = (item: TileItem) => {
     onOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
   }

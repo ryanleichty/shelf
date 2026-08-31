@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Item } from "@/server/schema"
+import type { Item, TileItem } from "@/server/schema"
 
 type Sort =
   "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
@@ -47,7 +47,7 @@ export function Catalog({
   hideGenreFilter = false,
   emptyDescription = "Try a different title, creator, or filter.",
 }: {
-  items: Item[]
+  items: TileItem[]
   type?: Item["type"]
   query?: string
   onQueryChange?: (query: string) => void

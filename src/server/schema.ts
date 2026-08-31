@@ -305,3 +305,5 @@ export type Item = ItemRecord & {
   isInSystemList: boolean
   collection?: Collection
 }
+
+export type TileItem = Omit<Item, "backdropImageUrl">

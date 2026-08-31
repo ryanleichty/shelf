@@ -7,7 +7,8 @@ import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import { getItemBackdrop } from "@/server/items"
+import type { Item, TileItem } from "@/server/schema"
 
 export function CoverTile({
   item,
@@ -16,7 +17,7 @@ export function CoverTile({
   fromAll = false,
   onSystemListMembershipChange,
 }: {
-  item: Item
+  item: TileItem
   className?: string
   variant?: "default" | "carousel"
   fromAll?: boolean
@@ -30,11 +31,13 @@ export function CoverTile({
   const [isHovering, setIsHovering] = useState(false)
   const [isFocusWithin, setIsFocusWithin] = useState(false)
   const [isBackdropVisible, setIsBackdropVisible] = useState(false)
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-  const hasBackdropPreview =
-    item.type !== "book" && Boolean(item.backdropImageUrl)
+  const [backdropImageUrl, setBackdropImageUrl] = useState<string | null>()
+  const [isBackdropLoading, setIsBackdropLoading] = useState(false)
+  const [supportsPreview, setSupportsPreview] = useState(false)
   const shouldMountBackdrop =
-    hasBackdropPreview && !prefersReducedMotion && (isHovering || isFocusWithin)
+    supportsPreview &&
+    Boolean(backdropImageUrl) &&
+    (isHovering || isFocusWithin)
   const systemList =
     item.type === "book"
       ? {
@@ -49,12 +52,18 @@ export function CoverTile({
         }
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches)
+    const hoverMedia = window.matchMedia("(hover: hover) and (pointer: fine)")
+    const motionMedia = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const updateSupport = () =>
+      setSupportsPreview(hoverMedia.matches && !motionMedia.matches)
 
-    updatePreference()
-    mediaQuery.addEventListener("change", updatePreference)
-    return () => mediaQuery.removeEventListener("change", updatePreference)
+    updateSupport()
+    hoverMedia.addEventListener("change", updateSupport)
+    motionMedia.addEventListener("change", updateSupport)
+    return () => {
+      hoverMedia.removeEventListener("change", updateSupport)
+      motionMedia.removeEventListener("change", updateSupport)
+    }
   }, [])
 
   useEffect(() => {
@@ -66,6 +75,22 @@ export function CoverTile({
     const frame = requestAnimationFrame(() => setIsBackdropVisible(true))
     return () => cancelAnimationFrame(frame)
   }, [shouldMountBackdrop])
+
+  function loadBackdrop() {
+    if (
+      !supportsPreview ||
+      item.type === "book" ||
+      backdropImageUrl !== undefined ||
+      isBackdropLoading
+    )
+      return
+
+    setIsBackdropLoading(true)
+    void getItemBackdrop({ data: { itemId: item.id } })
+      .then(setBackdropImageUrl)
+      .catch(() => setBackdropImageUrl(null))
+      .finally(() => setIsBackdropLoading(false))
+  }
 
   return (
     <div
@@ -79,9 +104,15 @@ export function CoverTile({
           setIsFocusWithin(false)
         }
       }}
-      onFocus={() => setIsFocusWithin(true)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onFocus={() => {
+        setIsFocusWithin(true)
+        loadBackdrop()
+      }}
+      onPointerEnter={() => {
+        setIsHovering(true)
+        loadBackdrop()
+      }}
+      onPointerLeave={() => setIsHovering(false)}
     >
       <Link
         aria-label={accessibleName}
@@ -115,7 +146,7 @@ export function CoverTile({
                 isBackdropVisible ? "opacity-100" : "opacity-0"
               )}
               referrerPolicy="no-referrer"
-              src={item.backdropImageUrl!}
+              src={backdropImageUrl}
             />
           )}
           {item.edition && (

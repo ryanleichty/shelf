@@ -41,6 +41,7 @@ import {
   type Item,
   type ItemRecord,
   type Collection,
+  type TileItem,
 } from "./schema"
 
 export const bookGenreOptions = [
@@ -969,6 +970,10 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
       ? { collection: collectionsByItem.get(item.id) }
       : {}),
   }))
+}
+
+function toTileItems(items: Item[]): TileItem[] {
+  return items.map(({ backdropImageUrl: _, ...item }) => item)
 }
 
 export async function itemExists({
@@ -2126,7 +2131,22 @@ export const getItems = createServerFn({ method: "GET" })
       .from(items)
       .where(filters.length ? and(...filters) : undefined)
       .orderBy(asc(items.title))
-    return enrichItems(records)
+    return toTileItems(await enrichItems(records))
+  })
+
+export const getItemBackdrop = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ itemId: z.number().int() }))
+  .handler(async ({ data }) => {
+    await ensureDatabase()
+    const [item] = await db
+      .select({
+        type: items.type,
+        backdropImageUrl: items.backdropImageUrl,
+      })
+      .from(items)
+      .where(eq(items.id, data.itemId))
+      .limit(1)
+    return item?.type === "book" ? null : (item?.backdropImageUrl ?? null)
   })
 
 export type SearchFacets = {
@@ -2242,7 +2262,7 @@ export const getItemsForYearBrowse = createServerFn({ method: "GET" })
     ])
     return {
       years: [...new Set(catalogYears.map((item) => item.year))],
-      items: await enrichItems(records),
+      items: toTileItems(await enrichItems(records)),
     }
   })
 
@@ -2290,7 +2310,7 @@ export const getItemsByTag = createServerFn({ method: "GET" })
       .orderBy(asc(items.title))
     return {
       name: tag.name,
-      items: await enrichItems(records.map((row) => row.items)),
+      items: toTileItems(await enrichItems(records.map((row) => row.items))),
     }
   })
 
@@ -2318,7 +2338,7 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
         .orderBy(asc(items.title))
       return {
         name: author.name,
-        items: await enrichItems(records.map((row) => row.items)),
+        items: toTileItems(await enrichItems(records.map((row) => row.items))),
       }
     }
 
@@ -2337,7 +2357,7 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
         .orderBy(asc(items.title))
       return {
         name: actor.name,
-        items: await enrichItems(records.map((row) => row.items)),
+        items: toTileItems(await enrichItems(records.map((row) => row.items))),
       }
     }
 
@@ -2355,7 +2375,7 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
       .orderBy(asc(items.title))
     return {
       name: director.name,
-      items: await enrichItems(records.map((row) => row.items)),
+      items: toTileItems(await enrichItems(records.map((row) => row.items))),
     }
   })
 
@@ -2381,7 +2401,7 @@ export const getItemsByCollection = createServerFn({ method: "GET" })
       .orderBy(asc(items.title))
     return {
       ...collection,
-      items: await enrichItems(records.map((row) => row.items)),
+      items: toTileItems(await enrichItems(records.map((row) => row.items))),
     }
   })
 
@@ -2443,25 +2463,27 @@ export const getItemsByList = createServerFn({ method: "GET" })
   })
 
 type HomeRow =
-  | { title: string; kind: "recent"; items: Item[] }
+  | { title: string; kind: "recent"; items: TileItem[] }
   | {
       title: string
       slug: string
       kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
-      items: Item[]
+      items: TileItem[]
     }
 
 export const getHomeRows = createServerFn({ method: "GET" })
   .inputValidator(z.object({ type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<HomeRow[]> => {
     await ensureDatabase()
-    const recentItems = await enrichItems(
-      await db
-        .select()
-        .from(items)
-        .where(eq(items.type, data.type))
-        .orderBy(desc(items.createdAt))
-        .limit(12)
+    const recentItems = toTileItems(
+      await enrichItems(
+        await db
+          .select()
+          .from(items)
+          .where(eq(items.type, data.type))
+          .orderBy(desc(items.createdAt))
+          .limit(12)
+      )
     )
     const placements = await db
       .select({
@@ -2480,8 +2502,10 @@ export const getHomeRows = createServerFn({ method: "GET" })
         )
       )
       .orderBy(asc(listPlacements.position))
-    const allItems = await enrichItems(
-      await db.select().from(items).where(eq(items.type, data.type))
+    const allItems = toTileItems(
+      await enrichItems(
+        await db.select().from(items).where(eq(items.type, data.type))
+      )
     )
     const memberships = await db
       .select({

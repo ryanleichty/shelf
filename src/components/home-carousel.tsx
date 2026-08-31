@@ -10,7 +10,7 @@ import { type ReactNode, useState } from "react"
 import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { TileItem } from "@/server/schema"
 
 export function HomeCarousel({
   contained = false,
@@ -21,7 +21,7 @@ export function HomeCarousel({
 }: {
   contained?: boolean
   id: string
-  items: Item[]
+  items: TileItem[]
   renderSection?: (carousel: ReactNode) => ReactNode
   systemListSlug?: string
 }) {

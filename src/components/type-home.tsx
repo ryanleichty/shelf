@@ -5,15 +5,15 @@ import { PlusIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { HomeCarousel } from "@/components/home-carousel"
 import { Button } from "@/components/ui/button"
-import type { Item } from "@/server/schema"
+import type { Item, TileItem } from "@/server/schema"
 
 type HomeRow =
-  | { title: string; kind: "recent"; items: Item[] }
+  | { title: string; kind: "recent"; items: TileItem[] }
   | {
       title: string
       kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
       slug: string
-      items: Item[]
+      items: TileItem[]
     }
 
 export function TypeHome({

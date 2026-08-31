@@ -1,7 +1,7 @@
 "use client"
 
 import { Catalog } from "@/components/catalog"
-import type { Item } from "@/server/schema"
+import type { Item, TileItem } from "@/server/schema"
 
 export function ListCatalog({
   items,
@@ -10,7 +10,7 @@ export function ListCatalog({
   onQueryChange,
   type,
 }: {
-  items: Item[]
+  items: TileItem[]
   name: string
   query?: string
   onQueryChange: (query: string) => void
