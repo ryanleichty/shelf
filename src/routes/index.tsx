@@ -21,6 +21,12 @@ export const Route = createFileRoute("/")({
         .filter((item) => item.type === type)
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
         .slice(0, 12)
+    const tonightItems = items
+      .filter(
+        (item) =>
+          item.isInSystemList && (item.type === "movie" || item.type === "tv")
+      )
+      .sort(compareTonightItems)
 
     const billboardItems = items
       .filter(
@@ -54,6 +60,7 @@ export const Route = createFileRoute("/")({
     ].filter((row) => row.items.length)
     return {
       billboards,
+      tonightItems,
       rows,
     }
   },
@@ -61,12 +68,27 @@ export const Route = createFileRoute("/")({
 })
 
 function Home() {
-  const { billboards, rows } = Route.useLoaderData()
+  const { billboards, tonightItems, rows } = Route.useLoaderData()
   return (
     <main className="overflow-x-hidden">
       <HomeBillboard billboards={billboards} />
-      {rows.length ? (
+      {tonightItems.length || rows.length ? (
         <div className="mt-10 flex flex-col gap-10 pb-10">
+          {tonightItems.length > 0 && (
+            <section className="overflow-x-hidden">
+              <div className="container mx-auto mb-4 max-w-6xl px-4">
+                <h2 className="text-xl font-semibold tracking-tight">
+                  Tonight
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {tonightItems.length}{" "}
+                  {tonightItems.length === 1 ? "title" : "titles"}
+                  {formatTonightRuntime(tonightItems)}
+                </p>
+              </div>
+              <HomeCarousel id="home-tonight" items={tonightItems} />
+            </section>
+          )}
           {rows.map((row, index) => (
             <section className="overflow-x-hidden" key={row.title}>
               <div className="container mx-auto mb-4 max-w-6xl px-4">
@@ -89,4 +111,35 @@ function Home() {
       )}
     </main>
   )
+}
+
+function validRuntime(runtime: number | null): runtime is number {
+  return typeof runtime === "number" && Number.isInteger(runtime) && runtime > 0
+}
+
+function compareTonightItems(
+  left: { runtime: number | null },
+  right: { runtime: number | null }
+) {
+  const leftRuntime = validRuntime(left.runtime) ? left.runtime : Infinity
+  const rightRuntime = validRuntime(right.runtime) ? right.runtime : Infinity
+  const leftGroup = leftRuntime <= 120 ? 0 : leftRuntime === Infinity ? 2 : 1
+  const rightGroup = rightRuntime <= 120 ? 0 : rightRuntime === Infinity ? 2 : 1
+
+  return leftGroup - rightGroup || leftRuntime - rightRuntime
+}
+
+function formatTonightRuntime(items: Array<{ runtime: number | null }>) {
+  const runtime = items.reduce(
+    (total, item) => total + (validRuntime(item.runtime) ? item.runtime : 0),
+    0
+  )
+
+  return runtime ? ` · ${formatRuntime(runtime)}` : ""
+}
+
+function formatRuntime(runtime: number) {
+  const hours = Math.floor(runtime / 60)
+  const minutes = runtime % 60
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }
