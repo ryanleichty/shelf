@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
-import { type CSSProperties, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
 import { TrailerDialog } from "@/components/trailer-dialog"
@@ -18,11 +18,6 @@ type Billboard = {
   details: { logoUrl: string | null; tagline: string | null }
   trailer: { key: string } | null
 }
-
-const heroButtonTokens = {
-  "--primary": "var(--hero-foreground)",
-  "--primary-foreground": "var(--hero)",
-} as CSSProperties
 
 export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
   const { signedIn } = useSignedInStatus()
@@ -66,7 +61,7 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
   return (
     <section
       aria-label={`Featured ${billboard.item.type}`}
-      className="group relative isolate min-h-[70svh] overflow-hidden bg-hero text-hero-foreground"
+      className="group relative isolate min-h-[70svh] overflow-hidden bg-hero text-hero-foreground [--primary-foreground:var(--hero)] [--primary:var(--hero-foreground)]"
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
           setIsPaused(false)
@@ -74,7 +69,6 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       onFocusCapture={() => setIsPaused(true)}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      style={heroButtonTokens}
     >
       {billboards.map((candidate, index) => (
         <img
