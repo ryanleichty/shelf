@@ -115,14 +115,7 @@ function ItemDetail() {
           />
         </div>
         <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
-          <div
-            className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10"
-            style={
-              item.coverImageUrl
-                ? { viewTransitionName: `cover-${item.slug}` }
-                : undefined
-            }
-          >
+          <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10">
             {item.coverImageUrl ? (
               <img
                 alt={item.title}

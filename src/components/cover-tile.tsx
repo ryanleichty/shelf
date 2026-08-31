@@ -53,16 +53,8 @@ export function CoverTile({
         params={{ slug: item.slug }}
         search={fromAll ? { from: "all" } : {}}
         to="/item/$slug"
-        viewTransition
       >
-        <div
-          className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
-          style={
-            item.coverImageUrl
-              ? { viewTransitionName: `cover-${item.slug}` }
-              : undefined
-          }
-        >
+        <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100">
           {item.coverImageUrl ? (
             <img
               alt={item.title}
