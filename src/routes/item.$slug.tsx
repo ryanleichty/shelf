@@ -264,7 +264,7 @@ function ItemDetail() {
             )}
             {(item.type === "movie" || item.type === "book") &&
               item.collection && (
-                <div className="mt-4">
+                <div className="mt-4 flex items-baseline gap-2">
                   <Badge
                     render={
                       <Link
@@ -277,9 +277,9 @@ function ItemDetail() {
                     {item.collection.name}
                   </Badge>
                   {item.type === "movie" && collectionPart >= 0 && (
-                    <p className="mt-2 text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                       Part {collectionPart + 1} of {collectionPartsTotal}
-                    </p>
+                    </span>
                   )}
                 </div>
               )}
