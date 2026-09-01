@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { formatForDisplay, useHotkey } from "@tanstack/react-hotkeys"
 import { useRouter } from "@tanstack/react-router"
 import { BookOpenIcon, FilmIcon, ScanLineIcon, TvIcon } from "lucide-react"
 import { CheckBarcodeDialog } from "@/components/check-barcode-dialog"
@@ -125,17 +124,6 @@ export function CatalogCommand({
       window.clearTimeout(timer)
     }
   }, [query])
-  useEffect(() => {
-    const keydown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        onOpenChange(true)
-      }
-    }
-    window.addEventListener("keydown", keydown)
-    return () => window.removeEventListener("keydown", keydown)
-  }, [onOpenChange])
-
   const books = useMemo(
     () => items.filter((item) => item.type === "book"),
     [items]
@@ -170,23 +158,31 @@ export function CatalogCommand({
     onOpenChange(false)
     router.navigate({ to: "/admin/new", search: { type } })
   }
-  const shortcutsEnabled = Boolean(signedIn && open)
-  useHotkey("Mod+1", openCheckBarcode, {
-    enabled: shortcutsEnabled,
-    preventDefault: true,
-  })
-  useHotkey("Mod+2", () => addItem("book"), {
-    enabled: shortcutsEnabled,
-    preventDefault: true,
-  })
-  useHotkey("Mod+3", () => addItem("movie"), {
-    enabled: shortcutsEnabled,
-    preventDefault: true,
-  })
-  useHotkey("Mod+4", () => addItem("tv"), {
-    enabled: shortcutsEnabled,
-    preventDefault: true,
-  })
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        onOpenChange(true)
+        return
+      }
+      if (!open || !signedIn || !event.metaKey) return
+      if (event.key === "1") {
+        event.preventDefault()
+        openCheckBarcode()
+      } else if (event.key === "2") {
+        event.preventDefault()
+        addItem("book")
+      } else if (event.key === "3") {
+        event.preventDefault()
+        addItem("movie")
+      } else if (event.key === "4") {
+        event.preventDefault()
+        addItem("tv")
+      }
+    }
+    document.addEventListener("keydown", keydown)
+    return () => document.removeEventListener("keydown", keydown)
+  }, [addItem, onOpenChange, open, openCheckBarcode, signedIn])
   return (
     <>
       <CommandDialog
@@ -211,7 +207,7 @@ export function CatalogCommand({
                 >
                   <ScanLineIcon />
                   <span className="min-w-0 flex-1 truncate">Check barcode</span>
-                  <CommandShortcut>{formatForDisplay("Mod+1")}</CommandShortcut>
+                  <CommandShortcut>⌘1</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("book")}
@@ -219,7 +215,7 @@ export function CatalogCommand({
                 >
                   <BookOpenIcon />
                   <span className="min-w-0 flex-1 truncate">Add book</span>
-                  <CommandShortcut>{formatForDisplay("Mod+2")}</CommandShortcut>
+                  <CommandShortcut>⌘2</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("movie")}
@@ -227,7 +223,7 @@ export function CatalogCommand({
                 >
                   <FilmIcon />
                   <span className="min-w-0 flex-1 truncate">Add movie</span>
-                  <CommandShortcut>{formatForDisplay("Mod+3")}</CommandShortcut>
+                  <CommandShortcut>⌘3</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("tv")}
@@ -235,7 +231,7 @@ export function CatalogCommand({
                 >
                   <TvIcon />
                   <span className="min-w-0 flex-1 truncate">Add show</span>
-                  <CommandShortcut>{formatForDisplay("Mod+4")}</CommandShortcut>
+                  <CommandShortcut>⌘4</CommandShortcut>
                 </CommandItem>
               </CommandGroup>
             )}

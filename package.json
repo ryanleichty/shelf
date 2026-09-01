@@ -40,7 +40,6 @@
     "@libsql/client": "^0.17.4",
     "@tailwindcss/vite": "^4",
     "@tanstack/react-devtools": "latest",
-    "@tanstack/react-hotkeys": "^0.10.0",
     "@tanstack/react-router": "1.139.1",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-router-ssr-query": "1.139.1",
