@@ -14,7 +14,7 @@ export const Route = createFileRoute("/admin/new")({
 })
 
 function NewItem() {
-  const { type } = Route.useSearch()
+  const { type: selectedType } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <main className="container mx-auto max-w-4xl px-4 py-10">
@@ -24,7 +24,7 @@ function NewItem() {
       </h1>
       <ItemForm
         onTypeChange={(type) => navigate({ search: { type } })}
-        type={type}
+        type={selectedType}
       />
     </main>
   )
