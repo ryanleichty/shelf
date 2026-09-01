@@ -128,6 +128,13 @@ export function TypeHome({
 
 function SystemListCaption({ item }: { item: Item }) {
   const certification = item.type !== "book" ? item.certification?.trim() : null
+  const author =
+    item.type === "book"
+      ? item.authors
+          .map((author) => author.trim())
+          .filter(Boolean)
+          .join(", ") || item.creator.trim()
+      : null
   const detail =
     item.type === "book"
       ? validPageCount(item.pageCount)
@@ -150,6 +157,9 @@ function SystemListCaption({ item }: { item: Item }) {
     <div className="mt-2 flex flex-col gap-0.5">
       {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
       <p className="line-clamp-2 font-medium">{item.title}</p>
+      {author && (
+        <p className="line-clamp-1 text-sm text-muted-foreground">{author}</p>
+      )}
       {(certification || metadata) && (
         <div className="flex items-baseline gap-2">
           {certification && <Badge variant="outline">{certification}</Badge>}
