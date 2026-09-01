@@ -2704,8 +2704,24 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
       where candidate_collections.item_id = ${items.id}
         and source_collections.item_id = ${data.itemId}
     )`
+    const isInSystemList = sql<number>`case when ${items.type} = 'book'
+      then exists(
+        select 1
+        from list_items
+        inner join lists on list_items.list_id = lists.id
+        where list_items.item_id = ${items.id}
+          and lists.slug = 'reading-list'
+      )
+      else exists(
+        select 1
+        from list_items
+        inner join lists on list_items.list_id = lists.id
+        where list_items.item_id = ${items.id}
+          and lists.slug = 'watchlist'
+      )
+    end`
     const records = await db
-      .select({ item: items, sharesPrimaryPerson, sharesGenre })
+      .select({ item: items, isInSystemList, sharesPrimaryPerson, sharesGenre })
       .from(items)
       .where(
         and(
@@ -2716,7 +2732,15 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
         )
       )
       .orderBy(desc(sharesPrimaryPerson), desc(sharesGenre), asc(items.title))
-    return enrichItems(records.map(({ item }) => item))
+    return records.map(({ item, isInSystemList }) => ({
+      ...item,
+      genres: [],
+      keywords: [],
+      authors: [],
+      directors: [],
+      actors: [],
+      isInSystemList: Boolean(isInSystemList),
+    }))
   })
 
 const tmdbCollectionPartsCache = new Map<
