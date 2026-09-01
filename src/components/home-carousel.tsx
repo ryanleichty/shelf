@@ -16,23 +16,17 @@ export function HomeCarousel({
   contained = false,
   id,
   items,
-  renderItem,
+  renderCaption,
   renderSection,
-  slideClassName,
+  hideMissingCoverTitle = false,
   systemListSlug,
 }: {
   contained?: boolean
   id: string
   items: Item[]
-  renderItem?: (
-    item: Item,
-    onSystemListMembershipChange?: (
-      itemId: number,
-      containsItem: boolean
-    ) => void
-  ) => ReactNode
+  renderCaption?: (item: Item) => ReactNode
   renderSection?: (carousel: ReactNode) => ReactNode
-  slideClassName?: string
+  hideMissingCoverTitle?: boolean
   systemListSlug?: string
 }) {
   const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(
@@ -67,28 +61,21 @@ export function HomeCarousel({
       >
         {visibleItems.map((item) => (
           <div
-            className={cn(
-              "relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56",
-              slideClassName
-            )}
+            className="relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56"
             data-blossom-slide
             key={item.id}
           >
-            {renderItem ? (
-              renderItem(
-                item,
+            <CoverTile
+              className="w-full"
+              hideMissingCoverTitle={hideMissingCoverTitle}
+              item={item}
+              onSystemListMembershipChange={
                 systemListSlug ? handleSystemListMembershipChange : undefined
-              )
-            ) : (
-              <CoverTile
-                className="w-full"
-                item={item}
-                onSystemListMembershipChange={
-                  systemListSlug ? handleSystemListMembershipChange : undefined
-                }
-                variant="carousel"
-              />
-            )}
+              }
+              variant="carousel"
+            >
+              {renderCaption?.(item)}
+            </CoverTile>
           </div>
         ))}
       </BlossomCarousel>

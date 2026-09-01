@@ -4,12 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { HomeCarousel } from "@/components/home-carousel"
-import { useSignedInStatus } from "@/components/signed-in-status"
-import { SystemListToggle } from "@/components/system-list-toggle"
 import { Button } from "@/components/ui/button"
-import { coverPlateBackground } from "@/lib/cover-plate"
-import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
-import { cn } from "@/lib/utils"
 import type { Item } from "@/server/schema"
 
 type HomeRow =
@@ -106,20 +101,13 @@ export function TypeHome({
                 id={`${type}-row-${index}`}
                 items={row.items}
                 key={row.title}
-                renderItem={
+                hideMissingCoverTitle={isSystemListRow}
+                renderCaption={
                   isSystemListRow
-                    ? (item, onSystemListMembershipChange) => (
-                        <SystemListTile
-                          item={item}
-                          onSystemListMembershipChange={
-                            onSystemListMembershipChange
-                          }
-                        />
-                      )
+                    ? (item) => <SystemListCaption item={item} />
                     : undefined
                 }
                 renderSection={renderSection}
-                slideClassName={isSystemListRow ? "w-48 sm:w-72" : undefined}
                 systemListSlug={isSystemListRow ? systemListSlug : undefined}
               />
             )
@@ -136,18 +124,7 @@ export function TypeHome({
   )
 }
 
-function SystemListTile({
-  item,
-  onSystemListMembershipChange,
-}: {
-  item: Item
-  onSystemListMembershipChange?: (itemId: number, containsItem: boolean) => void
-}) {
-  const { signedIn } = useSignedInStatus()
-  const imageUrl =
-    item.type === "book"
-      ? item.coverImageUrl
-      : (item.backdropImageUrl ?? item.coverImageUrl)
+function SystemListCaption({ item }: { item: Item }) {
   const detail =
     item.type === "book"
       ? validPageCount(item.pageCount)
@@ -159,77 +136,17 @@ function SystemListTile({
   const metadata = [
     item.type === "book" ? null : item.certification,
     item.year,
-    item.genres.join(", "),
+    item.genres.slice(0, 2).join(", "),
   ]
     .filter(Boolean)
     .join(" · ")
-  const systemList =
-    item.type === "book"
-      ? {
-          slug: READLIST_SLUG,
-          name: READLIST_NAME,
-          containsItem: item.isInSystemList,
-        }
-      : {
-          slug: "watchlist",
-          name: "Watchlist",
-          containsItem: item.isInSystemList,
-        }
 
   return (
-    <div className="group relative">
-      <Link
-        aria-label={
-          item.creator ? `${item.title} by ${item.creator}` : item.title
-        }
-        className="block focus-visible:outline-none"
-        params={{ slug: item.slug }}
-        to="/item/$slug"
-      >
-        <div
-          className={cn(
-            "relative overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100",
-            item.type === "book" ? "aspect-2/3" : "aspect-video"
-          )}
-        >
-          {imageUrl ? (
-            <img
-              alt={item.title}
-              className="h-full w-full object-cover"
-              referrerPolicy="no-referrer"
-              src={imageUrl}
-            />
-          ) : (
-            <div
-              aria-hidden="true"
-              className="flex h-full items-center justify-center bg-muted"
-              style={{ backgroundColor: coverPlateBackground(item.slug) }}
-            >
-              <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
-                {item.title}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="mt-2 flex flex-col gap-0.5">
-          {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
-          <p className="line-clamp-1 font-medium">{item.title}</p>
-          {metadata && (
-            <p className="line-clamp-1 text-sm text-muted-foreground">
-              {metadata}
-            </p>
-          )}
-        </div>
-      </Link>
-      {signedIn && (
-        <SystemListToggle
-          className="pointer-events-none absolute top-2 right-2 origin-top-right border-transparent bg-background/90 opacity-0 ring-1 ring-black/10 transition-[opacity,scale] group-focus-within:pointer-events-auto group-focus-within:scale-105 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
-          itemId={item.id}
-          list={systemList}
-          onMembershipChange={(containsItem) =>
-            onSystemListMembershipChange?.(item.id, containsItem)
-          }
-        />
+    <div className="mt-2 flex flex-col gap-0.5">
+      {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
+      <p className="line-clamp-2 font-medium">{item.title}</p>
+      {metadata && (
+        <p className="line-clamp-1 text-sm text-muted-foreground">{metadata}</p>
       )}
     </div>
   )
