@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
-import { ScanLineIcon } from "lucide-react"
+import { BookOpenIcon, FilmIcon, ScanLineIcon, TvIcon } from "lucide-react"
 import { CheckBarcodeDialog } from "@/components/check-barcode-dialog"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import {
@@ -164,6 +164,10 @@ export function CatalogCommand({
     onOpenChange(false)
     setCheckBarcodeOpen(true)
   }
+  const addItem = (type: "book" | "movie" | "tv") => {
+    onOpenChange(false)
+    router.navigate({ to: "/admin/new", search: { type } })
+  }
   return (
     <>
       <CommandDialog
@@ -190,6 +194,36 @@ export function CatalogCommand({
                   <span className="min-w-0 flex-1 truncate">Check barcode</span>
                   <span className="shrink-0 text-right text-xs text-muted-foreground">
                     Scan
+                  </span>
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => addItem("book")}
+                  value="action:add-book"
+                >
+                  <BookOpenIcon />
+                  <span className="min-w-0 flex-1 truncate">Add book</span>
+                  <span className="shrink-0 text-right text-xs text-muted-foreground">
+                    New
+                  </span>
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => addItem("movie")}
+                  value="action:add-movie"
+                >
+                  <FilmIcon />
+                  <span className="min-w-0 flex-1 truncate">Add movie</span>
+                  <span className="shrink-0 text-right text-xs text-muted-foreground">
+                    New
+                  </span>
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => addItem("tv")}
+                  value="action:add-tv"
+                >
+                  <TvIcon />
+                  <span className="min-w-0 flex-1 truncate">Add show</span>
+                  <span className="shrink-0 text-right text-xs text-muted-foreground">
+                    New
                   </span>
                 </CommandItem>
               </CommandGroup>
