@@ -10,7 +10,7 @@ export const Route = createFileRoute("/tv")({
 function TV() {
   return (
     <TypeHome
-      addLabel="Add TV"
+      addLabel="Add show"
       rows={Route.useLoaderData()}
       subtitle="The television shelf"
       title="TV"

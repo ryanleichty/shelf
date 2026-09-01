@@ -15,7 +15,7 @@ function AllTV() {
   const search = Route.useSearch()
   return (
     <AllCatalog
-      addLabel="Add TV"
+      addLabel="Add show"
       items={Route.useLoaderData()}
       onQueryChange={(query) =>
         navigate({ replace: true, search: { query: query || undefined } })
