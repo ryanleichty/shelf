@@ -127,8 +127,7 @@ export function TypeHome({
 }
 
 function SystemListCaption({ item }: { item: Item }) {
-  const certification =
-    item.type !== "book" ? item.certification?.trim() : null
+  const certification = item.type !== "book" ? item.certification?.trim() : null
   const detail =
     item.type === "book"
       ? validPageCount(item.pageCount)
@@ -155,7 +154,9 @@ function SystemListCaption({ item }: { item: Item }) {
         <div className="flex items-baseline gap-2">
           {certification && <Badge variant="outline">{certification}</Badge>}
           {metadata && (
-            <p className="line-clamp-1 text-sm text-muted-foreground">{metadata}</p>
+            <p className="line-clamp-1 text-sm text-muted-foreground">
+              {metadata}
+            </p>
           )}
         </div>
       )}
