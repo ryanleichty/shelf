@@ -24,8 +24,7 @@ export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const [similarItems, collection, signedIn] = await Promise.all([
-      getSimilarOwnedItems({ data: { itemId: item.id } }),
+    const [collection, signedIn] = await Promise.all([
       item.type === "movie" && item.collection
         ? getItemsByCollection({ data: { slug: item.collection.slug } })
         : Promise.resolve(null),
@@ -35,13 +34,8 @@ export const Route = createFileRoute("/item/$slug")({
       (collectionItem) =>
         collectionItem.status === "owned" && collectionItem.id !== item.id
     )
-    const collectionItemIds = new Set(collectionItems.map(({ id }) => id))
-    const filteredSimilarItems = similarItems.filter(
-      ({ id }) => !collectionItemIds.has(id)
-    )
     return {
       item,
-      similarItems: filteredSimilarItems,
       collectionItems,
       signedIn,
     }
@@ -74,12 +68,12 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const { item, similarItems, collectionItems, signedIn } =
-    Route.useLoaderData()
+  const { item, collectionItems, signedIn } = Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
   const [trailer, setTrailer] = useState<{ key: string } | null>()
   const [collectionParts, setCollectionParts] = useState<Array<string | null>>()
+  const [similarItems, setSimilarItems] = useState<typeof collectionItems>([])
 
   useEffect(() => {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
@@ -105,6 +99,13 @@ function ItemDetail() {
       data: { tmdbCollectionId: item.collection.tmdbCollectionId },
     }).then(setCollectionParts)
   }, [item.collection?.tmdbCollectionId, item.tmdbId, item.type])
+
+  useEffect(() => {
+    setSimilarItems([])
+    void getSimilarOwnedItems({ data: { itemId: item.id } }).then(
+      setSimilarItems
+    )
+  }, [item.id])
 
   const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
   const orderedCollectionItems = collectionParts

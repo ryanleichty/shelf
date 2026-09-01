@@ -8,6 +8,7 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   or,
   sql,
 } from "drizzle-orm"
@@ -2667,50 +2668,81 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
   .inputValidator(z.object({ itemId: z.number().int() }))
   .handler(async ({ data }): Promise<Item[]> => {
     await ensureDatabase()
-    const [item] = await db
-      .select({
-        id: items.id,
-        type: items.type,
-        tmdbId: items.tmdbId,
-      })
-      .from(items)
-      .where(eq(items.id, data.itemId))
-      .limit(1)
-
-    if (
-      !item ||
-      (item.type !== "movie" && item.type !== "tv") ||
-      !item.tmdbId ||
-      !process.env.TMDB_API_KEY
-    )
-      return []
-
-    const relatedTmdbIds = await getTmdbRelatedIds(item.type, item.tmdbId)
-    if (!relatedTmdbIds.length) return []
-
-    const ownedRecords = await db
-      .select()
+    const sourceType = sql`(select type from items where id = ${data.itemId})`
+    const sharesPrimaryPerson = sql<number>`case when
+      (select type from items where id = ${data.itemId}) = 'book'
+        then exists(
+          select 1
+          from item_authors candidate_authors
+          inner join item_authors source_authors
+            on candidate_authors.author_id = source_authors.author_id
+          where candidate_authors.item_id = ${items.id}
+            and source_authors.item_id = ${data.itemId}
+        )
+      else exists(
+        select 1
+        from item_directors candidate_directors
+        inner join item_directors source_directors
+          on candidate_directors.director_id = source_directors.director_id
+        where candidate_directors.item_id = ${items.id}
+          and source_directors.item_id = ${data.itemId}
+      )
+    then 1 else 0 end`
+    const sharesGenre = sql<number>`case when exists(
+      select 1
+      from item_genres candidate_genres
+      inner join item_genres source_genres
+        on candidate_genres.genre_id = source_genres.genre_id
+      where candidate_genres.item_id = ${items.id}
+        and source_genres.item_id = ${data.itemId}
+    ) then 1 else 0 end`
+    const isOutsideSourceCollection = sql`not exists(
+      select 1
+      from item_collections candidate_collections
+      inner join item_collections source_collections
+        on candidate_collections.collection_id = source_collections.collection_id
+      where candidate_collections.item_id = ${items.id}
+        and source_collections.item_id = ${data.itemId}
+    )`
+    const isInSystemList = sql<number>`case when ${items.type} = 'book'
+      then exists(
+        select 1
+        from list_items
+        inner join lists on list_items.list_id = lists.id
+        where list_items.item_id = ${items.id}
+          and lists.slug = 'reading-list'
+      )
+      else exists(
+        select 1
+        from list_items
+        inner join lists on list_items.list_id = lists.id
+        where list_items.item_id = ${items.id}
+          and lists.slug = 'watchlist'
+      )
+    end`
+    const records = await db
+      .select({ item: items, isInSystemList, sharesPrimaryPerson, sharesGenre })
       .from(items)
       .where(
         and(
-          eq(items.type, item.type),
+          eq(items.type, sourceType),
           eq(items.status, "owned"),
-          inArray(items.tmdbId, relatedTmdbIds)
+          ne(items.id, data.itemId),
+          isOutsideSourceCollection,
+          or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
         )
       )
-    const ownedItems = await enrichItems(ownedRecords)
-    const itemsByTmdbId = new Map(
-      ownedItems.flatMap((ownedItem) =>
-        ownedItem.id !== item.id && ownedItem.tmdbId
-          ? [[ownedItem.tmdbId, ownedItem]]
-          : []
-      )
-    )
-
-    return relatedTmdbIds.flatMap((tmdbId) => {
-      const relatedItem = itemsByTmdbId.get(tmdbId)
-      return relatedItem ? [relatedItem] : []
-    })
+      .orderBy(desc(sharesPrimaryPerson), desc(sharesGenre), asc(items.title))
+      .limit(12)
+    return records.map(({ item, isInSystemList }) => ({
+      ...item,
+      genres: [],
+      keywords: [],
+      authors: [],
+      directors: [],
+      actors: [],
+      isInSystemList: Boolean(isInSystemList),
+    }))
   })
 
 const tmdbCollectionPartsCache = new Map<
@@ -2896,60 +2928,6 @@ async function loadTmdbBillboardDetails(
   } catch {
     return { logoUrl: null, tagline: null }
   }
-}
-
-async function getTmdbRelatedIds(
-  type: "movie" | "tv",
-  tmdbId: string
-): Promise<string[]> {
-  const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) return []
-
-  const results = await Promise.all(
-    ["similar", "recommendations"].map(async (kind) => {
-      try {
-        const url = new URL(
-          `https://api.themoviedb.org/3/${type}/${tmdbId}/${kind}`
-        )
-        url.searchParams.set("api_key", apiKey)
-        url.searchParams.set("language", "en-US")
-        const response = await fetch(url)
-        if (!response.ok) return []
-        return tmdbResultIds(await response.json())
-      } catch {
-        return []
-      }
-    })
-  )
-  return [...new Set(results.flat())]
-}
-
-function tmdbResultIds(body: unknown): string[] {
-  if (!isTmdbResults(body)) return []
-  return body.results.flatMap((result) =>
-    typeof result.id === "number" || typeof result.id === "string"
-      ? [String(result.id)]
-      : []
-  )
-}
-
-function isTmdbResults(
-  body: unknown
-): body is { results: Array<{ id?: string | number }> } {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    "results" in body &&
-    Array.isArray(body.results) &&
-    body.results.every(
-      (result) =>
-        typeof result === "object" &&
-        result !== null &&
-        (!("id" in result) ||
-          typeof result.id === "string" ||
-          typeof result.id === "number")
-    )
-  )
 }
 
 export const getItemById = createServerFn({ method: "GET" })
