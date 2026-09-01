@@ -128,12 +128,13 @@ export function TypeHome({
 
 function SystemListCaption({ item }: { item: Item }) {
   const certification = item.type !== "book" ? item.certification?.trim() : null
+  const authors = item.authors
+    .map((name) => name.trim())
+    .filter(Boolean)
   const author =
     item.type === "book"
-      ? item.authors
-          .map((name) => name.trim())
-          .filter(Boolean)
-          .join(", ") || item.creator.trim()
+      ? (authors.length >= 3 ? authors.slice(0, 1) : authors).join(", ") ||
+        item.creator.trim()
       : null
   const detail =
     item.type === "book"
