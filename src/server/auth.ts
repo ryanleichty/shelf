@@ -1,6 +1,15 @@
-import { createHash, randomUUID, scrypt as scryptCallback, timingSafeEqual } from "node:crypto"
+import {
+  createHash,
+  randomUUID,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from "node:crypto"
 import { promisify } from "node:util"
-import { getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server"
+import {
+  getCookie,
+  getRequestHeader,
+  setCookie,
+} from "@tanstack/react-start/server"
 import { and, eq, gt } from "drizzle-orm"
 import { db, ensureDatabase } from "./db"
 import { sessions, users, type UserRole } from "./schema"
@@ -14,13 +23,16 @@ export type CurrentUser = {
   firstName: string
   lastName: string
   email: string
+  avatarUrl: string | null
   role: UserRole
 }
 
 function bootstrapToken() {
   const password = process.env.ADMIN_PASSWORD?.trim()
   if (!password) return null
-  return createHash("sha256").update(`shelf-bootstrap:${password}`).digest("hex")
+  return createHash("sha256")
+    .update(`shelf-bootstrap:${password}`)
+    .digest("hex")
 }
 
 function isBootstrapSession() {
@@ -54,11 +66,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       firstName: users.firstName,
       lastName: users.lastName,
       email: users.email,
+      avatarUrl: users.avatarUrl,
       role: users.role,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.id, sessionId), gt(sessions.expiresAt, new Date().toISOString())))
+    .where(
+      and(
+        eq(sessions.id, sessionId),
+        gt(sessions.expiresAt, new Date().toISOString())
+      )
+    )
     .limit(1)
   return session
     ? {
@@ -66,18 +84,25 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         firstName: session.firstName,
         lastName: session.lastName,
         email: session.email,
+        avatarUrl: session.avatarUrl,
         role: session.role,
       }
     : null
 }
 
 export async function isSignedIn() {
-  return Boolean((await getCurrentUser()) || (!(await hasStoredAdmin()) && isBootstrapSession()))
+  return Boolean(
+    (await getCurrentUser()) ||
+    (!(await hasStoredAdmin()) && isBootstrapSession())
+  )
 }
 
 export async function isAdmin() {
   const user = await getCurrentUser()
-  return user?.role === "admin" || (!(await hasStoredAdmin()) && isBootstrapSession())
+  return (
+    user?.role === "admin" ||
+    (!(await hasStoredAdmin()) && isBootstrapSession())
+  )
 }
 
 export async function requireSignedIn() {
@@ -93,7 +118,9 @@ export function isAgentRequest(request: Request) {
     request.headers.get("authorization")?.trim(),
     getRequestHeader("authorization")?.trim(),
   ]
-  return headers.some((header) => isAgentToken(header?.replace(/^Bearer\s+/i, "").trim()))
+  return headers.some((header) =>
+    isAgentToken(header?.replace(/^Bearer\s+/i, "").trim())
+  )
 }
 
 export function isAgentToken(value: string | null | undefined) {
@@ -101,9 +128,9 @@ export function isAgentToken(value: string | null | undefined) {
   const presented = value?.trim()
   return Boolean(
     token &&
-      presented &&
-      presented.length === token.length &&
-      timingSafeEqual(Buffer.from(presented), Buffer.from(token)),
+    presented &&
+    presented.length === token.length &&
+    timingSafeEqual(Buffer.from(presented), Buffer.from(token))
   )
 }
 
@@ -113,7 +140,10 @@ export async function hashPassword(password: string) {
   return `${salt}:${key.toString("hex")}`
 }
 
-export async function verifyStoredPassword(password: string, passwordHash: string) {
+export async function verifyStoredPassword(
+  password: string,
+  passwordHash: string
+) {
   const [salt, storedKey] = passwordHash.split(":")
   if (!salt || !storedKey) return false
   const key = (await scrypt(password, salt, 64)) as Buffer

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
+import { del, put } from "@vercel/blob"
 import { z } from "zod"
 import {
   getCurrentUser,
@@ -24,11 +25,91 @@ const userInput = profileInput.extend({
   role: z.enum(userRoles),
 })
 
+function avatarExtension(fileName: string, contentType: string) {
+  const extension = fileName
+    .split(".")
+    .pop()
+    ?.replace(/[^a-z0-9]/gi, "")
+  if (extension) return extension
+  return contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "") || "jpg"
+}
+
 async function adminCount() {
   return (
     await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"))
   ).length
 }
+
+export const getCurrentUserProfile = createServerFn({
+  method: "GET",
+}).handler(async () => getCurrentUser())
+
+export const uploadProfilePhoto = createServerFn({ method: "POST" })
+  .inputValidator((data: FormData) => {
+    if (!(data instanceof FormData)) throw new Error("Expected form data.")
+    return data
+  })
+  .handler(async ({ data }) => {
+    await requireSignedIn()
+    await ensureDatabase()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) throw new Error("A user account is required.")
+    if (!process.env.BLOB_READ_WRITE_TOKEN)
+      throw new Error("Photo uploads are not configured.")
+
+    const image = data.get("image")
+    let source: File | ReadableStream<Uint8Array>
+    let fileName: string
+    let contentType: string
+    if (image instanceof File) {
+      if (!image.type.startsWith("image/"))
+        throw new Error("Choose an image file.")
+      if (image.size > 5 * 1024 * 1024)
+        throw new Error("Choose an image smaller than 5 MB.")
+      source = image
+      fileName = image.name
+      contentType = image.type
+    } else if (typeof image === "string") {
+      const url = new URL(image)
+      if (!["http:", "https:"].includes(url.protocol))
+        throw new Error("Choose an image file.")
+      const response = await fetch(url)
+      if (!response.ok || !response.body)
+        throw new Error("Couldn’t download that image.")
+      contentType = response.headers.get("content-type") ?? ""
+      if (!contentType.startsWith("image/"))
+        throw new Error("Choose an image file.")
+      source = response.body
+      fileName = url.pathname
+    } else {
+      throw new Error("Choose an image file.")
+    }
+
+    const blob = await put(
+      `avatars/${currentUser.id}.${avatarExtension(fileName, contentType)}`,
+      source,
+      {
+        access: "public",
+        addRandomSuffix: true,
+        contentType,
+      }
+    )
+    await db
+      .update(users)
+      .set({ avatarUrl: blob.url, updatedAt: new Date().toISOString() })
+      .where(eq(users.id, currentUser.id))
+
+    if (
+      currentUser.avatarUrl &&
+      new URL(currentUser.avatarUrl).hostname.endsWith(
+        ".blob.vercel-storage.com"
+      )
+    ) {
+      await del(currentUser.avatarUrl).catch(() => undefined)
+    }
+
+    return { avatarUrl: blob.url }
+  })
 
 export const getSettings = createServerFn({ method: "GET" }).handler(
   async () => {

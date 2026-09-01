@@ -11,6 +11,8 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 import appCss from "../styles.css?url"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SignedInStatusProvider } from "@/components/signed-in-status"
+import { getSignedInStatus } from "@/server/items"
+import { getCurrentUserProfile } from "@/server/users"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +30,13 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const Route = createRootRoute({
+  loader: async () => {
+    const [currentUser, signedIn] = await Promise.all([
+      getCurrentUserProfile(),
+      getSignedInStatus(),
+    ])
+    return { currentUser, signedIn }
+  },
   head: () => ({
     meta: [
       {
@@ -64,6 +73,7 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { currentUser, signedIn } = Route.useLoaderData()
   return (
     <html lang="en">
       <head>
@@ -71,7 +81,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <TooltipProvider>
-          <SignedInStatusProvider>
+          <SignedInStatusProvider
+            initialSignedIn={signedIn}
+            initialUser={currentUser}
+          >
             <ShelfShell>{children}</ShelfShell>
           </SignedInStatusProvider>
         </TooltipProvider>

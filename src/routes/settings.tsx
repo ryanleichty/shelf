@@ -18,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { useSignedInStatus } from "@/components/signed-in-status"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
   CardAction,
@@ -71,7 +73,13 @@ import { ListsSettings } from "@/components/lists-settings"
 import { PeopleSettings } from "@/components/people-settings"
 import { getCatalogPlacementOptions, getListPlacements } from "@/server/lists"
 import { getPeople } from "@/server/people"
-import { deleteUser, getSettings, saveProfile, saveUser } from "@/server/users"
+import {
+  deleteUser,
+  getSettings,
+  saveProfile,
+  saveUser,
+  uploadProfilePhoto,
+} from "@/server/users"
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
@@ -107,6 +115,7 @@ type UserForm = {
 function Settings() {
   const { settings: data, placements, catalogOptions } = Route.useLoaderData()
   const router = useRouter()
+  const { currentUser, setCurrentUser } = useSignedInStatus()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
   const [activeTab, setActiveTab] = useState("profile")
@@ -139,6 +148,27 @@ function Settings() {
         cause instanceof Error ? cause.message : "Couldn’t save your profile."
       )
     } finally {
+      setBusy(false)
+    }
+  }
+
+  async function uploadPhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    const image = event.currentTarget.files?.[0]
+    if (!image) return
+    setBusy(true)
+    setError("")
+    try {
+      const form = new FormData()
+      form.set("image", image)
+      const { avatarUrl } = await uploadProfilePhoto({ data: form })
+      if (currentUser) setCurrentUser({ ...currentUser, avatarUrl })
+      await router.invalidate()
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Couldn’t upload your photo."
+      )
+    } finally {
+      event.currentTarget.value = ""
       setBusy(false)
     }
   }
@@ -234,6 +264,31 @@ function Settings() {
                     type="email"
                   />
                 </Field>
+                {!data.bootstrap && (
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="photo">Profile photo</FieldLabel>
+                    <div className="flex items-center gap-3">
+                      <Avatar size="lg">
+                        {currentUser?.avatarUrl && (
+                          <AvatarImage
+                            alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                            src={currentUser.avatarUrl}
+                          />
+                        )}
+                        <AvatarFallback>
+                          {currentUser?.firstName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Input
+                        accept="image/*"
+                        disabled={busy}
+                        id="photo"
+                        onChange={uploadPhoto}
+                        type="file"
+                      />
+                    </div>
+                  </Field>
+                )}
                 <Field className="sm:col-span-2">
                   <FieldLabel htmlFor="password">
                     {data.bootstrap ? "Password" : "New password"}

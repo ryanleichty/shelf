@@ -123,12 +123,16 @@ export function ensureDatabase() {
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
+        avatar_url TEXT,
         role TEXT NOT NULL DEFAULT 'member',
         password_hash TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
     `)
+    const userColumns = await getClient().execute("PRAGMA table_info(users)")
+    if (!userColumns.rows.some((column) => column.name === "avatar_url"))
+      await getClient().execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
     await getClient().execute(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY NOT NULL,

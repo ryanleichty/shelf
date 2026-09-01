@@ -1,30 +1,35 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-import { getSignedInStatus } from "@/server/items"
+import { createContext, useContext, useState } from "react"
+import type { CurrentUser } from "@/server/auth"
 
 type SignedInStatus = {
-  signedIn: boolean | null
+  signedIn: boolean
   setSignedIn: (signedIn: boolean) => void
+  currentUser: CurrentUser | null
+  setCurrentUser: (user: CurrentUser | null) => void
 }
 
 const SignedInStatusContext = createContext<SignedInStatus | null>(null)
 
 export function SignedInStatusProvider({
   children,
+  initialSignedIn,
+  initialUser,
 }: {
   children: React.ReactNode
+  initialSignedIn: boolean
+  initialUser: CurrentUser | null
 }) {
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
-  }, [])
+  const [signedIn, setSignedIn] = useState(initialSignedIn)
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(
+    initialUser
+  )
 
   return (
-    <SignedInStatusContext value={{ signedIn, setSignedIn }}>
+    <SignedInStatusContext
+      value={{ signedIn, setSignedIn, currentUser, setCurrentUser }}
+    >
       {children}
     </SignedInStatusContext>
   )
