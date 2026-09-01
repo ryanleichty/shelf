@@ -108,7 +108,8 @@ function parseValidationIssues(message: string) {
         continue
       }
 
-      const path = "path" in issue && Array.isArray(issue.path) ? issue.path : []
+      const path =
+        "path" in issue && Array.isArray(issue.path) ? issue.path : []
       const field = path[0]
       const error = { message: issue.message }
 
