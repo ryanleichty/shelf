@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "@tanstack/react-router"
+import { ScanLineIcon } from "lucide-react"
 import { CheckBarcodeDialog } from "@/components/check-barcode-dialog"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import {
@@ -185,6 +186,7 @@ export function CatalogCommand({
                   onSelect={openCheckBarcode}
                   value="action:check-barcode"
                 >
+                  <ScanLineIcon />
                   <span className="min-w-0 flex-1 truncate">Check barcode</span>
                   <span className="shrink-0 text-right text-xs text-muted-foreground">
                     Scan
