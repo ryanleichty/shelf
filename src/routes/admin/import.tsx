@@ -1,5 +1,10 @@
 import { useState } from "react"
-import { Link, createFileRoute, redirect } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  redirect,
+  useRouter,
+} from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,6 +16,7 @@ export const Route = createFileRoute("/admin/import")({
 })
 
 function Import() {
+  const router = useRouter()
   const [type, setType] = useState<"book" | "movie">("movie")
   const [format, setFormat] = useState<"" | "hardcover" | "paperback" | "blu-ray" | "dvd" | "other">("blu-ray")
   const [edition, setEdition] = useState<"" | "theatrical" | "extended" | "director-cut">("")
@@ -20,6 +26,7 @@ function Import() {
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setResult(null)
     setResult(await importItems({ data: { type, format, edition, queries: queries.split("\n").map((q) => q.trim()).filter(Boolean) } }))
+    await router.invalidate()
     setBusy(false)
   }
   return <main className="container mx-auto max-w-3xl px-4 py-10"><h1 className="text-3xl font-semibold tracking-tight">Bulk import</h1><p className="mt-2 text-sm text-muted-foreground">One title per line. Shelf finds and adds the first matching item.</p>

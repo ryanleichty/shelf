@@ -21,6 +21,7 @@ function Admin() {
   }
   async function signOut() {
     await logout()
+    await router.invalidate()
     await router.navigate({ to: "/admin/login" })
   }
   return (

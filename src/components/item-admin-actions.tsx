@@ -43,6 +43,7 @@ export function ItemAdminActions({
   if (!signedIn) return null
   async function remove() {
     await deleteItem({ data: { id } })
+    await router.invalidate()
     await router.navigate({
       to: type === "book" ? "/books" : type === "tv" ? "/tv" : "/movies",
     })
