@@ -277,44 +277,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarContent>
         <SidebarFooter>
           {signedIn && currentUser ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <SidebarMenuButton
-                    size="lg"
-                    tooltip={`${currentUser.firstName} ${currentUser.lastName}`}
-                  />
-                }
-              >
-                <Avatar>
-                  {currentUser.avatarUrl && (
-                    <AvatarImage
-                      alt={`${currentUser.firstName} ${currentUser.lastName}`}
-                      src={currentUser.avatarUrl}
-                    />
-                  )}
-                  <AvatarFallback>
-                    {currentUser.firstName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {currentUser.firstName} {currentUser.lastName}
-                  </span>
-                </div>
-                <ChevronsUpDownIcon className="ml-auto" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem render={<Link to="/settings" />}>
-                    <SettingsIcon /> Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOutIcon /> Log out
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <SidebarMenuButton
+                        size="lg"
+                        tooltip={`${currentUser.firstName} ${currentUser.lastName}`}
+                      />
+                    }
+                  >
+                    <Avatar>
+                      {currentUser.avatarUrl && (
+                        <AvatarImage
+                          alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                          src={currentUser.avatarUrl}
+                        />
+                      )}
+                      <AvatarFallback>
+                        {currentUser.firstName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">
+                        {currentUser.firstName} {currentUser.lastName}
+                      </span>
+                    </div>
+                    <ChevronsUpDownIcon className="ml-auto" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="top">
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem render={<Link to="/settings" />}>
+                        <SettingsIcon /> Settings
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={signOut}>
+                        <LogOutIcon /> Log out
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            </SidebarMenu>
           ) : (
             <SidebarMenu>
               {signedIn ? (
