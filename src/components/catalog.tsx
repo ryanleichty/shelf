@@ -58,7 +58,7 @@ export function Catalog({
 }) {
   const [draftQuery, setDraftQuery] = useState(query ?? "")
   const [genre, setGenre] = useState("all")
-  const [sort, setSort] = useState<Sort>("title-asc")
+  const [sort, setSort] = useState<Sort>("year-desc")
   const catalogItems = type ? items.filter((item) => item.type === type) : items
   const genreOptions = [
     ...new Set(catalogItems.flatMap((item) => item.genres)),
@@ -178,7 +178,7 @@ export function Catalog({
             </FieldLabel>
             <Select
               items={sortItems}
-              onValueChange={(value) => setSort(value ?? "title-asc")}
+              onValueChange={(value) => setSort(value ?? "year-desc")}
               value={sort}
             >
               <SelectTrigger id="catalog-sort">
