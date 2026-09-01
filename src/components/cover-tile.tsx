@@ -1,6 +1,7 @@
 "use client"
 
 import { Link } from "@tanstack/react-router"
+import type { ReactNode } from "react"
 import { Badge } from "@/components/ui/badge"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
@@ -10,14 +11,18 @@ import { cn } from "@/lib/utils"
 import type { Item } from "@/server/schema"
 
 export function CoverTile({
+  children,
   item,
   className = "",
+  hideMissingCoverTitle = false,
   variant = "default",
   fromAll = false,
   onSystemListMembershipChange,
 }: {
+  children?: ReactNode
   item: Item
   className?: string
+  hideMissingCoverTitle?: boolean
   variant?: "default" | "carousel"
   fromAll?: boolean
   onSystemListMembershipChange?: (itemId: number, containsItem: boolean) => void
@@ -69,9 +74,11 @@ export function CoverTile({
               className="flex h-full items-center justify-center bg-muted"
               style={{ backgroundColor: coverPlateBackground(item.slug) }}
             >
-              <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
-                {item.title}
-              </span>
+              {!hideMissingCoverTitle && (
+                <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
+                  {item.title}
+                </span>
+              )}
             </div>
           )}
           {item.edition && (
@@ -91,6 +98,7 @@ export function CoverTile({
             </Badge>
           )}
         </div>
+        {children}
       </Link>
       {signedIn && (
         <SystemListToggle

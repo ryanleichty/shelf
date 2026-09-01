@@ -276,7 +276,7 @@ for (const [slug, type] of [
   await client.execute({
     sql: `
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, ?, 1, 1 FROM lists WHERE slug = ?
+      SELECT id, 'list', slug, ?, 0, 1 FROM lists WHERE slug = ?
       ON CONFLICT(list_id, type) DO NOTHING
     `,
     args: [type, slug],
@@ -286,7 +286,7 @@ for (const type of ["book", "movie", "tv"]) {
   await client.execute({
     sql: `
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT NULL, 'recent', 'recent', ?, 0, 1
+      SELECT NULL, 'recent', 'recent', ?, 1, 1
       WHERE NOT EXISTS (
         SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
       )

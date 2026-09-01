@@ -94,8 +94,7 @@
 
 .home-carousel {
   overflow-x: auto;
-  overflow-y: hidden;
-  padding-block: 1rem;
+  overflow-y: clip;
   padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
   padding-inline-end: 1rem;
   scroll-padding-inline-start: max(1rem, calc((100% - 72rem) / 2 + 1rem));
