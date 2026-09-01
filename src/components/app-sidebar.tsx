@@ -3,6 +3,7 @@
 import { Link, useLocation, useRouter } from "@tanstack/react-router"
 import {
   BookOpenIcon,
+  ChevronsUpDownIcon,
   ChevronRightIcon,
   FilmIcon,
   HouseIcon,
@@ -18,11 +19,19 @@ import { useSignedInStatus } from "@/components/signed-in-status"
 import { logout } from "@/server/items"
 import { getSidebarLists } from "@/server/lists"
 import { CatalogCommand } from "@/components/catalog-command"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -65,7 +74,8 @@ const catalogNavigation = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const router = useRouter()
-  const { signedIn, setSignedIn } = useSignedInStatus()
+  const { currentUser, signedIn, setCurrentUser, setSignedIn } =
+    useSignedInStatus()
   const [listPlacements, setListPlacements] = useState<
     Array<{ slug: string; name: string; type: "book" | "movie" | "tv" }>
   >([])
@@ -110,6 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   async function signOut() {
     await logout()
+    setCurrentUser(null)
     setSignedIn(false)
     await router.navigate({ to: "/" })
   }
@@ -265,9 +276,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )}
         </SidebarContent>
         <SidebarFooter>
-          <SidebarMenu>
-            {signedIn ? (
-              <>
+          {signedIn && currentUser ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <SidebarMenuButton
+                    size="lg"
+                    tooltip={`${currentUser.firstName} ${currentUser.lastName}`}
+                  />
+                }
+              >
+                <Avatar>
+                  {currentUser.avatarUrl && (
+                    <AvatarImage
+                      alt={`${currentUser.firstName} ${currentUser.lastName}`}
+                      src={currentUser.avatarUrl}
+                    />
+                  )}
+                  <AvatarFallback>
+                    {currentUser.firstName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">
+                    {currentUser.firstName} {currentUser.lastName}
+                  </span>
+                </div>
+                <ChevronsUpDownIcon className="ml-auto" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem render={<Link to="/settings" />}>
+                    <SettingsIcon /> Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOutIcon /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <SidebarMenu>
+              {signedIn ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={location.pathname === "/settings"}
@@ -278,25 +328,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <span>Settings</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+              ) : (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={signOut} tooltip="Log out">
-                    <LogOutIcon />
-                    <span>Log out</span>
+                  <SidebarMenuButton
+                    render={<Link to="/admin/login" />}
+                    tooltip="Log in"
+                  >
+                    <LogInIcon />
+                    <span>Log in</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              </>
-            ) : (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link to="/admin/login" />}
-                  tooltip="Log in"
-                >
-                  <LogInIcon />
-                  <span>Log in</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-          </SidebarMenu>
+              )}
+            </SidebarMenu>
+          )}
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
