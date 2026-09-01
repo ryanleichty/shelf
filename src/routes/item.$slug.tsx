@@ -248,6 +248,7 @@ function ItemDetail() {
               itemId={item.id}
               itemType={item.type}
               lists={item.customLists}
+              signedIn={signedIn}
               systemList={item.systemList}
               trailer={
                 trailer ? (

@@ -15,44 +15,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   SystemListToggle,
   type SystemListOption,
 } from "@/components/system-list-toggle"
-import { getSignedInStatus } from "@/server/items"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
 type ListOption = { slug: string; name: string; containsItem: boolean }
+const membershipRouteIds = new Set([
+  "/books",
+  "/books_/list/$slug",
+  "/movies",
+  "/movies_/list/$slug",
+  "/tv",
+  "/tv_/list/$slug",
+])
 
 export function ItemListMenu({
   itemId,
   itemType,
   lists,
+  signedIn,
   systemList,
   trailer,
 }: {
   itemId: number
   itemType: "book" | "movie" | "tv"
   lists: ListOption[]
+  signedIn: boolean
   systemList: SystemListOption | null
   trailer?: ReactNode
 }) {
   const router = useRouter()
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [customLists, setCustomLists] = useState(lists)
   const [bookmark, setBookmark] = useState(systemList)
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
   const customListsRef = useRef(lists)
+  const bookmarkRef = useRef(systemList)
   const listRequestGenerations = useRef(new Map<string, number>())
   const activeListRequests = useRef(new Set<string>())
-
-  useEffect(() => {
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
-  }, [])
+  const bookmarkRequestInFlight = useRef(false)
+  const pendingBookmarkLoaderValue = useRef<SystemListOption | null>()
 
   useEffect(() => {
     const nextLists = lists.map((list) => {
@@ -66,15 +70,15 @@ export function ItemListMenu({
     customListsRef.current = nextLists
     setCustomLists(nextLists)
   }, [lists])
-  useEffect(() => setBookmark(systemList), [systemList])
+  useEffect(() => {
+    if (bookmarkRequestInFlight.current) {
+      pendingBookmarkLoaderValue.current = systemList
+      return
+    }
+    bookmarkRef.current = systemList
+    setBookmark(systemList)
+  }, [systemList])
 
-  if (signedIn === null)
-    return (
-      <div className="mt-4 flex items-center gap-2">
-        {trailer}
-        <Skeleton aria-label="Loading list controls" className="size-9" />
-      </div>
-    )
   if (!signedIn)
     return trailer ? (
       <div className="mt-4 flex items-center gap-2">{trailer}</div>
@@ -103,7 +107,9 @@ export function ItemListMenu({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (listRequestGenerations.current.get(list.slug) !== generation) return
-      await router.invalidate()
+      void router.invalidate({
+        filter: (match) => membershipRouteIds.has(match.routeId),
+      })
     } catch (cause) {
       if (listRequestGenerations.current.get(list.slug) !== generation) return
       const revertedLists = customListsRef.current.map((candidate) =>
@@ -131,9 +137,26 @@ export function ItemListMenu({
           itemId={itemId}
           list={bookmark}
           onError={setError}
-          onMembershipChange={(containsItem) =>
-            setBookmark({ ...bookmark, containsItem })
-          }
+          onMembershipChange={(containsItem) => {
+            if (!bookmarkRef.current) return
+            const nextBookmark = {
+              ...bookmarkRef.current,
+              containsItem,
+            }
+            bookmarkRef.current = nextBookmark
+            setBookmark(nextBookmark)
+          }}
+          onRequestStateChange={(inFlight) => {
+            bookmarkRequestInFlight.current = inFlight
+            if (inFlight) {
+              pendingBookmarkLoaderValue.current = undefined
+              return
+            }
+            if (pendingBookmarkLoaderValue.current === undefined) return
+            bookmarkRef.current = pendingBookmarkLoaderValue.current
+            setBookmark(pendingBookmarkLoaderValue.current)
+            pendingBookmarkLoaderValue.current = undefined
+          }}
           showLabel
         />
       )}

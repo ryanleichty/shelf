@@ -11,6 +11,15 @@ import {
 } from "@/components/ui/tooltip"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
+const membershipRouteIds = new Set([
+  "/books",
+  "/books_/list/$slug",
+  "/movies",
+  "/movies_/list/$slug",
+  "/tv",
+  "/tv_/list/$slug",
+])
+
 export type SystemListOption = {
   slug: string
   name: string
@@ -23,6 +32,7 @@ export function SystemListToggle({
   list,
   onError,
   onMembershipChange,
+  onRequestStateChange,
   showLabel = false,
   showTooltip = !showLabel,
   variant,
@@ -32,6 +42,7 @@ export function SystemListToggle({
   list: SystemListOption
   onError?: (message: string) => void
   onMembershipChange?: (containsItem: boolean) => void
+  onRequestStateChange?: (inFlight: boolean) => void
   showLabel?: boolean
   showTooltip?: boolean
   variant?: "default" | "outline"
@@ -53,6 +64,7 @@ export function SystemListToggle({
     const nextContainsItem = !previousContainsItem
     const generation = ++requestGeneration.current
     activeRequestGeneration.current = generation
+    onRequestStateChange?.(true)
     onError?.("")
     containsItemRef.current = nextContainsItem
     setContainsItem(nextContainsItem)
@@ -62,7 +74,9 @@ export function SystemListToggle({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (generation !== requestGeneration.current) return
-      await router.invalidate()
+      void router.invalidate({
+        filter: (match) => membershipRouteIds.has(match.routeId),
+      })
     } catch (cause) {
       if (generation !== requestGeneration.current) return
       containsItemRef.current = previousContainsItem
@@ -74,8 +88,10 @@ export function SystemListToggle({
           : `Could not update ${list.name}.`
       )
     } finally {
-      if (generation === requestGeneration.current)
+      if (generation === requestGeneration.current) {
         activeRequestGeneration.current = null
+        onRequestStateChange?.(false)
+      }
     }
   }
 
