@@ -51,9 +51,13 @@ export const Route = createFileRoute("/item/$slug")({
       })
       .sort((left, right) => left.part - right.part)
       .map(({ item: collectionItem }) => collectionItem)
+    const collectionItemIds = new Set(collectionItems.map(({ id }) => id))
+    const filteredSimilarItems = similarItems.filter(
+      ({ id }) => !collectionItemIds.has(id)
+    )
     return {
       item,
-      similarItems,
+      similarItems: filteredSimilarItems,
       collectionPart,
       collectionPartsTotal: collectionParts?.length ?? 0,
       collectionItems,
