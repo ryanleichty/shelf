@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { formatForDisplay, useHotkey } from "@tanstack/react-hotkeys"
 import { useRouter } from "@tanstack/react-router"
 import { BookOpenIcon, FilmIcon, ScanLineIcon, TvIcon } from "lucide-react"
 import { CheckBarcodeDialog } from "@/components/check-barcode-dialog"
@@ -13,6 +14,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandShortcut,
 } from "@/components/ui/command"
 import { getItems, getSearchFacets } from "@/server/items"
 import type { SearchFacets } from "@/server/items"
@@ -168,6 +170,23 @@ export function CatalogCommand({
     onOpenChange(false)
     router.navigate({ to: "/admin/new", search: { type } })
   }
+  const shortcutsEnabled = Boolean(signedIn && open)
+  useHotkey("Mod+1", openCheckBarcode, {
+    enabled: shortcutsEnabled,
+    preventDefault: true,
+  })
+  useHotkey("Mod+2", () => addItem("book"), {
+    enabled: shortcutsEnabled,
+    preventDefault: true,
+  })
+  useHotkey("Mod+3", () => addItem("movie"), {
+    enabled: shortcutsEnabled,
+    preventDefault: true,
+  })
+  useHotkey("Mod+4", () => addItem("tv"), {
+    enabled: shortcutsEnabled,
+    preventDefault: true,
+  })
   return (
     <>
       <CommandDialog
@@ -192,9 +211,7 @@ export function CatalogCommand({
                 >
                   <ScanLineIcon />
                   <span className="min-w-0 flex-1 truncate">Check barcode</span>
-                  <span className="shrink-0 text-right text-xs text-muted-foreground">
-                    Scan
-                  </span>
+                  <CommandShortcut>{formatForDisplay("Mod+1")}</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("book")}
@@ -202,9 +219,7 @@ export function CatalogCommand({
                 >
                   <BookOpenIcon />
                   <span className="min-w-0 flex-1 truncate">Add book</span>
-                  <span className="shrink-0 text-right text-xs text-muted-foreground">
-                    New
-                  </span>
+                  <CommandShortcut>{formatForDisplay("Mod+2")}</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("movie")}
@@ -212,9 +227,7 @@ export function CatalogCommand({
                 >
                   <FilmIcon />
                   <span className="min-w-0 flex-1 truncate">Add movie</span>
-                  <span className="shrink-0 text-right text-xs text-muted-foreground">
-                    New
-                  </span>
+                  <CommandShortcut>{formatForDisplay("Mod+3")}</CommandShortcut>
                 </CommandItem>
                 <CommandItem
                   onSelect={() => addItem("tv")}
@@ -222,9 +235,7 @@ export function CatalogCommand({
                 >
                   <TvIcon />
                   <span className="min-w-0 flex-1 truncate">Add show</span>
-                  <span className="shrink-0 text-right text-xs text-muted-foreground">
-                    New
-                  </span>
+                  <CommandShortcut>{formatForDisplay("Mod+4")}</CommandShortcut>
                 </CommandItem>
               </CommandGroup>
             )}
