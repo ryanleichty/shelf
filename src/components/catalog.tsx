@@ -108,7 +108,7 @@ export function Catalog({
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
         <Field className="min-w-0 flex-1">
           <FieldLabel className="sr-only" htmlFor="catalog-search">
             Search
