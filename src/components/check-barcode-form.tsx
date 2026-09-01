@@ -79,7 +79,7 @@ export function CheckBarcodeForm({
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton
-                aria-label="Check barcode"
+                aria-label="Scan barcode"
                 disabled={checking || !code.trim()}
                 type="submit"
               >

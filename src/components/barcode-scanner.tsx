@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { CameraIcon, ScanBarcodeIcon } from "lucide-react"
+import { CameraIcon, ScanLineIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
@@ -141,7 +141,7 @@ export function BarcodeScanner({
         ) : scanning ? (
           <CameraIcon data-icon="inline-start" />
         ) : (
-          <ScanBarcodeIcon data-icon="inline-start" />
+          <ScanLineIcon data-icon="inline-start" />
         )}
         {starting
           ? "Starting camera…"

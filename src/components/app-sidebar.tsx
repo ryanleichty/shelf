@@ -253,10 +253,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       render={<Link to="/check" />}
-                      tooltip="Check barcode"
+                      tooltip="Scan barcode"
                     >
                       <ScanLineIcon />
-                      <span>Check barcode</span>
+                      <span>Scan barcode</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>

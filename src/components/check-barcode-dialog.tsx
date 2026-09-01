@@ -33,7 +33,7 @@ export function CheckBarcodeDialog({
     <Dialog onOpenChange={handleOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Check Shelf</DialogTitle>
+          <DialogTitle>Scan barcode</DialogTitle>
         </DialogHeader>
         {open && (
           <CheckBarcodeForm

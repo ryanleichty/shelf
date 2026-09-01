@@ -206,7 +206,7 @@ export function CatalogCommand({
                   value="action:check-barcode"
                 >
                   <ScanLineIcon />
-                  <span className="min-w-0 flex-1 truncate">Check barcode</span>
+                  <span className="min-w-0 flex-1 truncate">Scan barcode</span>
                   <CommandShortcut>⌘1</CommandShortcut>
                 </CommandItem>
                 <CommandItem

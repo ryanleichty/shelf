@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
-import { ScanBarcodeIcon } from "lucide-react"
+import { ScanLineIcon } from "lucide-react"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -90,16 +90,22 @@ function peopleItems(options: string[], selected: string[], query: string) {
 export function ItemForm({
   item,
   initialType,
+  type: controlledType,
+  onTypeChange,
 }: {
   item?: Item
   initialType?: "book" | "movie" | "tv"
+  type?: "book" | "movie" | "tv"
+  onTypeChange?: (type: "book" | "movie" | "tv") => void
 }) {
   const router = useRouter()
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
-  const [type, setType] = useState<"book" | "movie" | "tv">(
+  const [internalType, setInternalType] = useState<"book" | "movie" | "tv">(
     item?.type ?? initialType ?? "book"
   )
+  const isTypeControlled = onTypeChange !== undefined
+  const type = isTypeControlled ? (controlledType ?? "book") : internalType
   const [status, setStatus] = useState<
     "unspecified" | "borrowed" | "reading" | "watching"
   >(
@@ -237,17 +243,34 @@ export function ItemForm({
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "slug") setSlugWasAutoFilled(false)
   }
-  function changeType(nextType: "book" | "movie" | "tv") {
-    setType(nextType)
+  const resetTypeFields = useCallback((nextType: "book" | "movie" | "tv") => {
     setQuery("")
     setResults([])
     setSearchError("")
     setSelected(false)
     setCoversLoading(false)
-    updateValue("format", "")
-    updateValue("edition", "")
-    if ((nextType === "movie" || nextType === "tv") && status === "reading")
-      setStatus("unspecified")
+    setValues((current) => ({
+      ...current,
+      format: "",
+      edition: "",
+    }))
+    setStatus((current) =>
+      (nextType === "movie" || nextType === "tv") && current === "reading"
+        ? "unspecified"
+        : current
+    )
+  }, [])
+  useEffect(() => {
+    if (isTypeControlled) resetTypeFields(type)
+  }, [isTypeControlled, resetTypeFields, type])
+  function changeType(nextType: "book" | "movie" | "tv") {
+    if (nextType === type) return
+    if (isTypeControlled) {
+      onTypeChange?.(nextType)
+      return
+    }
+    setInternalType(nextType)
+    resetTypeFields(nextType)
   }
 
   async function choose(
@@ -372,7 +395,7 @@ export function ItemForm({
   return (
     <form className="item-form" onSubmit={submit}>
       <Tabs
-        onValueChange={(value) => changeType(value as "book" | "movie")}
+        onValueChange={(value) => changeType(value as "book" | "movie" | "tv")}
         value={type}
       >
         <TabsList aria-label="Item type">
@@ -410,7 +433,7 @@ export function ItemForm({
                       />
                     }
                   >
-                    <ScanBarcodeIcon />
+                    <ScanLineIcon />
                   </TooltipTrigger>
                   <TooltipContent>Scan barcode</TooltipContent>
                 </Tooltip>
