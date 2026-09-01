@@ -25,6 +25,7 @@ type ListOption = { slug: string; name: string; containsItem: boolean }
 const membershipRouteIds = new Set([
   "/books",
   "/books_/list/$slug",
+  "/item/$slug",
   "/movies",
   "/movies_/list/$slug",
   "/tv",

@@ -14,6 +14,7 @@ import { addItemToList, removeItemFromList } from "@/server/lists"
 const membershipRouteIds = new Set([
   "/books",
   "/books_/list/$slug",
+  "/item/$slug",
   "/movies",
   "/movies_/list/$slug",
   "/tv",
