@@ -318,16 +318,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ) : (
             <SidebarMenu>
               {signedIn ? (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/settings"}
-                    render={<Link to="/settings" />}
-                    tooltip="Settings"
-                  >
-                    <SettingsIcon />
-                    <span>Settings</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={location.pathname === "/settings"}
+                      render={<Link to="/settings" />}
+                      tooltip="Settings"
+                    >
+                      <SettingsIcon />
+                      <span>Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={signOut} tooltip="Log out">
+                      <LogOutIcon />
+                      <span>Log out</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               ) : (
                 <SidebarMenuItem>
                   <SidebarMenuButton
