@@ -15,8 +15,6 @@ export function CoverTile({
   item,
   className = "",
   hideMissingCoverTitle = false,
-  plateAspect = "portrait",
-  plateImageUrl,
   variant = "default",
   fromAll = false,
   onSystemListMembershipChange,
@@ -25,8 +23,6 @@ export function CoverTile({
   item: Item
   className?: string
   hideMissingCoverTitle?: boolean
-  plateAspect?: "portrait" | "video"
-  plateImageUrl?: string | null
   variant?: "default" | "carousel"
   fromAll?: boolean
   onSystemListMembershipChange?: (itemId: number, containsItem: boolean) => void
@@ -35,7 +31,6 @@ export function CoverTile({
     ? `${item.title} by ${item.creator}`
     : item.title
   const isCarouselTile = variant === "carousel"
-  const imageUrl = plateImageUrl ?? item.coverImageUrl
   const { signedIn } = useSignedInStatus()
   const systemList =
     item.type === "book"
@@ -65,18 +60,13 @@ export function CoverTile({
         search={fromAll ? { from: "all" } : {}}
         to="/item/$slug"
       >
-        <div
-          className={cn(
-            "relative overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100",
-            plateAspect === "video" ? "aspect-video" : "aspect-2/3"
-          )}
-        >
-          {imageUrl ? (
+        <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100">
+          {item.coverImageUrl ? (
             <img
               alt={item.title}
               className="h-full w-full object-cover"
               referrerPolicy="no-referrer"
-              src={imageUrl}
+              src={item.coverImageUrl}
             />
           ) : (
             <div

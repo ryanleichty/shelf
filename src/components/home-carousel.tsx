@@ -21,7 +21,6 @@ export function HomeCarousel({
   hideMissingCoverTitle = false,
   slideClassName,
   systemListSlug,
-  useBackdropForPlate = false,
 }: {
   contained?: boolean
   id: string
@@ -31,7 +30,6 @@ export function HomeCarousel({
   hideMissingCoverTitle?: boolean
   slideClassName?: string
   systemListSlug?: string
-  useBackdropForPlate?: boolean
 }) {
   const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(
     () => new Set()
@@ -79,10 +77,6 @@ export function HomeCarousel({
               onSystemListMembershipChange={
                 systemListSlug ? handleSystemListMembershipChange : undefined
               }
-              plateAspect={useBackdropForPlate ? "video" : undefined}
-              plateImageUrl={
-                useBackdropForPlate ? item.backdropImageUrl : undefined
-              }
               variant="carousel"
             >
               {renderCaption?.(item)}
@@ -90,14 +84,7 @@ export function HomeCarousel({
           </div>
         ))}
       </BlossomCarousel>
-      <div
-        className={cn(
-          "home-carousel-controls pointer-events-none absolute inset-x-0 top-4 z-20 hidden md:block",
-          useBackdropForPlate
-            ? "h-[6.1875rem] sm:h-[10.125rem]"
-            : "h-[10.5rem] sm:h-[21rem]"
-        )}
-      >
+      <div className="home-carousel-controls pointer-events-none absolute inset-x-0 top-4 z-20 hidden aspect-2/3 md:block">
         <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-12 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Previous titles"

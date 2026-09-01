@@ -108,13 +108,8 @@ export function TypeHome({
                     : undefined
                 }
                 renderSection={renderSection}
-                slideClassName={
-                  isSystemListRow && type !== "book"
-                    ? "w-44 sm:w-72"
-                    : undefined
-                }
+                slideClassName={isSystemListRow ? "w-44 sm:w-72" : undefined}
                 systemListSlug={isSystemListRow ? systemListSlug : undefined}
-                useBackdropForPlate={isSystemListRow && type !== "book"}
               />
             )
           })}
