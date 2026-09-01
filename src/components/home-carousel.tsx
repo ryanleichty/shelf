@@ -79,7 +79,7 @@ export function HomeCarousel({
           </div>
         ))}
       </BlossomCarousel>
-      <div className="home-carousel-controls pointer-events-none absolute inset-y-0 right-0 left-0 z-20 hidden md:block">
+      <div className="home-carousel-controls pointer-events-none absolute top-0 right-0 left-0 z-20 hidden aspect-2/3 md:block">
         <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-12 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Previous titles"
