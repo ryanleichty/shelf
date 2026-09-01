@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { HomeCarousel } from "@/components/home-carousel"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Item } from "@/server/schema"
 
@@ -126,6 +127,7 @@ export function TypeHome({
 }
 
 function SystemListCaption({ item }: { item: Item }) {
+  const certification = item.type !== "book" ? item.certification?.trim() : null
   const detail =
     item.type === "book"
       ? validPageCount(item.pageCount)
@@ -135,9 +137,11 @@ function SystemListCaption({ item }: { item: Item }) {
         ? formatRuntime(item.runtime)
         : null
   const metadata = [
-    item.type === "book" ? null : item.certification,
     item.year,
-    item.genres.slice(0, 2).join(", "),
+    item.genres
+      .filter((genre) => genre.trim())
+      .slice(0, 2)
+      .join(", "),
   ]
     .filter(Boolean)
     .join(" · ")
@@ -146,8 +150,15 @@ function SystemListCaption({ item }: { item: Item }) {
     <div className="mt-2 flex flex-col gap-0.5">
       {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
       <p className="line-clamp-2 font-medium">{item.title}</p>
-      {metadata && (
-        <p className="line-clamp-1 text-sm text-muted-foreground">{metadata}</p>
+      {(certification || metadata) && (
+        <div className="flex items-baseline gap-2">
+          {certification && <Badge variant="outline">{certification}</Badge>}
+          {metadata && (
+            <p className="line-clamp-1 text-sm text-muted-foreground">
+              {metadata}
+            </p>
+          )}
+        </div>
       )}
     </div>
   )
