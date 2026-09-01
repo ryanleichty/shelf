@@ -381,7 +381,7 @@ function ItemDetail() {
           />
         </section>
       )}
-      {item.type !== "book" && (
+      {similarItems.length > 0 && (
         <section
           className="item-shelf-carousel mt-12"
           aria-labelledby="also-on-the-shelf"
