@@ -2728,10 +2728,12 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
           eq(items.type, sourceType),
           eq(items.status, "owned"),
           ne(items.id, data.itemId),
-          isOutsideSourceCollection
+          isOutsideSourceCollection,
+          or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
         )
       )
       .orderBy(desc(sharesPrimaryPerson), desc(sharesGenre), asc(items.title))
+      .limit(12)
     return records.map(({ item, isInSystemList }) => ({
       ...item,
       genres: [],
