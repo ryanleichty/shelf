@@ -50,6 +50,13 @@
       "when": 1788063789318,
       "tag": "0006_custom_list_placements",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788450000000,
+      "tag": "0014_system_list_placements_first",
+      "breakpoints": true
     }
   ]
 }

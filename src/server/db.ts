@@ -358,24 +358,24 @@ export function ensureDatabase() {
     })
     await getClient().execute(`
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'book', 1, 1 FROM lists WHERE slug = '${READLIST_SLUG}'
+      SELECT id, 'list', slug, 'book', 0, 1 FROM lists WHERE slug = '${READLIST_SLUG}'
       ON CONFLICT(list_id, type) DO NOTHING
     `)
     await getClient().execute(`
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'movie', 1, 1 FROM lists WHERE slug = 'watchlist'
+      SELECT id, 'list', slug, 'movie', 0, 1 FROM lists WHERE slug = 'watchlist'
       ON CONFLICT(list_id, type) DO NOTHING
     `)
     await getClient().execute(`
       INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'tv', 1, 1 FROM lists WHERE slug = 'watchlist'
+      SELECT id, 'list', slug, 'tv', 0, 1 FROM lists WHERE slug = 'watchlist'
       ON CONFLICT(list_id, type) DO NOTHING
     `)
     for (const type of ["book", "movie", "tv"]) {
       await getClient().execute({
         sql: `
           INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-          SELECT NULL, 'recent', 'recent', ?, 0, 1
+          SELECT NULL, 'recent', 'recent', ?, 1, 1
           WHERE NOT EXISTS (
             SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
           )

@@ -3,9 +3,13 @@
 import { Link } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { CoverTile } from "@/components/cover-tile"
 import { HomeCarousel } from "@/components/home-carousel"
+import { useSignedInStatus } from "@/components/signed-in-status"
+import { SystemListToggle } from "@/components/system-list-toggle"
 import { Button } from "@/components/ui/button"
+import { coverPlateBackground } from "@/lib/cover-plate"
+import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
+import { cn } from "@/lib/utils"
 import type { Item } from "@/server/schema"
 
 type HomeRow =
@@ -51,21 +55,6 @@ export function TypeHome({
           {rows.map((row, index) => {
             const isSystemListRow =
               row.kind === "list" && row.slug === systemListSlug
-            const totalRuntime =
-              isSystemListRow && type !== "book"
-                ? row.items.reduce(
-                    (total, item) =>
-                      validRuntime(item.runtime) ? total + item.runtime : total,
-                    0
-                  )
-                : null
-            const systemListDetail = isSystemListRow
-              ? type === "book"
-                ? `${row.items.length} ${row.items.length === 1 ? "title" : "titles"}`
-                : totalRuntime
-                  ? formatRuntime(totalRuntime)
-                  : null
-              : null
 
             function renderHeading() {
               return (
@@ -99,11 +88,6 @@ export function TypeHome({
                       row.title
                     )}
                   </h2>
-                  {systemListDetail && (
-                    <p className="text-sm text-muted-foreground">
-                      {systemListDetail}
-                    </p>
-                  )}
                 </div>
               )
             }
@@ -117,35 +101,25 @@ export function TypeHome({
               )
             }
 
-            if (isSystemListRow && type === "book") {
-              if (row.items.length === 0) return null
-
-              return (
-                <section className="overflow-x-hidden" key={row.title}>
-                  {renderHeading()}
-                  <div className="container mx-auto max-w-6xl px-4">
-                    <div className="flex items-start py-2">
-                      {row.items.slice(0, 6).map((item, pileIndex) => (
-                        <div
-                          className="-ml-12 w-24 first:ml-0 sm:w-36"
-                          key={item.id}
-                          style={{ zIndex: 6 - pileIndex }}
-                        >
-                          <CoverTile className="w-full" item={item} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              )
-            }
-
             return (
               <HomeCarousel
                 id={`${type}-row-${index}`}
                 items={row.items}
                 key={row.title}
+                renderItem={
+                  isSystemListRow
+                    ? (item, onSystemListMembershipChange) => (
+                        <SystemListTile
+                          item={item}
+                          onSystemListMembershipChange={
+                            onSystemListMembershipChange
+                          }
+                        />
+                      )
+                    : undefined
+                }
                 renderSection={renderSection}
+                slideClassName={isSystemListRow ? "w-48 sm:w-72" : undefined}
                 systemListSlug={isSystemListRow ? systemListSlug : undefined}
               />
             )
@@ -162,8 +136,115 @@ export function TypeHome({
   )
 }
 
+function SystemListTile({
+  item,
+  onSystemListMembershipChange,
+}: {
+  item: Item
+  onSystemListMembershipChange?: (itemId: number, containsItem: boolean) => void
+}) {
+  const { signedIn } = useSignedInStatus()
+  const imageUrl =
+    item.type === "book"
+      ? item.coverImageUrl
+      : (item.backdropImageUrl ?? item.coverImageUrl)
+  const detail =
+    item.type === "book"
+      ? validPageCount(item.pageCount)
+        ? `${item.pageCount} pages`
+        : null
+      : validRuntime(item.runtime)
+        ? formatRuntime(item.runtime)
+        : null
+  const metadata = [
+    item.type === "book" ? null : item.certification,
+    item.year,
+    item.genres.join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+  const systemList =
+    item.type === "book"
+      ? {
+          slug: READLIST_SLUG,
+          name: READLIST_NAME,
+          containsItem: item.isInSystemList,
+        }
+      : {
+          slug: "watchlist",
+          name: "Watchlist",
+          containsItem: item.isInSystemList,
+        }
+
+  return (
+    <div className="group relative">
+      <Link
+        aria-label={
+          item.creator ? `${item.title} by ${item.creator}` : item.title
+        }
+        className="block focus-visible:outline-none"
+        params={{ slug: item.slug }}
+        to="/item/$slug"
+      >
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-lg bg-muted transition-[scale] duration-200 ease-out group-focus-within:scale-105 group-hover:scale-105 after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100",
+            item.type === "book" ? "aspect-2/3" : "aspect-video"
+          )}
+        >
+          {imageUrl ? (
+            <img
+              alt={item.title}
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+              src={imageUrl}
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex h-full items-center justify-center bg-muted"
+              style={{ backgroundColor: coverPlateBackground(item.slug) }}
+            >
+              <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
+                {item.title}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex flex-col gap-0.5">
+          {detail && <p className="text-sm text-muted-foreground">{detail}</p>}
+          <p className="line-clamp-1 font-medium">{item.title}</p>
+          {metadata && (
+            <p className="line-clamp-1 text-sm text-muted-foreground">
+              {metadata}
+            </p>
+          )}
+        </div>
+      </Link>
+      {signedIn && (
+        <SystemListToggle
+          className="pointer-events-none absolute top-2 right-2 origin-top-right border-transparent bg-background/90 opacity-0 ring-1 ring-black/10 transition-[opacity,scale] group-focus-within:pointer-events-auto group-focus-within:scale-105 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
+          itemId={item.id}
+          list={systemList}
+          onMembershipChange={(containsItem) =>
+            onSystemListMembershipChange?.(item.id, containsItem)
+          }
+        />
+      )}
+    </div>
+  )
+}
+
 function validRuntime(runtime: number | null): runtime is number {
   return typeof runtime === "number" && Number.isInteger(runtime) && runtime > 0
+}
+
+function validPageCount(pageCount: number | null): pageCount is number {
+  return (
+    typeof pageCount === "number" &&
+    Number.isInteger(pageCount) &&
+    pageCount > 0
+  )
 }
 
 function formatRuntime(runtime: number) {

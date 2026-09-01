@@ -15,13 +15,13 @@ CREATE UNIQUE INDEX `list_placements_list_id_type_unique`
   ON `list_placements` (`list_id`, `type`);
 --> statement-breakpoint
 INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
-SELECT `id`, 'list', 'book', 1, true FROM `lists` WHERE `slug` = 'reading-list';
+SELECT `id`, 'list', 'book', 0, true FROM `lists` WHERE `slug` = 'reading-list';
 --> statement-breakpoint
 INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
-SELECT `id`, 'list', 'movie', 1, true FROM `lists` WHERE `slug` = 'watchlist';
+SELECT `id`, 'list', 'movie', 0, true FROM `lists` WHERE `slug` = 'watchlist';
 --> statement-breakpoint
 INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
-SELECT `id`, 'list', 'tv', 1, true FROM `lists` WHERE `slug` = 'watchlist';
+SELECT `id`, 'list', 'tv', 0, true FROM `lists` WHERE `slug` = 'watchlist';
 --> statement-breakpoint
 INSERT INTO `list_placements` (`list_id`, `kind`, `type`, `position`, `visible`)
-VALUES (NULL, 'recent', 'book', 0, true), (NULL, 'recent', 'movie', 0, true), (NULL, 'recent', 'tv', 0, true);
+VALUES (NULL, 'recent', 'book', 1, true), (NULL, 'recent', 'movie', 1, true), (NULL, 'recent', 'tv', 1, true);
