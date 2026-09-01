@@ -19,7 +19,9 @@ export function HomeCarousel({
   renderCaption,
   renderSection,
   hideMissingCoverTitle = false,
+  slideClassName,
   systemListSlug,
+  useBackdropForPlate = false,
 }: {
   contained?: boolean
   id: string
@@ -27,7 +29,9 @@ export function HomeCarousel({
   renderCaption?: (item: Item) => ReactNode
   renderSection?: (carousel: ReactNode) => ReactNode
   hideMissingCoverTitle?: boolean
+  slideClassName?: string
   systemListSlug?: string
+  useBackdropForPlate?: boolean
 }) {
   const [hiddenItemIds, setHiddenItemIds] = useState<Set<number>>(
     () => new Set()
@@ -61,7 +65,10 @@ export function HomeCarousel({
       >
         {visibleItems.map((item) => (
           <div
-            className="relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56"
+            className={cn(
+              "relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56",
+              slideClassName
+            )}
             data-blossom-slide
             key={item.id}
           >
@@ -72,6 +79,10 @@ export function HomeCarousel({
               onSystemListMembershipChange={
                 systemListSlug ? handleSystemListMembershipChange : undefined
               }
+              plateAspect={useBackdropForPlate ? "video" : undefined}
+              plateImageUrl={
+                useBackdropForPlate ? item.backdropImageUrl : undefined
+              }
               variant="carousel"
             >
               {renderCaption?.(item)}
@@ -79,7 +90,14 @@ export function HomeCarousel({
           </div>
         ))}
       </BlossomCarousel>
-      <div className="home-carousel-controls pointer-events-none absolute inset-x-0 top-4 z-20 hidden h-[10.5rem] sm:h-[21rem] md:block">
+      <div
+        className={cn(
+          "home-carousel-controls pointer-events-none absolute inset-x-0 top-4 z-20 hidden md:block",
+          useBackdropForPlate
+            ? "h-[6.1875rem] sm:h-[10.125rem]"
+            : "h-[10.5rem] sm:h-[21rem]"
+        )}
+      >
         <div className="pointer-events-auto absolute inset-y-0 left-0 flex w-12 items-center opacity-0 transition-opacity focus-within:opacity-100 hover:opacity-100">
           <Button
             aria-label="Previous titles"
