@@ -32,7 +32,6 @@ export function SystemListToggle({
   list,
   onError,
   onMembershipChange,
-  onRequestStateChange,
   showLabel = false,
   showTooltip = !showLabel,
   variant,
@@ -42,7 +41,6 @@ export function SystemListToggle({
   list: SystemListOption
   onError?: (message: string) => void
   onMembershipChange?: (containsItem: boolean) => void
-  onRequestStateChange?: (inFlight: boolean) => void
   showLabel?: boolean
   showTooltip?: boolean
   variant?: "default" | "outline"
@@ -51,10 +49,14 @@ export function SystemListToggle({
   const [containsItem, setContainsItem] = useState(list.containsItem)
   const containsItemRef = useRef(containsItem)
   const requestGeneration = useRef(0)
-  const activeRequestGeneration = useRef<number | null>(null)
+  const optimisticContainsItem = useRef<boolean | null>(null)
 
   useEffect(() => {
-    if (activeRequestGeneration.current !== null) return
+    if (
+      optimisticContainsItem.current !== null &&
+      list.containsItem !== optimisticContainsItem.current
+    )
+      return
     containsItemRef.current = list.containsItem
     setContainsItem(list.containsItem)
   }, [list.containsItem])
@@ -63,9 +65,8 @@ export function SystemListToggle({
     const previousContainsItem = containsItemRef.current
     const nextContainsItem = !previousContainsItem
     const generation = ++requestGeneration.current
-    activeRequestGeneration.current = generation
-    onRequestStateChange?.(true)
     onError?.("")
+    optimisticContainsItem.current = nextContainsItem
     containsItemRef.current = nextContainsItem
     setContainsItem(nextContainsItem)
     onMembershipChange?.(nextContainsItem)
@@ -79,6 +80,7 @@ export function SystemListToggle({
       })
     } catch (cause) {
       if (generation !== requestGeneration.current) return
+      optimisticContainsItem.current = null
       containsItemRef.current = previousContainsItem
       setContainsItem(previousContainsItem)
       onMembershipChange?.(previousContainsItem)
@@ -87,11 +89,6 @@ export function SystemListToggle({
           ? cause.message
           : `Could not update ${list.name}.`
       )
-    } finally {
-      if (generation === requestGeneration.current) {
-        activeRequestGeneration.current = null
-        onRequestStateChange?.(false)
-      }
     }
   }
 

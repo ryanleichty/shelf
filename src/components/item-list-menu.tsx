@@ -54,27 +54,32 @@ export function ItemListMenu({
   const customListsRef = useRef(lists)
   const bookmarkRef = useRef(systemList)
   const listRequestGenerations = useRef(new Map<string, number>())
-  const activeListRequests = useRef(new Set<string>())
-  const bookmarkRequestInFlight = useRef(false)
-  const pendingBookmarkLoaderValue = useRef<SystemListOption | null>()
+  const optimisticListValues = useRef(new Map<string, boolean>())
+  const optimisticBookmarkValue = useRef<boolean | null>(null)
 
   useEffect(() => {
     const nextLists = lists.map((list) => {
       const optimisticList = customListsRef.current.find(
         (candidate) => candidate.slug === list.slug
       )
-      return activeListRequests.current.has(list.slug) && optimisticList
-        ? { ...list, containsItem: optimisticList.containsItem }
-        : list
+      const optimisticValue = optimisticListValues.current.get(list.slug)
+      if (
+        optimisticList &&
+        optimisticValue !== undefined &&
+        list.containsItem !== optimisticValue
+      )
+        return { ...list, containsItem: optimisticList.containsItem }
+      return list
     })
     customListsRef.current = nextLists
     setCustomLists(nextLists)
   }, [lists])
   useEffect(() => {
-    if (bookmarkRequestInFlight.current) {
-      pendingBookmarkLoaderValue.current = systemList
+    if (
+      optimisticBookmarkValue.current !== null &&
+      systemList?.containsItem !== optimisticBookmarkValue.current
+    )
       return
-    }
     bookmarkRef.current = systemList
     setBookmark(systemList)
   }, [systemList])
@@ -93,7 +98,7 @@ export function ItemListMenu({
     const nextContainsItem = !previousContainsItem
     const generation = (listRequestGenerations.current.get(list.slug) ?? 0) + 1
     listRequestGenerations.current.set(list.slug, generation)
-    activeListRequests.current.add(list.slug)
+    optimisticListValues.current.set(list.slug, nextContainsItem)
     setError("")
     const nextLists = customListsRef.current.map((candidate) =>
       candidate.slug === list.slug
@@ -119,14 +124,12 @@ export function ItemListMenu({
       )
       customListsRef.current = revertedLists
       setCustomLists(revertedLists)
+      optimisticListValues.current.delete(list.slug)
       setError(
         cause instanceof Error
           ? cause.message
           : `Could not update ${list.name}.`
       )
-    } finally {
-      if (listRequestGenerations.current.get(list.slug) === generation)
-        activeListRequests.current.delete(list.slug)
     }
   }
 
@@ -144,18 +147,8 @@ export function ItemListMenu({
               containsItem,
             }
             bookmarkRef.current = nextBookmark
+            optimisticBookmarkValue.current = containsItem
             setBookmark(nextBookmark)
-          }}
-          onRequestStateChange={(inFlight) => {
-            bookmarkRequestInFlight.current = inFlight
-            if (inFlight) {
-              pendingBookmarkLoaderValue.current = undefined
-              return
-            }
-            if (pendingBookmarkLoaderValue.current === undefined) return
-            bookmarkRef.current = pendingBookmarkLoaderValue.current
-            setBookmark(pendingBookmarkLoaderValue.current)
-            pendingBookmarkLoaderValue.current = undefined
           }}
           showLabel
         />
