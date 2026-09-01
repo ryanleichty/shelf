@@ -24,34 +24,17 @@ export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const [similarItems, collection, collectionParts, signedIn, trailer] =
-      await Promise.all([
-        getSimilarOwnedItems({ data: { itemId: item.id } }),
-        item.type === "movie" && item.collection
-          ? getItemsByCollection({ data: { slug: item.collection.slug } })
-          : Promise.resolve(null),
-        item.type === "movie" &&
-        item.tmdbId &&
-        item.collection?.tmdbCollectionId
-          ? getTmdbCollectionParts({
-              data: { tmdbCollectionId: item.collection.tmdbCollectionId },
-            })
-          : Promise.resolve(null),
-        getSignedInStatus(),
-        (item.type === "movie" || item.type === "tv") && item.tmdbId
-          ? getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } })
-          : Promise.resolve(null),
-      ])
-    const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
-    const collectionItems = (collection?.items ?? [])
-      .filter((collectionItem) => collectionItem.status === "owned")
-      .flatMap((collectionItem) => {
-        if (collectionItem.id === item.id || !collectionItem.tmdbId) return []
-        const part = collectionParts?.indexOf(collectionItem.tmdbId) ?? -1
-        return part >= 0 ? [{ item: collectionItem, part }] : []
-      })
-      .sort((left, right) => left.part - right.part)
-      .map(({ item: collectionItem }) => collectionItem)
+    const [similarItems, collection, signedIn] = await Promise.all([
+      getSimilarOwnedItems({ data: { itemId: item.id } }),
+      item.type === "movie" && item.collection
+        ? getItemsByCollection({ data: { slug: item.collection.slug } })
+        : Promise.resolve(null),
+      getSignedInStatus(),
+    ])
+    const collectionItems = (collection?.items ?? []).filter(
+      (collectionItem) =>
+        collectionItem.status === "owned" && collectionItem.id !== item.id
+    )
     const collectionItemIds = new Set(collectionItems.map(({ id }) => id))
     const filteredSimilarItems = similarItems.filter(
       ({ id }) => !collectionItemIds.has(id)
@@ -59,11 +42,8 @@ export const Route = createFileRoute("/item/$slug")({
     return {
       item,
       similarItems: filteredSimilarItems,
-      collectionPart,
-      collectionPartsTotal: collectionParts?.length ?? 0,
       collectionItems,
       signedIn,
-      trailer,
     }
   },
   head: ({ loaderData }) => {
@@ -94,21 +74,49 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const {
-    item,
-    similarItems,
-    collectionPart,
-    collectionPartsTotal,
-    collectionItems,
-    signedIn,
-    trailer,
-  } = Route.useLoaderData()
+  const { item, similarItems, collectionItems, signedIn } =
+    Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
+  const [trailer, setTrailer] = useState<{ key: string } | null>()
+  const [collectionParts, setCollectionParts] = useState<Array<string | null>>()
 
   useEffect(() => {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
   }, [item.type])
+
+  useEffect(() => {
+    setTrailer(undefined)
+    if ((item.type !== "movie" && item.type !== "tv") || !item.tmdbId) return
+    void getTmdbTrailer({
+      data: { tmdbId: item.tmdbId, type: item.type },
+    }).then(setTrailer)
+  }, [item.tmdbId, item.type])
+
+  useEffect(() => {
+    setCollectionParts(undefined)
+    if (
+      item.type !== "movie" ||
+      !item.tmdbId ||
+      !item.collection?.tmdbCollectionId
+    )
+      return
+    void getTmdbCollectionParts({
+      data: { tmdbCollectionId: item.collection.tmdbCollectionId },
+    }).then(setCollectionParts)
+  }, [item.collection?.tmdbCollectionId, item.tmdbId, item.type])
+
+  const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
+  const orderedCollectionItems = collectionParts
+    ? collectionItems
+        .flatMap((collectionItem) => {
+          if (!collectionItem.tmdbId) return []
+          const part = collectionParts.indexOf(collectionItem.tmdbId)
+          return part >= 0 ? [{ item: collectionItem, part }] : []
+        })
+        .sort((left, right) => left.part - right.part)
+        .map(({ item: collectionItem }) => collectionItem)
+    : collectionItems
 
   return (
     <main>
@@ -289,7 +297,7 @@ function ItemDetail() {
                   </Badge>
                   {item.type === "movie" && collectionPart >= 0 && (
                     <span className="text-sm text-muted-foreground">
-                      Part {collectionPart + 1} of {collectionPartsTotal}
+                      Part {collectionPart + 1} of {collectionParts?.length}
                     </span>
                   )}
                 </div>
@@ -347,7 +355,7 @@ function ItemDetail() {
           </div>
         </article>
       </div>
-      {item.collection && collectionItems.length > 0 && (
+      {item.collection && orderedCollectionItems.length > 0 && (
         <section
           className="item-shelf-carousel mt-12"
           aria-labelledby="collection-parts"
@@ -365,7 +373,7 @@ function ItemDetail() {
           </h2>
           <HomeCarousel
             id={`collection-parts-${item.id}`}
-            items={collectionItems}
+            items={orderedCollectionItems}
           />
         </section>
       )}
