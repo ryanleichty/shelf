@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { SystemListToggle } from "@/components/system-list-toggle"
+import { coverPlateBackground } from "@/lib/cover-plate"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { cn } from "@/lib/utils"
 import type { Item } from "@/server/schema"
@@ -65,9 +66,12 @@ export function CoverTile({
           ) : (
             <div
               aria-hidden="true"
-              className="flex h-full items-center justify-center bg-muted text-2xl font-semibold text-muted-foreground/50"
+              className="flex h-full items-center justify-center bg-muted"
+              style={{ backgroundColor: coverPlateBackground(item.slug) }}
             >
-              S
+              <span className="line-clamp-4 px-2 text-center text-sm font-medium tracking-tight text-foreground">
+                {item.title}
+              </span>
             </div>
           )}
           {item.edition && (

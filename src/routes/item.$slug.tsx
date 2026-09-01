@@ -9,6 +9,7 @@ import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
 import { TrailerDialog } from "@/components/trailer-dialog"
+import { coverPlateBackground } from "@/lib/cover-plate"
 import {
   getItemBySlug,
   getItemsByCollection,
@@ -167,9 +168,15 @@ function ItemDetail() {
                 src={item.coverImageUrl}
               />
             ) : (
-              <span className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                {item.type}
-              </span>
+              <div
+                aria-hidden="true"
+                className="flex h-full items-center justify-center"
+                style={{ backgroundColor: coverPlateBackground(item.slug) }}
+              >
+                <span className="line-clamp-4 px-4 text-center text-lg font-medium tracking-tight">
+                  {item.title}
+                </span>
+              </div>
             )}
           </div>
           <div>
