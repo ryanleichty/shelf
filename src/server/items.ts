@@ -2722,6 +2722,7 @@ const tmdbBillboardDetailsCache = new Map<
   string,
   Promise<{ logoUrl: string | null; tagline: string | null }>
 >()
+const tmdbRelatedIdsCache = new Map<string, Promise<string[]>>()
 
 export const getTmdbCollectionParts = createServerFn({ method: "GET" })
   .inputValidator(z.object({ tmdbCollectionId: z.string().min(1).max(40) }))
@@ -2899,6 +2900,19 @@ async function loadTmdbBillboardDetails(
 }
 
 async function getTmdbRelatedIds(
+  type: "movie" | "tv",
+  tmdbId: string
+): Promise<string[]> {
+  const cacheKey = `${type}:${tmdbId}`
+  const cached = tmdbRelatedIdsCache.get(cacheKey)
+  if (cached) return cached
+
+  const result = loadTmdbRelatedIds(type, tmdbId)
+  tmdbRelatedIdsCache.set(cacheKey, result)
+  return result
+}
+
+async function loadTmdbRelatedIds(
   type: "movie" | "tv",
   tmdbId: string
 ): Promise<string[]> {
