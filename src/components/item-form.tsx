@@ -68,6 +68,64 @@ import {
 } from "@/server/items"
 import type { Item } from "@/server/schema"
 
+const itemFormFields = [
+  "directors",
+  "authors",
+  "status",
+  "borrower",
+  "format",
+  "edition",
+  "title",
+  "slug",
+  "year",
+] as const
+
+type ItemFormField = (typeof itemFormFields)[number]
+type ValidationIssue = { message: string }
+
+function isItemFormField(path: unknown): path is ItemFormField {
+  return (
+    typeof path === "string" &&
+    (itemFormFields as readonly string[]).includes(path)
+  )
+}
+
+function parseValidationIssues(message: string) {
+  try {
+    const issues: unknown = JSON.parse(message)
+    if (!Array.isArray(issues)) return null
+
+    const fieldErrors: Partial<Record<ItemFormField, ValidationIssue[]>> = {}
+    const formErrors: ValidationIssue[] = []
+
+    for (const issue of issues) {
+      if (
+        !issue ||
+        typeof issue !== "object" ||
+        !("message" in issue) ||
+        typeof issue.message !== "string"
+      ) {
+        continue
+      }
+
+      const path =
+        "path" in issue && Array.isArray(issue.path) ? issue.path : []
+      const field = path[0]
+      const error = { message: issue.message }
+
+      if (isItemFormField(field)) {
+        fieldErrors[field] = [...(fieldErrors[field] ?? []), error]
+      } else {
+        formErrors.push(error)
+      }
+    }
+
+    return { fieldErrors, formErrors }
+  } catch {
+    return null
+  }
+}
+
 function namesFromCreator(creator: string) {
   return creator
     .split(/,|\s+and\s+|\s+&\s+/i)
@@ -99,7 +157,10 @@ export function ItemForm({
   onTypeChange?: (type: "book" | "movie" | "tv") => void
 }) {
   const router = useRouter()
-  const [error, setError] = useState("")
+  const [error, setError] = useState<ValidationIssue[]>([])
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<ItemFormField, ValidationIssue[]>>
+  >({})
   const [saving, setSaving] = useState(false)
   const [internalType, setInternalType] = useState<"book" | "movie" | "tv">(
     item?.type ?? initialType ?? "book"
@@ -354,7 +415,8 @@ export function ItemForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
-    setError("")
+    setError([])
+    setFieldErrors({})
     try {
       const result = await saveItem({
         data: {
@@ -385,9 +447,16 @@ export function ItemForm({
         params: { slug: result.slug },
       })
     } catch (cause) {
-      setError(
+      const message =
         cause instanceof Error ? cause.message : "Could not save this item."
-      )
+      const validationIssues = parseValidationIssues(message)
+
+      if (validationIssues) {
+        setFieldErrors(validationIssues.fieldErrors)
+        setError(validationIssues.formErrors)
+      } else {
+        setError([{ message }])
+      }
     } finally {
       setSaving(false)
     }
@@ -539,18 +608,20 @@ export function ItemForm({
         </DialogContent>
       </Dialog>
       <FieldGroup className="form-grid">
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.title?.length)}>
           <FieldLabel htmlFor="title">Title</FieldLabel>
           <Input
+            aria-invalid={Boolean(fieldErrors.title?.length)}
             id="title"
             name="title"
             onChange={(event) => updateValue("title", event.target.value)}
             required
             value={values.title}
           />
+          <FieldError errors={fieldErrors.title} />
         </Field>
         {type === "book" ? (
-          <Field>
+          <Field data-invalid={Boolean(fieldErrors.authors?.length)}>
             <FieldLabel htmlFor="authors">Authors</FieldLabel>
             <Combobox
               inputValue={authorQuery}
@@ -566,6 +637,7 @@ export function ItemForm({
               value={values.author}
             >
               <ComboboxInput
+                aria-invalid={Boolean(fieldErrors.authors?.length)}
                 id="authors"
                 placeholder="Select or add an author…"
               />
@@ -588,10 +660,11 @@ export function ItemForm({
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
+            <FieldError errors={fieldErrors.authors} />
           </Field>
         ) : (
           <>
-            <Field>
+            <Field data-invalid={Boolean(fieldErrors.directors?.length)}>
               <FieldLabel htmlFor="directors">Directors</FieldLabel>
               <Combobox
                 inputValue={directorQuery}
@@ -610,6 +683,7 @@ export function ItemForm({
                 value={values.director}
               >
                 <ComboboxInput
+                  aria-invalid={Boolean(fieldErrors.directors?.length)}
                   id="directors"
                   placeholder="Select or add a director…"
                 />
@@ -632,6 +706,7 @@ export function ItemForm({
                   </ComboboxList>
                 </ComboboxContent>
               </Combobox>
+              <FieldError errors={fieldErrors.directors} />
             </Field>
             <Field>
               <FieldLabel htmlFor="cast">Cast</FieldLabel>
@@ -679,9 +754,10 @@ export function ItemForm({
             </Field>
           </>
         )}
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.slug?.length)}>
           <FieldLabel htmlFor="slug">Slug</FieldLabel>
           <Input
+            aria-invalid={Boolean(fieldErrors.slug?.length)}
             id="slug"
             name="slug"
             onChange={(event) => updateValue("slug", event.target.value)}
@@ -691,8 +767,9 @@ export function ItemForm({
           <FieldDescription>
             Lowercase words separated by hyphens.
           </FieldDescription>
+          <FieldError errors={fieldErrors.slug} />
         </Field>
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.status?.length)}>
           <FieldLabel htmlFor="status">Status</FieldLabel>
           <Select
             onValueChange={(value) => {
@@ -707,7 +784,11 @@ export function ItemForm({
             }}
             value={status}
           >
-            <SelectTrigger id="status" name="status">
+            <SelectTrigger
+              aria-invalid={Boolean(fieldErrors.status?.length)}
+              id="status"
+              name="status"
+            >
               <SelectValue placeholder="Unspecified" />
             </SelectTrigger>
             <SelectContent>
@@ -721,10 +802,12 @@ export function ItemForm({
               <SelectItem value="borrowed">Borrowed</SelectItem>
             </SelectContent>
           </Select>
+          <FieldError errors={fieldErrors.status} />
         </Field>
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.year?.length)}>
           <FieldLabel htmlFor="year">Year</FieldLabel>
           <Input
+            aria-invalid={Boolean(fieldErrors.year?.length)}
             id="year"
             min="0"
             name="year"
@@ -733,8 +816,9 @@ export function ItemForm({
             type="number"
             value={values.year}
           />
+          <FieldError errors={fieldErrors.year} />
         </Field>
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.format?.length)}>
           <FieldLabel htmlFor="format">Format</FieldLabel>
           <Select
             onValueChange={(value) =>
@@ -745,7 +829,11 @@ export function ItemForm({
             }
             value={values.format || "unspecified"}
           >
-            <SelectTrigger id="format" name="format">
+            <SelectTrigger
+              aria-invalid={Boolean(fieldErrors.format?.length)}
+              id="format"
+              name="format"
+            >
               <SelectValue placeholder="Unspecified" />
             </SelectTrigger>
             <SelectContent>
@@ -764,9 +852,10 @@ export function ItemForm({
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
+          <FieldError errors={fieldErrors.format} />
         </Field>
         {type !== "book" && (
-          <Field>
+          <Field data-invalid={Boolean(fieldErrors.edition?.length)}>
             <FieldLabel htmlFor="edition">Edition</FieldLabel>
             <Select
               onValueChange={(value) =>
@@ -777,7 +866,11 @@ export function ItemForm({
               }
               value={values.edition || "unspecified"}
             >
-              <SelectTrigger id="edition" name="edition">
+              <SelectTrigger
+                aria-invalid={Boolean(fieldErrors.edition?.length)}
+                id="edition"
+                name="edition"
+              >
                 <SelectValue placeholder="Unspecified" />
               </SelectTrigger>
               <SelectContent>
@@ -789,6 +882,7 @@ export function ItemForm({
                 </SelectItem>
               </SelectContent>
             </Select>
+            <FieldError errors={fieldErrors.edition} />
           </Field>
         )}
         <Field className="sm:col-span-2">
@@ -917,9 +1011,10 @@ export function ItemForm({
         )}
         {status === "borrowed" && (
           <>
-            <Field>
+            <Field data-invalid={Boolean(fieldErrors.borrower?.length)}>
               <FieldLabel htmlFor="borrower">With whom</FieldLabel>
               <Input
+                aria-invalid={Boolean(fieldErrors.borrower?.length)}
                 id="borrower"
                 name="borrower"
                 onChange={(event) =>
@@ -928,6 +1023,7 @@ export function ItemForm({
                 required
                 value={values.borrower}
               />
+              <FieldError errors={fieldErrors.borrower} />
             </Field>
             <Field>
               <FieldLabel htmlFor="loanedAt">Loaned out</FieldLabel>
@@ -944,7 +1040,7 @@ export function ItemForm({
           </>
         )}
       </FieldGroup>
-      {error && <FieldError>{error}</FieldError>}
+      <FieldError errors={error} />
       <div className="form-footer">
         <Button render={<Link to="/admin" />} variant="outline">
           Cancel
