@@ -5,6 +5,7 @@ import {
   eq,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lte,
   or,
@@ -2414,7 +2415,9 @@ export const getItemsByList = createServerFn({ method: "GET" })
       .limit(1)
     if (!placement) return null
 
-    const filters = [eq(listItems.listId, list.id), eq(items.type, data.type)]
+    const listFilters = [eq(listItems.listId, list.id), eq(items.type, data.type)]
+    const filters = [...listFilters]
+    let hasSearch = false
     if (data.query?.trim()) {
       const search = data.query
         .trim()
@@ -2424,21 +2427,57 @@ export const getItemsByList = createServerFn({ method: "GET" })
         .map((term) => `${term}*`)
         .join(" AND ")
       if (search) {
+        hasSearch = true
         filters.push(
           sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`
         )
       }
     }
 
-    const records = await db
+    const recordsQuery = db
       .select()
       .from(items)
       .innerJoin(listItems, eq(listItems.itemId, items.id))
       .where(and(...filters))
       .orderBy(asc(listItems.position))
+    if (!hasSearch) {
+      const enrichedItems = await enrichItems(
+        (await recordsQuery).map((row) => row.items)
+      )
+      return {
+        name: displayListName(data.listSlug, list.name),
+        items: enrichedItems,
+        totalCount: enrichedItems.length,
+        collageItems: enrichedItems
+          .filter((item) => item.coverImageUrl)
+          .slice(0, 4),
+      }
+    }
+
+    const [records, [total], collageRecords] = await Promise.all([
+      recordsQuery,
+      db
+        .select({ totalCount: sql<number>`count(*)` })
+        .from(items)
+        .innerJoin(listItems, eq(listItems.itemId, items.id))
+        .where(and(...listFilters)),
+      db
+        .select()
+        .from(items)
+        .innerJoin(listItems, eq(listItems.itemId, items.id))
+        .where(and(...listFilters, isNotNull(items.coverImageUrl)))
+        .orderBy(asc(listItems.position))
+        .limit(4),
+    ])
+    const [enrichedItems, collageItems] = await Promise.all([
+      enrichItems(records.map((row) => row.items)),
+      enrichItems(collageRecords.map((row) => row.items)),
+    ])
     return {
       name: displayListName(data.listSlug, list.name),
-      items: await enrichItems(records.map((row) => row.items)),
+      items: enrichedItems,
+      totalCount: total.totalCount,
+      collageItems,
     }
   })
 

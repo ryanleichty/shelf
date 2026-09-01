@@ -19,15 +19,17 @@ export const Route = createFileRoute("/movies_/list/$slug")({
 function MovieList() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  const { items, name } = Route.useLoaderData()
+  const { collageItems, items, name, totalCount } = Route.useLoaderData()
   return (
     <ListCatalog
+      collageItems={collageItems}
       items={items}
       name={name}
       onQueryChange={(query) =>
         navigate({ search: { query: query || undefined } })
       }
       query={search.query}
+      totalCount={totalCount}
       type="movie"
     />
   )
