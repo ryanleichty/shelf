@@ -2415,7 +2415,10 @@ export const getItemsByList = createServerFn({ method: "GET" })
       .limit(1)
     if (!placement) return null
 
-    const listFilters = [eq(listItems.listId, list.id), eq(items.type, data.type)]
+    const listFilters = [
+      eq(listItems.listId, list.id),
+      eq(items.type, data.type),
+    ]
     const filters = [...listFilters]
     let hasSearch = false
     if (data.query?.trim()) {
@@ -2710,31 +2713,52 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
     })
   })
 
+const tmdbCollectionPartsCache = new Map<
+  string,
+  Promise<Array<string | null>>
+>()
+const tmdbTrailerCache = new Map<string, Promise<{ key: string } | null>>()
+const tmdbBillboardDetailsCache = new Map<
+  string,
+  Promise<{ logoUrl: string | null; tagline: string | null }>
+>()
+
 export const getTmdbCollectionParts = createServerFn({ method: "GET" })
   .inputValidator(z.object({ tmdbCollectionId: z.string().min(1).max(40) }))
   .handler(async ({ data }): Promise<Array<string | null>> => {
-    const apiKey = process.env.TMDB_API_KEY
-    if (!apiKey) return []
+    const cached = tmdbCollectionPartsCache.get(data.tmdbCollectionId)
+    if (cached) return cached
 
-    try {
-      const url = new URL(
-        `https://api.themoviedb.org/3/collection/${data.tmdbCollectionId}`
-      )
-      url.searchParams.set("api_key", apiKey)
-      const response = await fetch(url)
-      if (!response.ok) return []
-      const body = (await response.json()) as {
-        parts?: Array<{ id?: number | string }>
-      }
-      return (body.parts ?? []).map((part) =>
-        typeof part.id === "number" || typeof part.id === "string"
-          ? String(part.id)
-          : null
-      )
-    } catch {
-      return []
-    }
+    const result = loadTmdbCollectionParts(data.tmdbCollectionId)
+    tmdbCollectionPartsCache.set(data.tmdbCollectionId, result)
+    return result
   })
+
+async function loadTmdbCollectionParts(
+  tmdbCollectionId: string
+): Promise<Array<string | null>> {
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) return []
+
+  try {
+    const url = new URL(
+      `https://api.themoviedb.org/3/collection/${tmdbCollectionId}`
+    )
+    url.searchParams.set("api_key", apiKey)
+    const response = await fetch(url)
+    if (!response.ok) return []
+    const body = (await response.json()) as {
+      parts?: Array<{ id?: number | string }>
+    }
+    return (body.parts ?? []).map((part) =>
+      typeof part.id === "number" || typeof part.id === "string"
+        ? String(part.id)
+        : null
+    )
+  } catch {
+    return []
+  }
+}
 
 export const getTmdbTrailer = createServerFn({ method: "GET" })
   .inputValidator(
@@ -2744,42 +2768,53 @@ export const getTmdbTrailer = createServerFn({ method: "GET" })
     })
   )
   .handler(async ({ data }): Promise<{ key: string } | null> => {
-    const apiKey = process.env.TMDB_API_KEY
-    if (!apiKey) return null
+    const cacheKey = `${data.type}:${data.tmdbId}`
+    const cached = tmdbTrailerCache.get(cacheKey)
+    if (cached) return cached
 
-    try {
-      const url = new URL(
-        `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/videos`
-      )
-      url.searchParams.set("api_key", apiKey)
-      url.searchParams.set("language", "en-US")
-      const response = await fetch(url)
-      if (!response.ok) return null
-      const body = (await response.json()) as {
-        results?: Array<{
-          key?: string
-          official?: boolean
-          iso_3166_1?: string
-          iso_639_1?: string
-          site?: string
-          type?: string
-        }>
-      }
-      const trailers = (body.results ?? []).filter(
-        (video) =>
-          video.official === true &&
-          video.type === "Trailer" &&
-          video.site === "YouTube" &&
-          video.iso_3166_1 === "US" &&
-          video.iso_639_1 === "en" &&
-          Boolean(video.key?.trim())
-      )
-      const trailer = trailers[0]
-      return trailer?.key ? { key: trailer.key } : null
-    } catch {
-      return null
-    }
+    const result = loadTmdbTrailer(data.type, data.tmdbId)
+    tmdbTrailerCache.set(cacheKey, result)
+    return result
   })
+
+async function loadTmdbTrailer(
+  type: "movie" | "tv",
+  tmdbId: string
+): Promise<{ key: string } | null> {
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}/videos`)
+    url.searchParams.set("api_key", apiKey)
+    url.searchParams.set("language", "en-US")
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const body = (await response.json()) as {
+      results?: Array<{
+        key?: string
+        official?: boolean
+        iso_3166_1?: string
+        iso_639_1?: string
+        site?: string
+        type?: string
+      }>
+    }
+    const trailers = (body.results ?? []).filter(
+      (video) =>
+        video.official === true &&
+        video.type === "Trailer" &&
+        video.site === "YouTube" &&
+        video.iso_3166_1 === "US" &&
+        video.iso_639_1 === "en" &&
+        Boolean(video.key?.trim())
+    )
+    const trailer = trailers[0]
+    return trailer?.key ? { key: trailer.key } : null
+  } catch {
+    return null
+  }
+}
 
 export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
   .inputValidator(
@@ -2792,65 +2827,76 @@ export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
     async ({
       data,
     }): Promise<{ logoUrl: string | null; tagline: string | null }> => {
-      const apiKey = process.env.TMDB_API_KEY
-      if (!apiKey) return { logoUrl: null, tagline: null }
+      const cacheKey = `${data.type}:${data.tmdbId}`
+      const cached = tmdbBillboardDetailsCache.get(cacheKey)
+      if (cached) return cached
 
-      try {
-        const imageUrl = new URL(
-          `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}/images`
-        )
-        imageUrl.searchParams.set("api_key", apiKey)
-        imageUrl.searchParams.set("include_image_language", "en")
-
-        const detailsUrl = new URL(
-          `https://api.themoviedb.org/3/${data.type}/${data.tmdbId}`
-        )
-        detailsUrl.searchParams.set("api_key", apiKey)
-        detailsUrl.searchParams.set("language", "en-US")
-
-        const [imagesResponse, detailsResponse] = await Promise.all([
-          fetch(imageUrl),
-          fetch(detailsUrl),
-        ])
-        const imageBody = imagesResponse.ok
-          ? ((await imagesResponse.json()) as {
-              logos?: Array<{
-                file_path?: string
-                file_type?: string
-                iso_639_1?: string | null
-                width?: number
-              }>
-            })
-          : null
-        const detailsBody = detailsResponse.ok
-          ? ((await detailsResponse.json()) as { tagline?: string | null })
-          : null
-        const englishLogos = (imageBody?.logos ?? []).filter(
-          (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
-        )
-        const logo =
-          englishLogos.find((image) =>
-            image.file_path?.toLocaleLowerCase().endsWith(".svg")
-          ) ??
-          [...englishLogos]
-            .filter((image) =>
-              image.file_path?.toLocaleLowerCase().endsWith(".png")
-            )
-            .sort((left, right) => (right.width ?? 0) - (left.width ?? 0))[0] ??
-          englishLogos[0] ??
-          null
-
-        return {
-          logoUrl: logo?.file_path
-            ? `https://image.tmdb.org/t/p/original${logo.file_path}`
-            : null,
-          tagline: detailsBody?.tagline?.trim() || null,
-        }
-      } catch {
-        return { logoUrl: null, tagline: null }
-      }
+      const result = loadTmdbBillboardDetails(data.type, data.tmdbId)
+      tmdbBillboardDetailsCache.set(cacheKey, result)
+      return result
     }
   )
+
+async function loadTmdbBillboardDetails(
+  type: "movie" | "tv",
+  tmdbId: string
+): Promise<{ logoUrl: string | null; tagline: string | null }> {
+  const apiKey = process.env.TMDB_API_KEY
+  if (!apiKey) return { logoUrl: null, tagline: null }
+
+  try {
+    const imageUrl = new URL(
+      `https://api.themoviedb.org/3/${type}/${tmdbId}/images`
+    )
+    imageUrl.searchParams.set("api_key", apiKey)
+    imageUrl.searchParams.set("include_image_language", "en")
+
+    const detailsUrl = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
+    detailsUrl.searchParams.set("api_key", apiKey)
+    detailsUrl.searchParams.set("language", "en-US")
+
+    const [imagesResponse, detailsResponse] = await Promise.all([
+      fetch(imageUrl),
+      fetch(detailsUrl),
+    ])
+    const imageBody = imagesResponse.ok
+      ? ((await imagesResponse.json()) as {
+          logos?: Array<{
+            file_path?: string
+            file_type?: string
+            iso_639_1?: string | null
+            width?: number
+          }>
+        })
+      : null
+    const detailsBody = detailsResponse.ok
+      ? ((await detailsResponse.json()) as { tagline?: string | null })
+      : null
+    const englishLogos = (imageBody?.logos ?? []).filter(
+      (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
+    )
+    const logo =
+      englishLogos.find((image) =>
+        image.file_path?.toLocaleLowerCase().endsWith(".svg")
+      ) ??
+      [...englishLogos]
+        .filter((image) =>
+          image.file_path?.toLocaleLowerCase().endsWith(".png")
+        )
+        .sort((left, right) => (right.width ?? 0) - (left.width ?? 0))[0] ??
+      englishLogos[0] ??
+      null
+
+    return {
+      logoUrl: logo?.file_path
+        ? `https://image.tmdb.org/t/p/original${logo.file_path}`
+        : null,
+      tagline: detailsBody?.tagline?.trim() || null,
+    }
+  } catch {
+    return { logoUrl: null, tagline: null }
+  }
+}
 
 async function getTmdbRelatedIds(
   type: "movie" | "tv",

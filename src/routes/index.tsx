@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { useEffect, useState } from "react"
 import { HomeBillboard } from "@/components/home-billboard"
 import { HomeCarousel } from "@/components/home-carousel"
 import {
@@ -32,17 +33,6 @@ export const Route = createFileRoute("/")({
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .slice(0, 5)
-    const billboards = await Promise.all(
-      billboardItems.map(async (item) => {
-        const [details, trailer] = await Promise.all([
-          getTmdbBillboardDetails({
-            data: { tmdbId: item.tmdbId, type: item.type },
-          }),
-          getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } }),
-        ])
-        return { item, details, trailer }
-      })
-    )
     const rows = [
       { title: "Books", to: "/books" as const, items: recentItemsFor("book") },
       {
@@ -53,7 +43,7 @@ export const Route = createFileRoute("/")({
       { title: "TV", to: "/tv" as const, items: recentItemsFor("tv") },
     ].filter((row) => row.items.length)
     return {
-      billboards,
+      billboards: billboardItems,
       rows,
     }
   },
@@ -62,9 +52,38 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { billboards, rows } = Route.useLoaderData()
+  const [tmdbDetails, setTmdbDetails] = useState<
+    Record<string, { logoUrl: string | null; tagline: string | null }>
+  >({})
+  const [tmdbTrailers, setTmdbTrailers] = useState<
+    Record<string, { key: string } | null>
+  >({})
+
+  useEffect(() => {
+    for (const billboard of billboards) {
+      const key = billboard.id
+      void getTmdbBillboardDetails({
+        data: { tmdbId: billboard.tmdbId, type: billboard.type },
+      }).then((details) =>
+        setTmdbDetails((current) => ({ ...current, [key]: details }))
+      )
+      void getTmdbTrailer({
+        data: { tmdbId: billboard.tmdbId, type: billboard.type },
+      }).then((trailer) =>
+        setTmdbTrailers((current) => ({ ...current, [key]: trailer }))
+      )
+    }
+  }, [billboards])
+
+  const enrichedBillboards = billboards.map((item) => ({
+    item,
+    details: tmdbDetails[item.id] ?? { logoUrl: null, tagline: null },
+    trailer: tmdbTrailers[item.id] ?? null,
+  }))
+
   return (
     <main className="overflow-x-hidden">
-      <HomeBillboard billboards={billboards} />
+      <HomeBillboard billboards={enrichedBillboards} />
       {rows.length ? (
         <div className="mt-10 flex flex-col gap-10 pb-10">
           {rows.map((row, index) => (
