@@ -108,8 +108,8 @@ export function Catalog({
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <Field className="min-w-56 flex-1">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Field className="min-w-0 flex-1">
           <FieldLabel className="sr-only" htmlFor="catalog-search">
             Search
           </FieldLabel>
@@ -125,71 +125,77 @@ export function Catalog({
             />
           </InputGroup>
         </Field>
-        {genreOptions.length > 0 && !hideGenreFilter && (
-          <Field>
-            <FieldLabel htmlFor="catalog-genre">Genre</FieldLabel>
-            {genreOptions.length >= 8 ? (
-              <Combobox
-                items={genreItems}
-                onValueChange={(item) => setGenre(item?.value ?? "all")}
-                value={genreItems.find((item) => item.value === genre)}
-              >
-                <ComboboxInput id="catalog-genre" placeholder="All genres" />
-                <ComboboxContent>
-                  <ComboboxEmpty>No genres found.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(item) => (
-                      <ComboboxItem key={item.value} value={item}>
-                        {item.label}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            ) : (
-              <Select
-                items={genreItems}
-                onValueChange={(value) => setGenre(value ?? "all")}
-                value={genre}
-              >
-                <SelectTrigger id="catalog-genre">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="all">All genres</SelectItem>
-                    {genreOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            )}
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+          {genreOptions.length > 0 && !hideGenreFilter && (
+            <Field className="w-auto">
+              <FieldLabel className="sr-only" htmlFor="catalog-genre">
+                Genre
+              </FieldLabel>
+              {genreOptions.length >= 8 ? (
+                <Combobox
+                  items={genreItems}
+                  onValueChange={(item) => setGenre(item?.value ?? "all")}
+                  value={genreItems.find((item) => item.value === genre)}
+                >
+                  <ComboboxInput id="catalog-genre" placeholder="All genres" />
+                  <ComboboxContent>
+                    <ComboboxEmpty>No genres found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.value} value={item}>
+                          {item.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              ) : (
+                <Select
+                  items={genreItems}
+                  onValueChange={(value) => setGenre(value ?? "all")}
+                  value={genre}
+                >
+                  <SelectTrigger id="catalog-genre">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="all">All genres</SelectItem>
+                      {genreOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )}
+            </Field>
+          )}
+          <Field className="w-auto">
+            <FieldLabel className="sr-only" htmlFor="catalog-sort">
+              Sort
+            </FieldLabel>
+            <Select
+              items={sortItems}
+              onValueChange={(value) => setSort(value ?? "title-asc")}
+              value={sort}
+            >
+              <SelectTrigger id="catalog-sort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="title-asc">Title A–Z</SelectItem>
+                  <SelectItem value="title-desc">Title Z–A</SelectItem>
+                  <SelectItem value="year-desc">Year newest</SelectItem>
+                  <SelectItem value="year-asc">Year oldest</SelectItem>
+                  <SelectItem value="updated-desc">Recently updated</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
-        )}
-        <Field>
-          <FieldLabel htmlFor="catalog-sort">Sort</FieldLabel>
-          <Select
-            items={sortItems}
-            onValueChange={(value) => setSort(value ?? "title-asc")}
-            value={sort}
-          >
-            <SelectTrigger id="catalog-sort">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="title-asc">Title A–Z</SelectItem>
-                <SelectItem value="title-desc">Title Z–A</SelectItem>
-                <SelectItem value="year-desc">Year newest</SelectItem>
-                <SelectItem value="year-asc">Year oldest</SelectItem>
-                <SelectItem value="updated-desc">Recently updated</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
+        </div>
       </div>
 
       {visibleItems.length ? (
