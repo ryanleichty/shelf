@@ -56,7 +56,7 @@ export function HomeCarousel({
     <div className="relative">
       <BlossomCarousel
         className={cn(
-          "home-carousel snap-x snap-mandatory",
+          "home-carousel snap-x snap-mandatory overflow-x-auto overflow-y-clip",
           contained && "home-carousel-contained"
         )}
         id={id}
@@ -64,7 +64,7 @@ export function HomeCarousel({
         {visibleItems.map((item) => (
           <div
             className={cn(
-              "relative z-0 mr-3 w-28 snap-start whitespace-normal focus-within:z-10 hover:z-10 sm:w-56",
+              "relative z-0 mr-3 w-28 snap-start py-4 whitespace-normal focus-within:z-10 hover:z-10 sm:w-56",
               slideClassName
             )}
             data-blossom-slide

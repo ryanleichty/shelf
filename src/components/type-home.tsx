@@ -32,7 +32,7 @@ export function TypeHome({
   const systemListSlug = type === "book" ? "reading-list" : "watchlist"
 
   return (
-    <main className="overflow-x-hidden py-10">
+    <main className="overflow-x-clip py-10">
       <section className="container mx-auto mb-10 flex max-w-6xl items-end justify-between gap-4 px-4">
         <div>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
@@ -89,7 +89,7 @@ export function TypeHome({
 
             function renderSection(content: ReactNode) {
               return (
-                <section className="overflow-x-hidden">
+                <section className="overflow-x-clip">
                   {renderHeading()}
                   {content}
                 </section>
