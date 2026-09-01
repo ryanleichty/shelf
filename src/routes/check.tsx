@@ -21,7 +21,7 @@ function Check() {
     <main className="container mx-auto max-w-md px-4 py-6 sm:py-10">
       <p className="text-sm text-muted-foreground">Private index</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-        Check Shelf
+        Scan barcode
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Scan a barcode before you buy.
