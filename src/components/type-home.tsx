@@ -131,7 +131,7 @@ function SystemListCaption({ item }: { item: Item }) {
   const author =
     item.type === "book"
       ? item.authors
-          .map((author) => author.trim())
+          .map((name) => name.trim())
           .filter(Boolean)
           .join(", ") || item.creator.trim()
       : null
