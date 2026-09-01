@@ -15,66 +15,76 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   SystemListToggle,
   type SystemListOption,
 } from "@/components/system-list-toggle"
-import { getSignedInStatus } from "@/server/items"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
 type ListOption = { slug: string; name: string; containsItem: boolean }
+const membershipRouteIds = new Set([
+  "/books",
+  "/books_/list/$slug",
+  "/item/$slug",
+  "/movies",
+  "/movies_/list/$slug",
+  "/tv",
+  "/tv_/list/$slug",
+])
 
 export function ItemListMenu({
   itemId,
   itemType,
   lists,
+  signedIn,
   systemList,
   trailer,
 }: {
   itemId: number
   itemType: "book" | "movie" | "tv"
   lists: ListOption[]
+  signedIn: boolean
   systemList: SystemListOption | null
   trailer?: ReactNode
 }) {
   const router = useRouter()
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
   const [customLists, setCustomLists] = useState(lists)
   const [bookmark, setBookmark] = useState(systemList)
   const [error, setError] = useState("")
   const [newListOpen, setNewListOpen] = useState(false)
   const customListsRef = useRef(lists)
+  const bookmarkRef = useRef(systemList)
   const listRequestGenerations = useRef(new Map<string, number>())
-  const activeListRequests = useRef(new Set<string>())
-
-  useEffect(() => {
-    getSignedInStatus()
-      .then(setSignedIn)
-      .catch(() => setSignedIn(false))
-  }, [])
+  const optimisticListValues = useRef(new Map<string, boolean>())
+  const optimisticBookmarkValue = useRef<boolean | null>(null)
 
   useEffect(() => {
     const nextLists = lists.map((list) => {
       const optimisticList = customListsRef.current.find(
         (candidate) => candidate.slug === list.slug
       )
-      return activeListRequests.current.has(list.slug) && optimisticList
-        ? { ...list, containsItem: optimisticList.containsItem }
-        : list
+      const optimisticValue = optimisticListValues.current.get(list.slug)
+      if (
+        optimisticList &&
+        optimisticValue !== undefined &&
+        list.containsItem !== optimisticValue
+      )
+        return { ...list, containsItem: optimisticList.containsItem }
+      return list
     })
     customListsRef.current = nextLists
     setCustomLists(nextLists)
   }, [lists])
-  useEffect(() => setBookmark(systemList), [systemList])
-
-  if (signedIn === null)
-    return (
-      <div className="mt-4 flex items-center gap-2">
-        {trailer}
-        <Skeleton aria-label="Loading list controls" className="size-9" />
-      </div>
+  useEffect(() => {
+    if (
+      optimisticBookmarkValue.current !== null &&
+      systemList?.containsItem !== optimisticBookmarkValue.current
     )
+      return
+    bookmarkRef.current = systemList
+    setBookmark(systemList)
+  }, [systemList])
+
   if (!signedIn)
     return trailer ? (
       <div className="mt-4 flex items-center gap-2">{trailer}</div>
@@ -89,7 +99,7 @@ export function ItemListMenu({
     const nextContainsItem = !previousContainsItem
     const generation = (listRequestGenerations.current.get(list.slug) ?? 0) + 1
     listRequestGenerations.current.set(list.slug, generation)
-    activeListRequests.current.add(list.slug)
+    optimisticListValues.current.set(list.slug, nextContainsItem)
     setError("")
     const nextLists = customListsRef.current.map((candidate) =>
       candidate.slug === list.slug
@@ -103,7 +113,9 @@ export function ItemListMenu({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (listRequestGenerations.current.get(list.slug) !== generation) return
-      await router.invalidate()
+      void router.invalidate({
+        filter: (match) => membershipRouteIds.has(match.routeId),
+      })
     } catch (cause) {
       if (listRequestGenerations.current.get(list.slug) !== generation) return
       const revertedLists = customListsRef.current.map((candidate) =>
@@ -113,14 +125,12 @@ export function ItemListMenu({
       )
       customListsRef.current = revertedLists
       setCustomLists(revertedLists)
+      optimisticListValues.current.delete(list.slug)
       setError(
         cause instanceof Error
           ? cause.message
           : `Could not update ${list.name}.`
       )
-    } finally {
-      if (listRequestGenerations.current.get(list.slug) === generation)
-        activeListRequests.current.delete(list.slug)
     }
   }
 
@@ -131,9 +141,16 @@ export function ItemListMenu({
           itemId={itemId}
           list={bookmark}
           onError={setError}
-          onMembershipChange={(containsItem) =>
-            setBookmark({ ...bookmark, containsItem })
-          }
+          onMembershipChange={(containsItem) => {
+            if (!bookmarkRef.current) return
+            const nextBookmark = {
+              ...bookmarkRef.current,
+              containsItem,
+            }
+            bookmarkRef.current = nextBookmark
+            optimisticBookmarkValue.current = containsItem
+            setBookmark(nextBookmark)
+          }}
           showLabel
         />
       )}
