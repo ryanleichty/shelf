@@ -110,12 +110,13 @@ function ItemDetail() {
   const orderedCollectionItems = collectionParts
     ? collectionItems
         .flatMap((collectionItem) => {
+          if (!collectionItem.tmdbId) return []
           const part = collectionParts.indexOf(collectionItem.tmdbId)
           return part >= 0 ? [{ item: collectionItem, part }] : []
         })
         .sort((left, right) => left.part - right.part)
         .map(({ item: collectionItem }) => collectionItem)
-    : []
+    : collectionItems
 
   return (
     <main>
