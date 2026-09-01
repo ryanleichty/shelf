@@ -442,6 +442,7 @@ export function ItemForm({
           description: values.description,
         } satisfies ItemInput,
       })
+      await router.invalidate()
       await router.navigate({
         to: "/item/$slug",
         params: { slug: result.slug },

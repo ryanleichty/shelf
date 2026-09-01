@@ -120,6 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   async function signOut() {
     await logout()
+    await router.invalidate()
     setCurrentUser(null)
     setSignedIn(false)
     await router.navigate({ to: "/" })
