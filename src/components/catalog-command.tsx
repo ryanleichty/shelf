@@ -165,7 +165,7 @@ export function CatalogCommand({
         onOpenChange(true)
         return
       }
-      if (!open || !signedIn || !event.metaKey) return
+      if (!open || !signedIn || (!event.metaKey && !event.ctrlKey)) return
       if (event.key === "1") {
         event.preventDefault()
         openCheckBarcode()
