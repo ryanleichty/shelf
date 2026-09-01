@@ -102,12 +102,10 @@ function ItemDetail() {
 
   useEffect(() => {
     setSimilarItems([])
-    if (item.type === "book") return
-    void getSimilarOwnedItems({ data: { itemId: item.id } }).then((items) => {
-      const collectionItemIds = new Set(collectionItems.map(({ id }) => id))
-      setSimilarItems(items.filter(({ id }) => !collectionItemIds.has(id)))
-    })
-  }, [collectionItems, item.id, item.type])
+    void getSimilarOwnedItems({ data: { itemId: item.id } }).then(
+      setSimilarItems
+    )
+  }, [item.id])
 
   const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
   const orderedCollectionItems = collectionParts
