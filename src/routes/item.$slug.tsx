@@ -11,8 +11,10 @@ import { ItemListMenu } from "@/components/item-list-menu"
 import { TrailerDialog } from "@/components/trailer-dialog"
 import {
   getItemBySlug,
+  getItemsByCollection,
   getSignedInStatus,
   getSimilarOwnedItems,
+  getTmdbCollectionParts,
   getTmdbTrailer,
 } from "@/server/items"
 
@@ -21,14 +23,43 @@ export const Route = createFileRoute("/item/$slug")({
   loader: async ({ params }) => {
     const item = await getItemBySlug({ data: { slug: params.slug } })
     if (!item) throw notFound()
-    const [similarItems, signedIn, trailer] = await Promise.all([
-      getSimilarOwnedItems({ data: { itemId: item.id } }),
-      getSignedInStatus(),
-      (item.type === "movie" || item.type === "tv") && item.tmdbId
-        ? getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } })
-        : Promise.resolve(null),
-    ])
-    return { item, similarItems, signedIn, trailer }
+    const [similarItems, collection, collectionParts, signedIn, trailer] =
+      await Promise.all([
+        getSimilarOwnedItems({ data: { itemId: item.id } }),
+        item.type === "movie" && item.collection
+          ? getItemsByCollection({ data: { slug: item.collection.slug } })
+          : Promise.resolve(null),
+        item.type === "movie" &&
+        item.tmdbId &&
+        item.collection?.tmdbCollectionId
+          ? getTmdbCollectionParts({
+              data: { tmdbCollectionId: item.collection.tmdbCollectionId },
+            })
+          : Promise.resolve(null),
+        getSignedInStatus(),
+        (item.type === "movie" || item.type === "tv") && item.tmdbId
+          ? getTmdbTrailer({ data: { tmdbId: item.tmdbId, type: item.type } })
+          : Promise.resolve(null),
+      ])
+    const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
+    const collectionItems = (collection?.items ?? [])
+      .filter((collectionItem) => collectionItem.status === "owned")
+      .flatMap((collectionItem) => {
+        if (collectionItem.id === item.id || !collectionItem.tmdbId) return []
+        const part = collectionParts?.indexOf(collectionItem.tmdbId) ?? -1
+        return part >= 0 ? [{ item: collectionItem, part }] : []
+      })
+      .sort((left, right) => left.part - right.part)
+      .map(({ item: collectionItem }) => collectionItem)
+    return {
+      item,
+      similarItems,
+      collectionPart,
+      collectionPartsTotal: collectionParts?.length ?? 0,
+      collectionItems,
+      signedIn,
+      trailer,
+    }
   },
   head: ({ loaderData }) => {
     const item = loaderData?.item
@@ -58,7 +89,15 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const { item, similarItems, signedIn, trailer } = Route.useLoaderData()
+  const {
+    item,
+    similarItems,
+    collectionPart,
+    collectionPartsTotal,
+    collectionItems,
+    signedIn,
+    trailer,
+  } = Route.useLoaderData()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
 
@@ -225,7 +264,7 @@ function ItemDetail() {
             )}
             {(item.type === "movie" || item.type === "book") &&
               item.collection && (
-                <div className="mt-4">
+                <div className="mt-4 flex items-baseline gap-2">
                   <Badge
                     render={
                       <Link
@@ -237,6 +276,11 @@ function ItemDetail() {
                   >
                     {item.collection.name}
                   </Badge>
+                  {item.type === "movie" && collectionPart >= 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      Part {collectionPart + 1} of {collectionPartsTotal}
+                    </span>
+                  )}
                 </div>
               )}
             {item.description && (
@@ -292,6 +336,28 @@ function ItemDetail() {
           </div>
         </article>
       </div>
+      {item.collection && collectionItems.length > 0 && (
+        <section
+          className="item-shelf-carousel mt-12"
+          aria-labelledby="collection-parts"
+        >
+          <h2
+            className="container mx-auto mb-4 max-w-5xl px-4 text-xl font-semibold tracking-tight"
+            id="collection-parts"
+          >
+            <Link
+              params={{ slug: item.collection.slug }}
+              to="/collection/$slug"
+            >
+              {item.collection.name}
+            </Link>
+          </h2>
+          <HomeCarousel
+            id={`collection-parts-${item.id}`}
+            items={collectionItems}
+          />
+        </section>
+      )}
       {similarItems.length > 0 && (
         <section
           className="item-shelf-carousel mt-12"

@@ -2671,6 +2671,32 @@ export const getSimilarOwnedItems = createServerFn({ method: "GET" })
     })
   })
 
+export const getTmdbCollectionParts = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ tmdbCollectionId: z.string().min(1).max(40) }))
+  .handler(async ({ data }): Promise<Array<string | null>> => {
+    const apiKey = process.env.TMDB_API_KEY
+    if (!apiKey) return []
+
+    try {
+      const url = new URL(
+        `https://api.themoviedb.org/3/collection/${data.tmdbCollectionId}`
+      )
+      url.searchParams.set("api_key", apiKey)
+      const response = await fetch(url)
+      if (!response.ok) return []
+      const body = (await response.json()) as {
+        parts?: Array<{ id?: number | string }>
+      }
+      return (body.parts ?? []).map((part) =>
+        typeof part.id === "number" || typeof part.id === "string"
+          ? String(part.id)
+          : null
+      )
+    } catch {
+      return []
+    }
+  })
+
 export const getTmdbTrailer = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({
