@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { displayListName } from "@/lib/system-lists"
-import { db, refreshSearchIndex } from "./db"
+import { db } from "./db"
 import {
   fetchTmdbCollectionPartIds,
   fetchTmdbExtras,
@@ -700,8 +700,6 @@ async function replaceItemTags(
   if (tags.genres !== undefined) await upsertTags(itemId, "genre", tags.genres)
   if (tags.keywords !== undefined)
     await upsertTags(itemId, "keyword", tags.keywords)
-  if (tags.genres !== undefined || tags.keywords !== undefined)
-    await refreshSearchIndex()
 }
 
 export async function replaceItemCollection(
