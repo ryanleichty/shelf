@@ -119,18 +119,18 @@ export async function requireAdmin() {
 }
 
 export function isAgentRequest(request: Request) {
-  const headers = [
-    request.headers.get("authorization")?.trim(),
-    getRequestHeader("authorization")?.trim(),
-  ]
-  return headers.some((header) =>
-    isAgentToken(header?.replace(/^Bearer\s+/i, "").trim())
-  )
+  return [
+    request.headers.get("authorization"),
+    getRequestHeader("authorization"),
+  ].some((header) => isAgentToken(header))
 }
 
 export function isAgentToken(value: string | null | undefined) {
   const token = process.env.SHELF_AGENT_TOKEN?.trim()
-  const presented = value?.trim()
+  const presented = value
+    ?.trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim()
   return Boolean(
     token &&
     presented &&
