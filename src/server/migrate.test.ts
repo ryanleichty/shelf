@@ -21,6 +21,7 @@ describe("runMigrations", () => {
       "users",
       "sessions",
       "login_attempts",
+      "bootstrap_sessions",
       "genres",
       "item_genres",
       "authors",
@@ -71,6 +72,19 @@ describe("runMigrations", () => {
     expect(Number.isInteger(SCHEMA_VERSION)).toBe(true)
     expect(SCHEMA_VERSION).toBeGreaterThan(0)
     expect(Number(stored.rows[0]?.value)).toBe(SCHEMA_VERSION)
+  })
+
+  test("bootstrap sessions expire by timestamp comparison", async () => {
+    const client = createClient({ url: ":memory:" })
+    await runMigrations(client)
+    await client.execute(
+      "INSERT INTO bootstrap_sessions (id, expires_at, created_at) VALUES ('a', '2000-01-01T00:00:00.000Z', '2000-01-01T00:00:00.000Z'), ('b', '2999-01-01T00:00:00.000Z', '2000-01-01T00:00:00.000Z')"
+    )
+    const live = await client.execute({
+      sql: "SELECT id FROM bootstrap_sessions WHERE expires_at > ?",
+      args: [new Date().toISOString()],
+    })
+    expect(live.rows.map((row) => row.id)).toEqual(["b"])
   })
 
   test("readSchemaVersion rethrows errors other than a missing table", async () => {

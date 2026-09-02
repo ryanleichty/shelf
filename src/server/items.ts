@@ -2528,7 +2528,7 @@ export const login = createServerFn({ method: "POST" })
         return wrongPassword
       }
       await clearLoginFailures("bootstrap")
-      startBootstrapSession()
+      await startBootstrapSession()
       return { ok: true, error: "" }
     }
     if (!data.email) {

@@ -131,6 +131,13 @@ export async function runMigrations(client: Client) {
     )
   `)
   await client.execute(`
+    CREATE TABLE IF NOT EXISTS bootstrap_sessions (
+      id TEXT PRIMARY KEY NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `)
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS genres (
       id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
