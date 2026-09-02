@@ -19,6 +19,8 @@ import {
   slugify,
   systemListSlug,
   type CatalogItem,
+  type ItemStatus,
+  type ItemType,
 } from "@/lib/catalog"
 import { bookGenreOptions, itemInput, type ItemInput } from "@/lib/item-input"
 import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
@@ -92,19 +94,11 @@ export const importItems = createServerFn({ method: "POST" })
           type: data.type,
           id: match.id,
         })
-        const resolved = {
-          ...providerResult,
-          creator:
-            providerResult.creator === "Unknown author"
-              ? match.creator
-              : providerResult.creator,
-          coverImageUrl: providerResult.coverImageUrl || match.coverImageUrl,
-        }
         if (
           await itemExists({
             type: data.type,
-            title: resolved.title,
-            year: resolved.year ?? 0,
+            title: providerResult.title,
+            year: providerResult.year ?? 0,
             providerId: match.id,
             edition: data.edition,
           })
@@ -112,49 +106,16 @@ export const importItems = createServerFn({ method: "POST" })
           skipped.push({ query, reason: "Already on Shelf" })
           continue
         }
-        const slug = await uniqueSlug(resolved.slug, data.edition)
-        const now = new Date().toISOString()
-        const [created] = await db
-          .insert(items)
-          .values({
-            slug,
-            type: data.type,
-            status: "owned",
-            title: resolved.title,
-            creator: resolved.creator,
-            year: resolved.year ?? 0,
-            coverImageUrl:
-              (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
-            backdropImageUrl: resolved.backdropImageUrl || null,
-            openLibraryKey: data.type === "book" ? match.id : null,
-            tmdbId: data.type === "book" ? null : match.id,
-            format: data.format || null,
-            edition: normalizeEdition(data.edition),
-            certification: resolved.certification ?? null,
-            runtime: resolved.runtime ?? null,
-            notes: "",
-            acquiredAt: null,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning({ id: items.id })
-        await replaceItemTags(created.id, {
-          genres: resolved.genres,
-          keywords: resolved.keywords,
+        const created = await createItemFromProvider({
+          type: data.type,
+          providerId: match.id,
+          result: providerResult,
+          fallbackCreator: match.creator,
+          fallbackCoverImageUrl: match.coverImageUrl,
+          format: data.format,
+          edition: data.edition,
         })
-        await replaceItemCreators(
-          created.id,
-          data.type,
-          resolved.creatorPeople ?? resolved.creator
-        )
-        if (data.type !== "book" && resolved.cast !== undefined)
-          await replaceItemCast(
-            created.id,
-            resolved.castPeople ?? resolved.cast.map((name) => ({ name }))
-          )
-        if (data.type === "movie")
-          await replaceItemCollection(created.id, resolved.collection ?? null)
-        added.push({ title: resolved.title, slug })
+        added.push({ title: created.title, slug: created.slug })
       } catch (cause) {
         failed.push({
           query,
@@ -164,6 +125,75 @@ export const importItems = createServerFn({ method: "POST" })
     }
     return { added, skipped, failed }
   })
+
+export type ProviderImportInput = {
+  type: ItemType
+  providerId: string
+  // Not `& { slug }` from getCollectionResultById: the slug is recomputed
+  // here, and the agent API's ranked candidates carry no slug.
+  result: LookupResult
+  fallbackCreator?: string
+  fallbackCoverImageUrl?: string | null
+  format?: string | null
+  edition?: string | null
+  status?: ItemStatus | ""
+}
+
+// Inserts a provider result as a new item with its tags, people and
+// collection. Shared by the admin bulk import and the agent API so slugs,
+// editions and descriptions are written the same way.
+export async function createItemFromProvider(input: ProviderImportInput) {
+  const result = input.result
+  const creator =
+    result.creator === "Unknown author" && input.fallbackCreator
+      ? input.fallbackCreator
+      : result.creator
+  const coverImageUrl =
+    result.coverImageUrl || input.fallbackCoverImageUrl || ""
+  const slug = await uniqueSlug(slugify(result.title), input.edition)
+  const now = new Date().toISOString()
+  const [created] = await db
+    .insert(items)
+    .values({
+      slug,
+      type: input.type,
+      status: input.status || "owned",
+      title: result.title,
+      creator,
+      year: result.year ?? 0,
+      format: input.format || null,
+      edition: normalizeEdition(input.edition),
+      description: result.description || null,
+      certification: result.certification ?? null,
+      runtime: result.runtime ?? null,
+      coverImageUrl: (await storeCover(coverImageUrl, slug)) || null,
+      backdropImageUrl: result.backdropImageUrl || null,
+      tmdbId: input.type === "book" ? null : input.providerId,
+      openLibraryKey: input.type === "book" ? input.providerId : null,
+      notes: "",
+      acquiredAt: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: items.id, title: items.title, slug: items.slug })
+  await replaceItemTags(created.id, {
+    genres: result.genres,
+    keywords: result.keywords ?? [],
+  })
+  await replaceItemCreators(
+    created.id,
+    input.type,
+    result.creatorPeople ?? creator
+  )
+  if (input.type !== "book" && result.cast !== undefined)
+    await replaceItemCast(
+      created.id,
+      result.castPeople ?? result.cast.map((name) => ({ name }))
+    )
+  if (input.type === "movie")
+    await replaceItemCollection(created.id, result.collection ?? null)
+  return created
+}
 
 export type LookupResult = {
   id: string

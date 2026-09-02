@@ -3,17 +3,13 @@ import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
 import {
+  createItemFromProvider,
   getCollectionResultById,
   itemExists,
   lookupCollection,
   normalizeOpenLibraryWorkKey,
-  replaceItemCollection,
-  replaceItemCast,
-  replaceItemCreators,
-  upsertTags,
   uniqueSlug,
 } from "@/server/items"
-import { storeCover } from "@/server/covers"
 import { slugify } from "@/lib/catalog"
 import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
 import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"
@@ -147,58 +143,26 @@ export const handlers = {
               type: input.type,
               id: providerId,
             })
-        const resolved = {
-          ...providerResult,
-          creator:
-            providerResult.creator === "Unknown author"
-              ? top.creator
-              : providerResult.creator,
-          coverImageUrl: providerResult.coverImageUrl || top.coverImageUrl,
-          slug: await uniqueSlug(slugify(providerResult.title), input.edition),
-        }
         if (body.data.dryRun) {
-          added.push({ title: resolved.title, slug: resolved.slug })
+          added.push({
+            title: providerResult.title,
+            slug: await uniqueSlug(
+              slugify(providerResult.title),
+              input.edition
+            ),
+          })
           continue
         }
-        const now = new Date().toISOString()
-        const [created] = await db
-          .insert(items)
-          .values({
-            slug: resolved.slug,
-            type: input.type,
-            status: input.status || "owned",
-            title: resolved.title,
-            creator: resolved.creator,
-            year: resolved.year ?? 0,
-            format: input.format || null,
-            edition: input.edition || null,
-            description: resolved.description || null,
-            certification: resolved.certification ?? null,
-            runtime: resolved.runtime ?? null,
-            coverImageUrl:
-              (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
-            backdropImageUrl: resolved.backdropImageUrl || null,
-            tmdbId: input.type === "book" ? null : providerId,
-            openLibraryKey: input.type === "book" ? providerId : null,
-            notes: "",
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning({ id: items.id, title: items.title, slug: items.slug })
-        await upsertTags(created.id, "genre", resolved.genres)
-        await upsertTags(created.id, "keyword", resolved.keywords ?? [])
-        await replaceItemCreators(
-          created.id,
-          input.type,
-          resolved.creatorPeople ?? resolved.creator
-        )
-        if (input.type !== "book" && resolved.cast !== undefined)
-          await replaceItemCast(
-            created.id,
-            resolved.castPeople ?? resolved.cast.map((name) => ({ name }))
-          )
-        if (input.type === "movie")
-          await replaceItemCollection(created.id, resolved.collection ?? null)
+        const created = await createItemFromProvider({
+          type: input.type,
+          providerId,
+          result: providerResult,
+          fallbackCreator: top.creator,
+          fallbackCoverImageUrl: top.coverImageUrl,
+          format: input.format,
+          edition: input.edition,
+          status: input.status,
+        })
         added.push(created)
       } catch (error) {
         failed.push({
