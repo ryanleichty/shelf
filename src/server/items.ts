@@ -1209,8 +1209,9 @@ function normalizeOpenLibraryAuthorKey(key?: string) {
     .replace(/^\/?authors\//, "")
     .replace(/^\//, "")
   const authorKey = `/authors/${authorId}`
-  if (!/^\/authors\/OL\d+A$/.test(authorKey))
-    throw new Error("Invalid Open Library key.")
+  // Provider responses carry well-formed keys; drop an odd one rather than
+  // failing the whole search or sync it arrived in.
+  if (!/^\/authors\/OL\d+A$/.test(authorKey)) return undefined
   return authorKey
 }
 
