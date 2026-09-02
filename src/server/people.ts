@@ -148,10 +148,16 @@ export const mergePeople = createServerFn({ method: "POST" })
 
 async function mergeAuthors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [[source], [survivor]] = await Promise.all([
-      tx.select().from(authors).where(eq(authors.id, sourceId)).limit(1),
-      tx.select().from(authors).where(eq(authors.id, survivorId)).limit(1),
-    ])
+    const [source] = await tx
+      .select()
+      .from(authors)
+      .where(eq(authors.id, sourceId))
+      .limit(1)
+    const [survivor] = await tx
+      .select()
+      .from(authors)
+      .where(eq(authors.id, survivorId))
+      .limit(1)
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.openLibraryKey && survivor.openLibraryKey)
       throw new Error(
@@ -166,22 +172,28 @@ async function mergeAuthors(sourceId: number, survivorId: number) {
         .insert(itemAuthors)
         .values({ itemId: join.itemId, authorId: survivorId })
         .onConflictDoNothing()
+    await tx.delete(itemAuthors).where(eq(itemAuthors.authorId, sourceId))
+    await tx.delete(authors).where(eq(authors.id, sourceId))
     if (source.openLibraryKey)
       await tx
         .update(authors)
         .set({ openLibraryKey: source.openLibraryKey })
         .where(eq(authors.id, survivorId))
-    await tx.delete(itemAuthors).where(eq(itemAuthors.authorId, sourceId))
-    await tx.delete(authors).where(eq(authors.id, sourceId))
   })
 }
 
 async function mergeDirectors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [[source], [survivor]] = await Promise.all([
-      tx.select().from(directors).where(eq(directors.id, sourceId)).limit(1),
-      tx.select().from(directors).where(eq(directors.id, survivorId)).limit(1),
-    ])
+    const [source] = await tx
+      .select()
+      .from(directors)
+      .where(eq(directors.id, sourceId))
+      .limit(1)
+    const [survivor] = await tx
+      .select()
+      .from(directors)
+      .where(eq(directors.id, survivorId))
+      .limit(1)
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.tmdbPersonId && survivor.tmdbPersonId)
       throw new Error(
@@ -196,22 +208,28 @@ async function mergeDirectors(sourceId: number, survivorId: number) {
         .insert(itemDirectors)
         .values({ itemId: join.itemId, directorId: survivorId })
         .onConflictDoNothing()
+    await tx.delete(itemDirectors).where(eq(itemDirectors.directorId, sourceId))
+    await tx.delete(directors).where(eq(directors.id, sourceId))
     if (source.tmdbPersonId)
       await tx
         .update(directors)
         .set({ tmdbPersonId: source.tmdbPersonId })
         .where(eq(directors.id, survivorId))
-    await tx.delete(itemDirectors).where(eq(itemDirectors.directorId, sourceId))
-    await tx.delete(directors).where(eq(directors.id, sourceId))
   })
 }
 
 async function mergeActors(sourceId: number, survivorId: number) {
   await db.transaction(async (tx) => {
-    const [[source], [survivor]] = await Promise.all([
-      tx.select().from(actors).where(eq(actors.id, sourceId)).limit(1),
-      tx.select().from(actors).where(eq(actors.id, survivorId)).limit(1),
-    ])
+    const [source] = await tx
+      .select()
+      .from(actors)
+      .where(eq(actors.id, sourceId))
+      .limit(1)
+    const [survivor] = await tx
+      .select()
+      .from(actors)
+      .where(eq(actors.id, survivorId))
+      .limit(1)
     if (!source || !survivor) throw new Error("Person not found.")
     if (source.tmdbPersonId && survivor.tmdbPersonId)
       throw new Error(
@@ -230,12 +248,12 @@ async function mergeActors(sourceId: number, survivorId: number) {
           position: join.position,
         })
         .onConflictDoNothing()
+    await tx.delete(itemActors).where(eq(itemActors.actorId, sourceId))
+    await tx.delete(actors).where(eq(actors.id, sourceId))
     if (source.tmdbPersonId)
       await tx
         .update(actors)
         .set({ tmdbPersonId: source.tmdbPersonId })
         .where(eq(actors.id, survivorId))
-    await tx.delete(itemActors).where(eq(itemActors.actorId, sourceId))
-    await tx.delete(actors).where(eq(actors.id, sourceId))
   })
 }
