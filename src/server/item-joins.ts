@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { parseCreatorNames, slugify } from "@/lib/catalog"
 import { db } from "./db"
 import {
@@ -26,67 +26,54 @@ export type Database = Pick<
   "select" | "insert" | "update" | "delete"
 >
 
-type TagKind = "genre" | "keyword" | "author" | "director"
-
+// Three statements regardless of how many names: clear the joins, upsert the
+// tags in one insert, then attach them in one insert.
 export async function upsertTags(
   itemId: number,
-  kind: TagKind,
+  kind: "genre" | "keyword",
   names: string[],
   database: Database = db
 ) {
-  const table =
-    kind === "genre"
-      ? genres
-      : kind === "keyword"
-        ? keywords
-        : kind === "author"
-          ? authors
-          : directors
-  const joins =
-    kind === "genre"
-      ? itemGenres
-      : kind === "keyword"
-        ? itemKeywords
-        : kind === "author"
-          ? itemAuthors
-          : itemDirectors
-  const normalized = [
-    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
-  ]
-  await database.delete(joins).where(eq(joins.itemId, itemId))
-  for (const name of normalized) {
-    const slug = slugify(name)
-    if (!slug) continue
+  const rows = [
+    ...new Map(
+      names
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map((name) => [slugify(name), name] as const)
+        .filter(([slug]) => slug)
+    ),
+  ].map(([slug, name]) => ({ slug, name }))
+  const slugs = rows.map((row) => row.slug)
+  if (kind === "genre") {
+    await database.delete(itemGenres).where(eq(itemGenres.itemId, itemId))
+    if (!rows.length) return
     await database
-      .insert(table)
-      .values({ slug, name })
-      .onConflictDoNothing({ target: table.slug })
-    const [tag] = await database
-      .select({ id: table.id })
-      .from(table)
-      .where(eq(table.slug, slug))
-    if (!tag) continue
-    if (kind === "genre") {
-      await database
-        .insert(itemGenres)
-        .values({ itemId, genreId: tag.id })
-        .onConflictDoNothing()
-    } else if (kind === "keyword") {
-      await database
-        .insert(itemKeywords)
-        .values({ itemId, keywordId: tag.id })
-        .onConflictDoNothing()
-    } else if (kind === "author") {
-      await database
-        .insert(itemAuthors)
-        .values({ itemId, authorId: tag.id })
-        .onConflictDoNothing()
-    } else {
-      await database
-        .insert(itemDirectors)
-        .values({ itemId, directorId: tag.id })
-        .onConflictDoNothing()
-    }
+      .insert(genres)
+      .values(rows)
+      .onConflictDoNothing({ target: genres.slug })
+    const ids = await database
+      .select({ id: genres.id })
+      .from(genres)
+      .where(inArray(genres.slug, slugs))
+    await database
+      .insert(itemGenres)
+      .values(ids.map(({ id }) => ({ itemId, genreId: id })))
+      .onConflictDoNothing()
+  } else {
+    await database.delete(itemKeywords).where(eq(itemKeywords.itemId, itemId))
+    if (!rows.length) return
+    await database
+      .insert(keywords)
+      .values(rows)
+      .onConflictDoNothing({ target: keywords.slug })
+    const ids = await database
+      .select({ id: keywords.id })
+      .from(keywords)
+      .where(inArray(keywords.slug, slugs))
+    await database
+      .insert(itemKeywords)
+      .values(ids.map(({ id }) => ({ itemId, keywordId: id })))
+      .onConflictDoNothing()
   }
 }
 
@@ -128,10 +115,7 @@ export async function replaceItemCreators(
       eq(kind === "author" ? itemAuthors.itemId : itemDirectors.itemId, itemId)
     )
   for (const person of normalized) {
-    const id =
-      kind === "author"
-        ? await upsertAuthor(person, database)
-        : await upsertDirector(person, database)
+    const id = await upsertPerson(kind, person, database)
     if (kind === "author")
       await database
         .insert(itemAuthors)
@@ -160,7 +144,7 @@ export async function replaceItemCast(
   ]
   await database.delete(itemActors).where(eq(itemActors.itemId, itemId))
   for (const [position, person] of normalized.entries()) {
-    const id = await upsertActor(person, database)
+    const id = await upsertPerson("actor", person, database)
     await database
       .insert(itemActors)
       .values({ itemId, actorId: id, position })
@@ -168,169 +152,89 @@ export async function replaceItemCast(
   }
 }
 
-async function upsertAuthor(person: ProviderPerson, database: Database) {
+type PersonKind = "author" | "director" | "actor"
+
+const personTables = {
+  author: {
+    table: authors,
+    providerColumn: authors.openLibraryKey,
+    providerField: "openLibraryKey",
+  },
+  director: {
+    table: directors,
+    providerColumn: directors.tmdbPersonId,
+    providerField: "tmdbPersonId",
+  },
+  actor: {
+    table: actors,
+    providerColumn: actors.tmdbPersonId,
+    providerField: "tmdbPersonId",
+  },
+} as const
+
+// Matches on the provider id first, then on the slug, so a person added by
+// name later picks up the provider id. The slug moves to the incoming name
+// only when the stored slug still matches the stored name (nobody renamed it
+// by hand) and nothing else already owns the new slug.
+async function upsertPerson(
+  kind: PersonKind,
+  person: ProviderPerson,
+  database: Database
+) {
+  const { table, providerColumn, providerField } = personTables[kind]
   const slug = slugify(person.name)
   if (!slug) throw new Error("Person name needs letters or numbers.")
+  const columns = {
+    id: table.id,
+    slug: table.slug,
+    name: table.name,
+    providerId: providerColumn,
+  }
   const [byProvider] = person.providerId
     ? await database
-        .select()
-        .from(authors)
-        .where(eq(authors.openLibraryKey, person.providerId))
+        .select(columns)
+        .from(table)
+        .where(eq(providerColumn, person.providerId))
         .limit(1)
     : []
   const [bySlug] = byProvider
     ? []
     : await database
-        .select()
-        .from(authors)
-        .where(eq(authors.slug, slug))
+        .select(columns)
+        .from(table)
+        .where(eq(table.slug, slug))
         .limit(1)
   const existing = byProvider ?? bySlug
-  if (existing) {
-    const [slugOwner] =
-      person.providerId &&
-      existing.slug === slugify(existing.name) &&
-      existing.slug !== slug
-        ? await database
-            .select({ id: authors.id })
-            .from(authors)
-            .where(eq(authors.slug, slug))
-            .limit(1)
-        : []
-    await database
-      .update(authors)
-      .set({
-        name: person.providerId ? person.name : existing.name,
-        ...(person.providerId && !existing.openLibraryKey
-          ? { openLibraryKey: person.providerId }
-          : {}),
-        ...(person.providerId &&
-        existing.slug === slugify(existing.name) &&
-        existing.slug !== slug &&
-        (!slugOwner || slugOwner.id === existing.id)
-          ? { slug }
-          : {}),
+  if (!existing) {
+    const [created] = await database
+      .insert(table)
+      .values({
+        slug,
+        name: person.name,
+        [providerField]: person.providerId ?? null,
       })
-      .where(eq(authors.id, existing.id))
-    return existing.id
+      .returning({ id: table.id })
+    return created!.id
   }
-  const [created] = await database
-    .insert(authors)
-    .values({
-      slug,
-      name: person.name,
-      openLibraryKey: person.providerId ?? null,
-    })
-    .returning({ id: authors.id })
-  return created.id
-}
-
-async function upsertDirector(person: ProviderPerson, database: Database) {
-  const slug = slugify(person.name)
-  if (!slug) throw new Error("Person name needs letters or numbers.")
-  const [byProvider] = person.providerId
+  if (!person.providerId) return existing.id
+  const reclaimSlug =
+    existing.slug === slugify(existing.name) && existing.slug !== slug
+  const [slugOwner] = reclaimSlug
     ? await database
-        .select()
-        .from(directors)
-        .where(eq(directors.tmdbPersonId, person.providerId))
+        .select({ id: table.id })
+        .from(table)
+        .where(eq(table.slug, slug))
         .limit(1)
     : []
-  const [bySlug] = byProvider
-    ? []
-    : await database
-        .select()
-        .from(directors)
-        .where(eq(directors.slug, slug))
-        .limit(1)
-  const existing = byProvider ?? bySlug
-  if (existing) {
-    const [slugOwner] =
-      person.providerId &&
-      existing.slug === slugify(existing.name) &&
-      existing.slug !== slug
-        ? await database
-            .select({ id: directors.id })
-            .from(directors)
-            .where(eq(directors.slug, slug))
-            .limit(1)
-        : []
-    await database
-      .update(directors)
-      .set({
-        name: person.providerId ? person.name : existing.name,
-        ...(person.providerId && !existing.tmdbPersonId
-          ? { tmdbPersonId: person.providerId }
-          : {}),
-        ...(person.providerId &&
-        existing.slug === slugify(existing.name) &&
-        existing.slug !== slug &&
-        (!slugOwner || slugOwner.id === existing.id)
-          ? { slug }
-          : {}),
-      })
-      .where(eq(directors.id, existing.id))
-    return existing.id
-  }
-  const [created] = await database
-    .insert(directors)
-    .values({
-      slug,
+  await database
+    .update(table)
+    .set({
       name: person.name,
-      tmdbPersonId: person.providerId ?? null,
+      ...(existing.providerId ? {} : { [providerField]: person.providerId }),
+      ...(reclaimSlug && (!slugOwner || slugOwner.id === existing.id)
+        ? { slug }
+        : {}),
     })
-    .returning({ id: directors.id })
-  return created.id
-}
-
-async function upsertActor(person: ProviderPerson, database: Database) {
-  const slug = slugify(person.name)
-  if (!slug) throw new Error("Person name needs letters or numbers.")
-  const [byProvider] = person.providerId
-    ? await database
-        .select()
-        .from(actors)
-        .where(eq(actors.tmdbPersonId, person.providerId))
-        .limit(1)
-    : []
-  const [bySlug] = byProvider
-    ? []
-    : await database.select().from(actors).where(eq(actors.slug, slug)).limit(1)
-  const existing = byProvider ?? bySlug
-  if (existing) {
-    const [slugOwner] =
-      person.providerId &&
-      existing.slug === slugify(existing.name) &&
-      existing.slug !== slug
-        ? await database
-            .select({ id: actors.id })
-            .from(actors)
-            .where(eq(actors.slug, slug))
-            .limit(1)
-        : []
-    await database
-      .update(actors)
-      .set({
-        name: person.providerId ? person.name : existing.name,
-        ...(person.providerId && !existing.tmdbPersonId
-          ? { tmdbPersonId: person.providerId }
-          : {}),
-        ...(person.providerId &&
-        existing.slug === slugify(existing.name) &&
-        existing.slug !== slug &&
-        (!slugOwner || slugOwner.id === existing.id)
-          ? { slug }
-          : {}),
-      })
-      .where(eq(actors.id, existing.id))
-    return existing.id
-  }
-  const [created] = await database
-    .insert(actors)
-    .values({
-      slug,
-      name: person.name,
-      tmdbPersonId: person.providerId ?? null,
-    })
-    .returning({ id: actors.id })
-  return created.id
+    .where(eq(table.id, existing.id))
+  return existing.id
 }

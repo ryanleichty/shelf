@@ -224,7 +224,6 @@ export type LookupResult = {
   isbn13?: string
 }
 
-
 type CollectionInput = {
   tmdbCollectionId?: string
   name: string
