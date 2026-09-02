@@ -1573,8 +1573,6 @@ export async function syncItemFromProvider(
       genres: nextGenres,
       keywords: nextKeywords,
       cast: nextCast,
-      castPeople: nextCastPeople,
-      creatorPeople: nextCreatorPeople,
       collection: nextCollection,
       ...itemFields
     } = Object.fromEntries(
@@ -1594,7 +1592,7 @@ export async function syncItemFromProvider(
     if (syncedItem.type !== "book" && nextCast !== undefined)
       await replaceItemCast(
         syncedItem.id,
-        nextCastPeople ?? nextCast.map((name) => ({ name }))
+        metadata.castPeople ?? nextCast.map((name) => ({ name }))
       )
     if (
       (syncedItem.type === "movie" || syncedItem.type === "book") &&
@@ -1604,7 +1602,7 @@ export async function syncItemFromProvider(
     await replaceItemCreators(
       syncedItem.id,
       syncedItem.type,
-      nextCreatorPeople ?? itemFields.creator ?? syncedItem.creator
+      metadata.creatorPeople ?? itemFields.creator ?? syncedItem.creator
     )
   }
   return { itemId: syncedItem.id, slug: syncedItem.slug, changes }
