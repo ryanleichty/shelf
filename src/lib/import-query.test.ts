@@ -31,12 +31,16 @@ describe("rankImportCandidates", () => {
   const dune21 = { id: "2", title: "Dune", year: 2021 }
   const other = { id: "3", title: "Dune: Part Two", year: 2024 }
   test("picks the exact title with the requested year", () => {
-    expect(rankImportCandidates([other, dune84, dune21], "Dune", 2021).top).toBe(
-      dune21
-    )
+    expect(
+      rankImportCandidates([other, dune84, dune21], "Dune", 2021).top
+    ).toBe(dune21)
   })
   test("sends same-title different-year matches to review when no year is given", () => {
-    const result = rankImportCandidates([dune84, dune21, other], "Dune", undefined)
+    const result = rankImportCandidates(
+      [dune84, dune21, other],
+      "Dune",
+      undefined
+    )
     expect(result.top).toBeUndefined()
     expect(result.ranked.slice(0, 2)).toEqual([dune84, dune21])
   })
