@@ -189,6 +189,10 @@ export const saveProfile = createServerFn({ method: "POST" })
         updatedAt: now,
       })
       .where(eq(users.id, currentUser.id))
+    if (data.password) {
+      await db.delete(sessions).where(eq(sessions.userId, currentUser.id))
+      await startUserSession(currentUser.id)
+    }
     return { ok: true }
   })
 
@@ -238,6 +242,8 @@ export const saveUser = createServerFn({ method: "POST" })
         updatedAt: now,
       })
       .where(eq(users.id, data.id))
+    if (data.password || existing.role !== data.role)
+      await db.delete(sessions).where(eq(sessions.userId, data.id))
     return { ok: true }
   })
 
