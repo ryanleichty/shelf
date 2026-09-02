@@ -11,7 +11,7 @@
     "format": "oxfmt",
     "check": "oxfmt --check",
     "typecheck": "pnpm routes:generate && tsc --noEmit",
-    "routes:generate": "tsr generate",
+    "routes:generate": "test -f src/routeTree.gen.ts || tsr generate",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",

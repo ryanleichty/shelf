@@ -59,4 +59,5 @@ pnpm test
 pnpm build
 ```
 
-`pnpm typecheck` generates `src/routeTree.gen.ts` first; the file is gitignored.
+`pnpm typecheck` generates `src/routeTree.gen.ts` if it is missing; the file is
+gitignored, and `pnpm dev`/`pnpm build` keep it current.
