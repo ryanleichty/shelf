@@ -44,6 +44,7 @@ export const Route = createRootRoute({
       {
         title: "Shelf — Ryan Leichty",
       },
+      { name: "theme-color", content: "#171717" },
     ],
     links: [
       {
@@ -57,6 +58,8 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   notFoundComponent: () => (
