@@ -27,14 +27,14 @@ Or remove the individual examples from `/admin` and add the real collection.
 
 Shelf uses Drizzle ORM with libSQL. When `TURSO_DATABASE_URL` is present, Shelf uses Turso-compatible libSQL. Without it, Shelf boots from an ephemeral local database at `/tmp/shelf.db` and seeds its sample content automatically on the first request. Schema migrations live in `src/server/migrate.ts`; they run once per database when `SCHEMA_VERSION` changes (checked with one `PRAGMA user_version` query per process), and `pnpm db:migrate` applies them ahead of time.
 
-| Variable | Purpose |
-| --- | --- |
-| `ADMIN_PASSWORD` | Temporary first-admin bootstrap password; no longer used once an admin account has been configured |
-| `TMDB_API_KEY` | Free TMDB API key for signed-in movie lookup and for storing taglines, logos and trailer keys on save |
-| `BLOB_READ_WRITE_TOKEN` | Optional Vercel Blob token for storing uploaded cover images |
-| `SHELF_AGENT_TOKEN` | Bearer token required by the private agent JSON API |
-| `TURSO_DATABASE_URL` | Turso/libSQL database URL |
-| `TURSO_AUTH_TOKEN` | Token for the production database |
+| Variable                | Purpose                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ADMIN_PASSWORD`        | Temporary first-admin bootstrap password; no longer used once an admin account has been configured    |
+| `TMDB_API_KEY`          | Free TMDB API key for signed-in movie lookup and for storing taglines, logos and trailer keys on save |
+| `BLOB_READ_WRITE_TOKEN` | Optional Vercel Blob token for storing uploaded cover images                                          |
+| `SHELF_AGENT_TOKEN`     | Bearer token required by the private agent JSON API                                                   |
+| `TURSO_DATABASE_URL`    | Turso/libSQL database URL                                                                             |
+| `TURSO_AUTH_TOKEN`      | Token for the production database                                                                     |
 
 Schema changes are created with `pnpm db:generate`; apply the local schema with `pnpm db:migrate`.
 

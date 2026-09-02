@@ -27,7 +27,11 @@ import {
 import { matchesQuery, type CatalogItem } from "@/lib/catalog"
 
 type Sort =
-  "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
+  | "title-asc"
+  | "title-desc"
+  | "year-desc"
+  | "year-asc"
+  | "updated-desc"
 
 const sortItems: { value: Sort; label: string }[] = [
   { value: "title-asc", label: "Title A–Z" },

@@ -7,7 +7,9 @@ const now = new Date().toISOString()
 
 await db
   .insert(items)
-  .values(sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now })))
+  .values(
+    sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now }))
+  )
   .onConflictDoUpdate({
     target: items.slug,
     set: {

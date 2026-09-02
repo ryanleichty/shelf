@@ -44,7 +44,13 @@ type Placement = {
   name: string | null
   system: boolean | null
   kind:
-    "recent" | "list" | "genre" | "collection" | "director" | "actor" | "author"
+    | "recent"
+    | "list"
+    | "genre"
+    | "collection"
+    | "director"
+    | "actor"
+    | "author"
   sourceSlug: string | null
   type: "book" | "movie" | "tv"
   position: number

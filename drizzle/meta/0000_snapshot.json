@@ -89,9 +89,7 @@
       "indexes": {
         "items_slug_unique": {
           "name": "items_slug_unique",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "isUnique": true
         }
       },
