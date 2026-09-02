@@ -5,7 +5,7 @@ import { PlusIcon } from "lucide-react"
 import { Catalog } from "@/components/catalog"
 import { OutNow } from "@/components/out-now"
 import { Button } from "@/components/ui/button"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 export function AllCatalog({
   addLabel,
@@ -17,10 +17,10 @@ export function AllCatalog({
   onQueryChange,
 }: {
   addLabel: string
-  items: Item[]
+  items: CatalogItem[]
   subtitle: string
   title: string
-  type: Item["type"]
+  type: CatalogItem["type"]
   query?: string
   onQueryChange: (query: string) => void
 }) {

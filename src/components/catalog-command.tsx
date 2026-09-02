@@ -15,9 +15,11 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/components/ui/command"
-import { getItems, getSearchFacets } from "@/server/items"
+import { matchesQuery } from "@/lib/catalog"
+import { useCatalog } from "@/lib/use-catalog"
+import { getSearchFacets } from "@/server/items"
 import type { SearchFacets } from "@/server/items"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 type SearchFacet = { name: string; slug: string }
 const emptySearchFacets: SearchFacets = {
@@ -31,7 +33,7 @@ function CatalogCommandItem({
   item,
   onSelect,
 }: {
-  item: Item
+  item: CatalogItem
   onSelect: () => void
 }) {
   const genre = item.genres[0]
@@ -42,6 +44,7 @@ function CatalogCommandItem({
         <img
           alt=""
           className="aspect-[2/3] h-10 shrink-0 rounded-sm object-cover"
+          loading="lazy"
           src={item.coverImageUrl}
         />
       ) : (
@@ -97,26 +100,24 @@ export function CatalogCommand({
   const { signedIn } = useSignedInStatus()
   const [query, setQuery] = useState("")
   const [checkBarcodeOpen, setCheckBarcodeOpen] = useState(false)
-  const [items, setItems] = useState<Item[]>([])
+  const catalog = useCatalog()
+  const items = useMemo(
+    () => catalog.items.filter((item) => matchesQuery(item, query)),
+    [catalog, query]
+  )
   const [facets, setFacets] = useState<SearchFacets>(emptySearchFacets)
 
   useEffect(() => {
     let active = true
     const timer = window.setTimeout(() => {
       const normalizedQuery = query.trim()
-      const itemSearch = getItems({
-        data: normalizedQuery ? { query: normalizedQuery } : {},
-      }).catch(() => [])
       const facetSearch = normalizedQuery
         ? getSearchFacets({ data: { query: normalizedQuery } }).catch(
             () => emptySearchFacets
           )
         : Promise.resolve(emptySearchFacets)
-
-      Promise.all([itemSearch, facetSearch]).then(([nextItems, nextFacets]) => {
-        if (!active) return
-        setItems(nextItems)
-        setFacets(nextFacets)
+      facetSearch.then((nextFacets) => {
+        if (active) setFacets(nextFacets)
       })
     }, 150)
     return () => {
@@ -133,7 +134,7 @@ export function CatalogCommand({
     [items]
   )
   const tv = useMemo(() => items.filter((item) => item.type === "tv"), [items])
-  const select = (item: Item) => {
+  const select = (item: CatalogItem) => {
     onOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
   }

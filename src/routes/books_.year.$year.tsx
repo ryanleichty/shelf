@@ -1,26 +1,29 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
+import { useMemo } from "react"
 import { YearBrowse } from "@/components/year-browse"
-import { getItemsForYearBrowse } from "@/server/items"
+import { yearBrowse } from "@/lib/catalog"
+import { useCatalog } from "@/lib/use-catalog"
 
 export const Route = createFileRoute("/books_/year/$year")({
-  loader: async ({ params }) => {
+  loader: ({ params }) => {
     if (!/^\d{4}$/.test(params.year)) throw notFound()
-    const year = Number(params.year)
-    return getItemsForYearBrowse({
-      data: { type: "book", startYear: year, endYear: year },
-    })
   },
   component: BookYearPage,
 })
 
 function BookYearPage() {
-  const data = Route.useLoaderData()
+  const year = Number(Route.useParams().year)
+  const catalog = useCatalog()
+  const data = useMemo(
+    () => yearBrowse(catalog, "book", year, year),
+    [catalog, year]
+  )
   return (
     <YearBrowse
       items={data.items}
       mode="year"
       type="book"
-      value={Number(Route.useParams().year)}
+      value={year}
       years={data.years}
     />
   )

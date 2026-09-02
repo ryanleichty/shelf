@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Item } from "@/server/schema"
+import { matchesQuery, type CatalogItem } from "@/lib/catalog"
 
 type Sort =
   "title-asc" | "title-desc" | "year-desc" | "year-asc" | "updated-desc"
@@ -47,8 +47,8 @@ export function Catalog({
   hideGenreFilter = false,
   emptyDescription = "Try a different title, creator, or filter.",
 }: {
-  items: Item[]
-  type?: Item["type"]
+  items: CatalogItem[]
+  type?: CatalogItem["type"]
   query?: string
   onQueryChange?: (query: string) => void
   rememberQuery?: boolean
@@ -68,19 +68,13 @@ export function Catalog({
     ...genreOptions.map((option) => ({ value: option, label: option })),
   ]
   const visibleItems = useMemo(() => {
-    const localQuery = onQueryChange ? "" : draftQuery.trim().toLowerCase()
     return [...catalogItems]
       .filter(
         (item) =>
           genre === "all" ||
           item.genres.some((itemGenre) => itemGenre === genre)
       )
-      .filter(
-        (item) =>
-          !localQuery ||
-          item.title.toLowerCase().includes(localQuery) ||
-          item.creator.toLowerCase().includes(localQuery)
-      )
+      .filter((item) => matchesQuery(item, draftQuery))
       .sort((left, right) => {
         if (sort === "title-desc") return right.title.localeCompare(left.title)
         if (sort === "year-desc") return right.year - left.year
@@ -89,7 +83,7 @@ export function Catalog({
           return right.updatedAt.localeCompare(left.updatedAt)
         return left.title.localeCompare(right.title)
       })
-  }, [catalogItems, draftQuery, genre, onQueryChange, sort])
+  }, [catalogItems, draftQuery, genre, sort])
 
   useEffect(() => {
     setDraftQuery(query ?? "")

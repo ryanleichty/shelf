@@ -1,4 +1,5 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { PendingShelf } from "@/components/pending-shelf"
 import { routeTree } from "./routeTree.gen"
 
 export function getRouter() {
@@ -8,6 +9,10 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultStaleTime: 5 * 60 * 1000,
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 300,
+    defaultPendingComponent: PendingShelf,
+    defaultViewTransition: true,
   })
 
   return router

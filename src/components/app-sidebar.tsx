@@ -17,7 +17,6 @@ import {
 import { useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { logout } from "@/server/items"
-import { getSidebarLists } from "@/server/lists"
 import { CatalogCommand } from "@/components/catalog-command"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -71,42 +70,25 @@ const catalogNavigation = [
   },
 ] as const
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  lists,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  lists: Array<{ slug: string; name: string; type: "book" | "movie" | "tv" }>
+}) {
   const location = useLocation()
   const router = useRouter()
   const { currentUser, signedIn, setCurrentUser, setSignedIn } =
     useSignedInStatus()
-  const [listPlacements, setListPlacements] = useState<
-    Array<{ slug: string; name: string; type: "book" | "movie" | "tv" }>
-  >([])
   const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>(
     {}
   )
   const [searchOpen, setSearchOpen] = useState(false)
   useEffect(() => {
-    getSidebarLists()
-      .then((placements) =>
-        setListPlacements(
-          placements.flatMap((placement) =>
-            placement.slug && placement.name
-              ? [
-                  {
-                    slug: placement.slug,
-                    name: placement.name,
-                    type: placement.type,
-                  },
-                ]
-              : []
-          )
-        )
-      )
-      .catch(() => setListPlacements([]))
-  }, [])
-  useEffect(() => {
     const currentParent = catalogNavigation.find(
       (item) =>
         location.pathname === `${item.to}/all` ||
-        listPlacements
+        lists
           .filter((placement) => placement.type === item.type)
           .some(
             (placement) =>
@@ -116,7 +98,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
-  }, [location.pathname, listPlacements])
+  }, [location.pathname, lists])
 
   async function signOut() {
     await logout()
@@ -183,7 +165,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 {catalogNavigation.map((item) => {
                   const subItems = [
                     { title: "All", to: `${item.to}/all` },
-                    ...listPlacements
+                    ...lists
                       .filter((placement) => placement.type === item.type)
                       .map((placement) => ({
                         title: placement.name,

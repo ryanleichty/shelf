@@ -9,10 +9,11 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
 import appCss from "../styles.css?url"
+import geistLatin from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SignedInStatusProvider } from "@/components/signed-in-status"
-import { getSignedInStatus } from "@/server/items"
-import { getCurrentUserProfile } from "@/server/users"
+import { sidebarLists } from "@/lib/catalog"
+import { getShell } from "@/server/shell"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,13 +31,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export const Route = createRootRoute({
-  loader: async () => {
-    const [currentUser, signedIn] = await Promise.all([
-      getCurrentUserProfile(),
-      getSignedInStatus(),
-    ])
-    return { currentUser, signedIn }
-  },
+  loader: () => getShell(),
   head: () => ({
     meta: [
       {
@@ -51,6 +46,13 @@ export const Route = createRootRoute({
       },
     ],
     links: [
+      {
+        rel: "preload",
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
+        href: geistLatin,
+      },
       {
         rel: "stylesheet",
         href: appCss,
@@ -73,7 +75,7 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { currentUser, signedIn } = Route.useLoaderData()
+  const { currentUser, signedIn, catalog } = Route.useLoaderData()
   return (
     <html lang="en">
       <head>
@@ -85,7 +87,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             initialSignedIn={signedIn}
             initialUser={currentUser}
           >
-            <ShelfShell>{children}</ShelfShell>
+            <ShelfShell lists={sidebarLists(catalog)}>{children}</ShelfShell>
           </SignedInStatusProvider>
         </TooltipProvider>
         <TanStackDevtools
@@ -105,7 +107,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ShelfShell({ children }: { children: React.ReactNode }) {
+function ShelfShell({
+  children,
+  lists,
+}: {
+  children: React.ReactNode
+  lists: ReturnType<typeof sidebarLists>
+}) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -127,7 +135,7 @@ function ShelfShell({ children }: { children: React.ReactNode }) {
                 : "Home"
   return (
     <SidebarProvider className="overflow-x-hidden">
-      <AppSidebar />
+      <AppSidebar lists={lists} />
       <SidebarInset className="min-w-0 overflow-x-hidden">
         {isHome ? (
           <SidebarTrigger className="absolute top-4 left-4 z-10 bg-background/90 ring-1 ring-black/10" />

@@ -2,7 +2,7 @@ import { asc, eq, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { requireAdmin } from "./auth"
-import { db, ensureDatabase } from "./db"
+import { db } from "./db"
 import {
   actors,
   authors,
@@ -64,7 +64,6 @@ async function peopleFor(kind: PersonKind): Promise<Person[]> {
 
 export const getPeople = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin()
-  await ensureDatabase()
   const [authorPeople, directorPeople, actorPeople] = await Promise.all(
     personKinds.map((kind) => peopleFor(kind))
   )
@@ -79,7 +78,6 @@ export const savePerson = createServerFn({ method: "POST" })
   .inputValidator(personInput)
   .handler(async ({ data }) => {
     await requireAdmin()
-    await ensureDatabase()
     const table =
       data.kind === "author"
         ? authors
@@ -110,7 +108,6 @@ export const deletePerson = createServerFn({ method: "POST" })
   .inputValidator(personIdInput)
   .handler(async ({ data }) => {
     await requireAdmin()
-    await ensureDatabase()
     const people = await peopleFor(data.kind)
     const person = people.find((candidate) => candidate.id === data.id)
     if (!person) return { ok: true }
@@ -136,7 +133,6 @@ export const mergePeople = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await requireAdmin()
-    await ensureDatabase()
     if (data.sourceId === data.survivorId)
       throw new Error("Choose a different person to merge into.")
 

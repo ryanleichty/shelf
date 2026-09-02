@@ -22,15 +22,6 @@ import {
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
 type ListOption = { slug: string; name: string; containsItem: boolean }
-const membershipRouteIds = new Set([
-  "/books",
-  "/books_/list/$slug",
-  "/item/$slug",
-  "/movies",
-  "/movies_/list/$slug",
-  "/tv",
-  "/tv_/list/$slug",
-])
 
 export function ItemListMenu({
   itemId,
@@ -113,9 +104,7 @@ export function ItemListMenu({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (listRequestGenerations.current.get(list.slug) !== generation) return
-      void router.invalidate({
-        filter: (match) => membershipRouteIds.has(match.routeId),
-      })
+      void router.invalidate()
     } catch (cause) {
       if (listRequestGenerations.current.get(list.slug) !== generation) return
       const revertedLists = customListsRef.current.map((candidate) =>

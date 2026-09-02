@@ -1,89 +1,41 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { HomeBillboard } from "@/components/home-billboard"
+import { useMemo } from "react"
+import { HomeBillboard, type Billboard } from "@/components/home-billboard"
 import { HomeCarousel } from "@/components/home-carousel"
-import {
-  getItems,
-  getTmdbBillboardDetails,
-  getTmdbTrailer,
-} from "@/server/items"
+import { itemsOfType, recentItems } from "@/lib/catalog"
+import { useCatalog } from "@/lib/use-catalog"
 
-type BillboardItem = {
-  type: "movie" | "tv"
-  tmdbId: string
-  backdropImageUrl: string
-}
+export const Route = createFileRoute("/")({ component: Home })
 
-export const Route = createFileRoute("/")({
-  loader: async () => {
-    const items = await getItems({ data: {} })
-    const recentItemsFor = (type: "book" | "movie" | "tv") =>
-      items
-        .filter((item) => item.type === type)
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-        .slice(0, 12)
-
-    const billboardItems = items
-      .filter(
-        (item): item is typeof item & BillboardItem =>
+function Home() {
+  const catalog = useCatalog()
+  const { billboards, rows } = useMemo(() => {
+    const featured = recentItems(
+      catalog.items.filter(
+        (item): item is Billboard =>
           item.status === "owned" &&
           (item.type === "movie" || item.type === "tv") &&
           Boolean(item.backdropImageUrl) &&
           Boolean(item.tmdbId)
-      )
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-      .slice(0, 5)
-    const rows = [
-      { title: "Books", to: "/books" as const, items: recentItemsFor("book") },
-      {
-        title: "Movies",
-        to: "/movies" as const,
-        items: recentItemsFor("movie"),
-      },
-      { title: "TV", to: "/tv" as const, items: recentItemsFor("tv") },
-    ].filter((row) => row.items.length)
-    return {
-      billboards: billboardItems,
-      rows,
-    }
-  },
-  component: Home,
-})
-
-function Home() {
-  const { billboards, rows } = Route.useLoaderData()
-  const [tmdbDetails, setTmdbDetails] = useState<
-    Record<string, { logoUrl: string | null; tagline: string | null }>
-  >({})
-  const [tmdbTrailers, setTmdbTrailers] = useState<
-    Record<string, { key: string } | null>
-  >({})
-
-  useEffect(() => {
-    for (const billboard of billboards) {
-      const key = billboard.id
-      void getTmdbBillboardDetails({
-        data: { tmdbId: billboard.tmdbId, type: billboard.type },
-      }).then((details) =>
-        setTmdbDetails((current) => ({ ...current, [key]: details }))
-      )
-      void getTmdbTrailer({
-        data: { tmdbId: billboard.tmdbId, type: billboard.type },
-      }).then((trailer) =>
-        setTmdbTrailers((current) => ({ ...current, [key]: trailer }))
-      )
-    }
-  }, [billboards])
-
-  const enrichedBillboards = billboards.map((item) => ({
-    item,
-    details: tmdbDetails[item.id] ?? { logoUrl: null, tagline: null },
-    trailer: tmdbTrailers[item.id] ?? null,
-  }))
+      ),
+      5
+    )
+    const shelves = [
+      { title: "Books", to: "/books" as const, type: "book" as const },
+      { title: "Movies", to: "/movies" as const, type: "movie" as const },
+      { title: "TV", to: "/tv" as const, type: "tv" as const },
+    ]
+      .map((row) => ({
+        ...row,
+        items: recentItems(itemsOfType(catalog, row.type), 12),
+      }))
+      .filter((row) => row.items.length)
+    return { billboards: featured, rows: shelves }
+  }, [catalog])
 
   return (
     <main className="overflow-x-hidden">
-      <HomeBillboard billboards={enrichedBillboards} />
+      <HomeBillboard billboards={billboards} />
       {rows.length ? (
         <div className="mt-10 flex flex-col gap-10 pb-10">
           {rows.map((row, index) => (

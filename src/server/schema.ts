@@ -5,22 +5,25 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core"
+import {
+  itemStatuses,
+  itemTypes,
+  placementKinds,
+  userRoles,
+} from "@/lib/catalog"
 
-export const itemTypes = ["book", "movie", "tv"] as const
-export type ItemType = (typeof itemTypes)[number]
-export const itemStatuses = [
-  "owned",
-  "borrowed",
-  "reading",
-  "watching",
-] as const
-export type ItemStatus = (typeof itemStatuses)[number]
-export const itemEditions = ["theatrical", "extended", "director-cut"] as const
-export type ItemEdition = (typeof itemEditions)[number]
-export const userRoles = ["admin", "member"] as const
-export type UserRole = (typeof userRoles)[number]
+export {
+  itemEditions,
+  itemStatuses,
+  itemTypes,
+  userRoles,
+  type ItemEdition,
+  type ItemStatus,
+  type ItemType,
+  type UserRole,
+} from "@/lib/catalog"
 
-export const users = sqliteTable(
+export const users = /* #__PURE__ */ sqliteTable(
   "users",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
@@ -36,7 +39,7 @@ export const users = sqliteTable(
   (table) => [uniqueIndex("users_email_unique").on(table.email)]
 )
 
-export const sessions = sqliteTable(
+export const sessions = /* #__PURE__ */ sqliteTable(
   "sessions",
   {
     id: text("id").primaryKey(),
@@ -49,7 +52,7 @@ export const sessions = sqliteTable(
   (table) => [index("sessions_user_id_idx").on(table.userId)]
 )
 
-export const items = sqliteTable("items", {
+export const items = /* #__PURE__ */ sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   type: text("type", { enum: itemTypes }).notNull(),
@@ -73,19 +76,22 @@ export const items = sqliteTable("items", {
   pageCount: integer("page_count"),
   publisher: text("publisher"),
   isbn13: text("isbn_13"),
+  tagline: text("tagline"),
+  logoImageUrl: text("logo_image_url"),
+  trailerKey: text("trailer_key"),
   notes: text("notes").notNull().default(""),
   acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
 
-export const genres = sqliteTable("genres", {
+export const genres = /* #__PURE__ */ sqliteTable("genres", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
 })
 
-export const itemGenres = sqliteTable(
+export const itemGenres = /* #__PURE__ */ sqliteTable(
   "item_genres",
   {
     itemId: integer("item_id")
@@ -103,13 +109,13 @@ export const itemGenres = sqliteTable(
   ]
 )
 
-export const keywords = sqliteTable("keywords", {
+export const keywords = /* #__PURE__ */ sqliteTable("keywords", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
 })
 
-export const itemKeywords = sqliteTable(
+export const itemKeywords = /* #__PURE__ */ sqliteTable(
   "item_keywords",
   {
     itemId: integer("item_id")
@@ -127,14 +133,14 @@ export const itemKeywords = sqliteTable(
   ]
 )
 
-export const authors = sqliteTable("authors", {
+export const authors = /* #__PURE__ */ sqliteTable("authors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   openLibraryKey: text("open_library_key").unique(),
 })
 
-export const itemAuthors = sqliteTable(
+export const itemAuthors = /* #__PURE__ */ sqliteTable(
   "item_authors",
   {
     itemId: integer("item_id")
@@ -152,14 +158,14 @@ export const itemAuthors = sqliteTable(
   ]
 )
 
-export const directors = sqliteTable("directors", {
+export const directors = /* #__PURE__ */ sqliteTable("directors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   tmdbPersonId: text("tmdb_person_id").unique(),
 })
 
-export const itemDirectors = sqliteTable(
+export const itemDirectors = /* #__PURE__ */ sqliteTable(
   "item_directors",
   {
     itemId: integer("item_id")
@@ -177,14 +183,14 @@ export const itemDirectors = sqliteTable(
   ]
 )
 
-export const actors = sqliteTable("actors", {
+export const actors = /* #__PURE__ */ sqliteTable("actors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   tmdbPersonId: text("tmdb_person_id").unique(),
 })
 
-export const itemActors = sqliteTable(
+export const itemActors = /* #__PURE__ */ sqliteTable(
   "item_actors",
   {
     itemId: integer("item_id")
@@ -203,15 +209,16 @@ export const itemActors = sqliteTable(
   ]
 )
 
-export const collections = sqliteTable("collections", {
+export const collections = /* #__PURE__ */ sqliteTable("collections", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   tmdbCollectionId: text("tmdb_collection_id").unique(),
   overview: text("overview"),
+  partIds: text("part_ids", { mode: "json" }).$type<string[]>(),
 })
 
-export const itemCollections = sqliteTable(
+export const itemCollections = /* #__PURE__ */ sqliteTable(
   "item_collections",
   {
     itemId: integer("item_id")
@@ -230,7 +237,7 @@ export const itemCollections = sqliteTable(
   ]
 )
 
-export const lists = sqliteTable("lists", {
+export const lists = /* #__PURE__ */ sqliteTable("lists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
@@ -238,24 +245,14 @@ export const lists = sqliteTable("lists", {
   createdAt: text("created_at").notNull(),
 })
 
-export const listPlacements = sqliteTable(
+export const listPlacements = /* #__PURE__ */ sqliteTable(
   "list_placements",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     listId: integer("list_id").references(() => lists.id, {
       onDelete: "cascade",
     }),
-    kind: text("kind", {
-      enum: [
-        "recent",
-        "list",
-        "genre",
-        "collection",
-        "director",
-        "actor",
-        "author",
-      ],
-    }).notNull(),
+    kind: text("kind", { enum: placementKinds }).notNull(),
     sourceSlug: text("source_slug").notNull(),
     type: text("type", { enum: itemTypes }).notNull(),
     position: integer("position").notNull(),
@@ -274,7 +271,7 @@ export const listPlacements = sqliteTable(
   ]
 )
 
-export const listItems = sqliteTable(
+export const listItems = /* #__PURE__ */ sqliteTable(
   "list_items",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),

@@ -8,7 +8,7 @@ import { SystemListToggle } from "@/components/system-list-toggle"
 import { coverPlateBackground } from "@/lib/cover-plate"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 export function CoverTile({
   children,
@@ -20,7 +20,7 @@ export function CoverTile({
   onSystemListMembershipChange,
 }: {
   children?: ReactNode
-  item: Item
+  item: CatalogItem
   className?: string
   hideMissingCoverTitle?: boolean
   variant?: "default" | "carousel"
@@ -65,6 +65,8 @@ export function CoverTile({
             <img
               alt={item.title}
               className="h-full w-full object-cover"
+              decoding="async"
+              loading="lazy"
               referrerPolicy="no-referrer"
               src={item.coverImageUrl}
             />
@@ -114,7 +116,7 @@ export function CoverTile({
   )
 }
 
-function statusLabel(status: Exclude<Item["status"], "owned">) {
+function statusLabel(status: Exclude<CatalogItem["status"], "owned">) {
   return status === "reading"
     ? "Reading"
     : status === "watching"

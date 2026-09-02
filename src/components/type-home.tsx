@@ -6,16 +6,7 @@ import type { ReactNode } from "react"
 import { HomeCarousel } from "@/components/home-carousel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { Item } from "@/server/schema"
-
-type HomeRow =
-  | { title: string; kind: "recent"; items: Item[] }
-  | {
-      title: string
-      kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
-      slug: string
-      items: Item[]
-    }
+import type { CatalogItem, HomeRow } from "@/lib/catalog"
 
 export function TypeHome({
   addLabel,
@@ -27,7 +18,7 @@ export function TypeHome({
   addLabel: string
   subtitle: string
   title: string
-  type: Item["type"]
+  type: CatalogItem["type"]
   rows: HomeRow[]
 }) {
   const systemListSlug = type === "book" ? "reading-list" : "watchlist"
@@ -126,7 +117,7 @@ export function TypeHome({
   )
 }
 
-function SystemListCaption({ item }: { item: Item }) {
+function SystemListCaption({ item }: { item: CatalogItem }) {
   const certification = item.type !== "book" ? item.certification?.trim() : null
   const authors = item.authors.map((name) => name.trim()).filter(Boolean)
   const author =

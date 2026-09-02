@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router"
 import { Catalog } from "@/components/catalog"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
-type BrowseType = Item["type"]
+type BrowseType = CatalogItem["type"]
 type BrowseMode = "year" | "decade"
 
 export function YearBrowse({
@@ -16,7 +16,7 @@ export function YearBrowse({
   mode: BrowseMode
   value: number
   years: number[]
-  items: Item[]
+  items: CatalogItem[]
 }) {
   const decades = [
     ...new Set(

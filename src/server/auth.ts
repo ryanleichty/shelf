@@ -11,7 +11,7 @@ import {
   setCookie,
 } from "@tanstack/react-start/server"
 import { and, eq, gt } from "drizzle-orm"
-import { db, ensureDatabase } from "./db"
+import { db } from "./db"
 import { sessions, users, type UserRole } from "./schema"
 
 const COOKIE_NAME = "shelf-session"
@@ -35,7 +35,7 @@ function bootstrapToken() {
     .digest("hex")
 }
 
-function isBootstrapSession() {
+export function isBootstrapSession() {
   const cookie = getCookie(COOKIE_NAME)
   const expected = bootstrapToken()
   if (!cookie || !expected) return false
@@ -46,7 +46,6 @@ function isBootstrapSession() {
 }
 
 async function hasStoredAdmin() {
-  await ensureDatabase()
   const [admin] = await db
     .select({ id: users.id })
     .from(users)
@@ -55,8 +54,14 @@ async function hasStoredAdmin() {
   return Boolean(admin)
 }
 
+// Session id from the cookie, or null when there is none or it is the
+// bootstrap token. Lets callers batch the session lookup with other queries.
+export function getSessionId() {
+  const sessionId = getCookie(COOKIE_NAME)
+  return sessionId && !isBootstrapSession() ? sessionId : null
+}
+
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  await ensureDatabase()
   const sessionId = getCookie(COOKIE_NAME)
   if (!sessionId || isBootstrapSession()) return null
   const [session] = await db
@@ -162,7 +167,6 @@ function setSessionCookie(value: string) {
 }
 
 export async function startUserSession(userId: number) {
-  await ensureDatabase()
   const id = randomUUID()
   await db.insert(sessions).values({
     id,
@@ -182,7 +186,6 @@ export function startBootstrapSession() {
 export async function endSession() {
   const id = getCookie(COOKIE_NAME)
   if (id && !isBootstrapSession()) {
-    await ensureDatabase()
     await db.delete(sessions).where(eq(sessions.id, id))
   }
   setCookie(COOKIE_NAME, "", {

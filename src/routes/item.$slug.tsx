@@ -8,37 +8,18 @@ import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
+import { useSignedInStatus } from "@/components/signed-in-status"
 import { TrailerDialog } from "@/components/trailer-dialog"
+import { slugify } from "@/lib/catalog"
 import { coverPlateBackground } from "@/lib/cover-plate"
-import {
-  getItemBySlug,
-  getItemsByCollection,
-  getSignedInStatus,
-  getSimilarOwnedItems,
-  getTmdbCollectionParts,
-  getTmdbTrailer,
-} from "@/server/items"
+import { getItemPage } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
   validateSearch: z.object({ from: z.literal("all").optional() }),
   loader: async ({ params }) => {
-    const item = await getItemBySlug({ data: { slug: params.slug } })
-    if (!item) throw notFound()
-    const [collection, signedIn] = await Promise.all([
-      item.type === "movie" && item.collection
-        ? getItemsByCollection({ data: { slug: item.collection.slug } })
-        : Promise.resolve(null),
-      getSignedInStatus(),
-    ])
-    const collectionItems = (collection?.items ?? []).filter(
-      (collectionItem) =>
-        collectionItem.status === "owned" && collectionItem.id !== item.id
-    )
-    return {
-      item,
-      collectionItems,
-      signedIn,
-    }
+    const page = await getItemPage({ data: { slug: params.slug } })
+    if (!page) throw notFound()
+    return page
   },
   head: ({ loaderData }) => {
     const item = loaderData?.item
@@ -68,56 +49,20 @@ export const Route = createFileRoute("/item/$slug")({
 })
 
 function ItemDetail() {
-  const { item, collectionItems, signedIn } = Route.useLoaderData()
+  const {
+    item,
+    similarItems,
+    collectionItems,
+    collectionPart,
+    collectionPartCount,
+  } = Route.useLoaderData()
+  const { signedIn } = useSignedInStatus()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
-  const [trailer, setTrailer] = useState<{ key: string } | null>()
-  const [collectionParts, setCollectionParts] = useState<Array<string | null>>()
-  const [similarItems, setSimilarItems] = useState<typeof collectionItems>([])
 
   useEffect(() => {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
   }, [item.type])
-
-  useEffect(() => {
-    setTrailer(undefined)
-    if ((item.type !== "movie" && item.type !== "tv") || !item.tmdbId) return
-    void getTmdbTrailer({
-      data: { tmdbId: item.tmdbId, type: item.type },
-    }).then(setTrailer)
-  }, [item.tmdbId, item.type])
-
-  useEffect(() => {
-    setCollectionParts(undefined)
-    if (
-      item.type !== "movie" ||
-      !item.tmdbId ||
-      !item.collection?.tmdbCollectionId
-    )
-      return
-    void getTmdbCollectionParts({
-      data: { tmdbCollectionId: item.collection.tmdbCollectionId },
-    }).then(setCollectionParts)
-  }, [item.collection?.tmdbCollectionId, item.tmdbId, item.type])
-
-  useEffect(() => {
-    setSimilarItems([])
-    void getSimilarOwnedItems({ data: { itemId: item.id } }).then(
-      setSimilarItems
-    )
-  }, [item.id])
-
-  const collectionPart = collectionParts?.indexOf(item.tmdbId) ?? -1
-  const orderedCollectionItems = collectionParts
-    ? collectionItems
-        .flatMap((collectionItem) => {
-          if (!collectionItem.tmdbId) return []
-          const part = collectionParts.indexOf(collectionItem.tmdbId)
-          return part >= 0 ? [{ item: collectionItem, part }] : []
-        })
-        .sort((left, right) => left.part - right.part)
-        .map(({ item: collectionItem }) => collectionItem)
-    : collectionItems
 
   return (
     <main>
@@ -260,8 +205,11 @@ function ItemDetail() {
               signedIn={signedIn}
               systemList={item.systemList}
               trailer={
-                trailer ? (
-                  <TrailerDialog title={item.title} trailerKey={trailer.key} />
+                item.trailerKey ? (
+                  <TrailerDialog
+                    title={item.title}
+                    trailerKey={item.trailerKey}
+                  />
                 ) : undefined
               }
             />
@@ -297,9 +245,9 @@ function ItemDetail() {
                   >
                     {item.collection.name}
                   </Badge>
-                  {item.type === "movie" && collectionPart >= 0 && (
+                  {collectionPart !== null && (
                     <span className="text-sm text-muted-foreground">
-                      Part {collectionPart + 1} of {collectionParts?.length}
+                      Part {collectionPart + 1} of {collectionPartCount}
                     </span>
                   )}
                 </div>
@@ -357,7 +305,7 @@ function ItemDetail() {
           </div>
         </article>
       </div>
-      {item.collection && orderedCollectionItems.length > 0 && (
+      {item.collection && collectionItems.length > 0 && (
         <section
           className="item-shelf-carousel mt-12"
           aria-labelledby="collection-parts"
@@ -375,7 +323,7 @@ function ItemDetail() {
           </h2>
           <HomeCarousel
             id={`collection-parts-${item.id}`}
-            items={orderedCollectionItems}
+            items={collectionItems}
           />
         </section>
       )}
@@ -481,13 +429,4 @@ function ItemYearLink({
       {year}
     </Link>
   )
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
 }

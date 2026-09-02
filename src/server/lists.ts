@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { displayListName } from "@/lib/system-lists"
 import { requireSignedIn } from "./auth"
-import { db, ensureDatabase } from "./db"
+import { db } from "./db"
 import {
   actors,
   authors,
@@ -64,7 +64,6 @@ async function uniqueListSlug(name: string) {
 
 export const getListPlacements = createServerFn({ method: "GET" }).handler(
   async () => {
-    await ensureDatabase()
     const placements = await db
       .select({
         id: listPlacements.id,
@@ -100,7 +99,6 @@ export const getListPlacements = createServerFn({ method: "GET" }).handler(
 export const getCatalogPlacementOptions = createServerFn({
   method: "GET",
 }).handler(async () => {
-  await ensureDatabase()
   const options = await Promise.all([
     db
       .selectDistinct({
@@ -174,7 +172,6 @@ export const createList = createServerFn({ method: "POST" })
   .inputValidator(z.object({ name: listName, type: z.enum(itemTypes) }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const slug = await uniqueListSlug(data.name)
     const [list] = await db
       .insert(lists)
@@ -206,7 +203,6 @@ export const addCatalogPlacements = createServerFn({ method: "POST" })
   .inputValidator(catalogPlacementInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [{ position }] = await db
       .select({
         position: sql<number>`coalesce(max(${listPlacements.position}), -1)`,
@@ -246,7 +242,6 @@ export const renameList = createServerFn({ method: "POST" })
   .inputValidator(z.object({ listId: z.number().int(), name: listName }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [list] = await db
       .select({ system: lists.system })
       .from(lists)
@@ -265,7 +260,6 @@ export const deleteList = createServerFn({ method: "POST" })
   .inputValidator(z.object({ listId: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [list] = await db
       .select({ system: lists.system })
       .from(lists)
@@ -281,7 +275,6 @@ export const deleteCatalogPlacement = createServerFn({ method: "POST" })
   .inputValidator(placementInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     await db
       .delete(listPlacements)
       .where(
@@ -298,7 +291,6 @@ export const setListPlacementVisible = createServerFn({ method: "POST" })
   .inputValidator(placementInput.extend({ visible: z.boolean() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     await db
       .update(listPlacements)
       .set({ visible: data.visible })
@@ -320,7 +312,6 @@ export const reorderListPlacements = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const placements = await db
       .select({
         id: listPlacements.id,
@@ -364,7 +355,6 @@ export const addItemToList = createServerFn({ method: "POST" })
   .inputValidator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [list] = await db
       .select({ id: lists.id })
       .from(lists)
@@ -387,7 +377,6 @@ export const removeItemFromList = createServerFn({ method: "POST" })
   .inputValidator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [list] = await db
       .select({ id: lists.id })
       .from(lists)

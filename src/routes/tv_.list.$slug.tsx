@@ -1,35 +1,32 @@
 import { createFileRoute, notFound } from "@tanstack/react-router"
+import { useMemo } from "react"
 import { z } from "zod"
 import { ListCatalog } from "@/components/list-catalog"
-import { getItemsByList } from "@/server/items"
+import { listPage } from "@/lib/catalog"
+import { useCatalog } from "@/lib/use-catalog"
 
 export const Route = createFileRoute("/tv_/list/$slug")({
   validateSearch: z.object({ query: z.string().optional() }),
-  loaderDeps: ({ search }) => ({ query: search.query }),
-  loader: async ({ deps, params }) => {
-    const result = await getItemsByList({
-      data: { listSlug: params.slug, type: "tv", query: deps.query },
-    })
-    if (!result) throw notFound()
-    return result
-  },
-  component: TVList,
+  component: TvList,
 })
 
-function TVList() {
+function TvList() {
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
-  const { collageItems, items, name, totalCount } = Route.useLoaderData()
+  const { slug } = Route.useParams()
+  const catalog = useCatalog()
+  const page = useMemo(() => listPage(catalog, "tv", slug), [catalog, slug])
+  if (!page) throw notFound()
   return (
     <ListCatalog
-      collageItems={collageItems}
-      items={items}
-      name={name}
+      collageItems={page.collageItems}
+      items={page.items}
+      name={page.name}
       onQueryChange={(query) =>
-        navigate({ search: { query: query || undefined } })
+        navigate({ replace: true, search: { query: query || undefined } })
       }
       query={search.query}
-      totalCount={totalCount}
+      totalCount={page.totalCount}
       type="tv"
     />
   )

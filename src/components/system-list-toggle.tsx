@@ -11,16 +11,6 @@ import {
 } from "@/components/ui/tooltip"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
-const membershipRouteIds = new Set([
-  "/books",
-  "/books_/list/$slug",
-  "/item/$slug",
-  "/movies",
-  "/movies_/list/$slug",
-  "/tv",
-  "/tv_/list/$slug",
-])
-
 export type SystemListOption = {
   slug: string
   name: string
@@ -76,9 +66,7 @@ export function SystemListToggle({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (generation !== requestGeneration.current) return
-      void router.invalidate({
-        filter: (match) => membershipRouteIds.has(match.routeId),
-      })
+      void router.invalidate()
     } catch (cause) {
       if (generation !== requestGeneration.current) return
       optimisticContainsItem.current = null

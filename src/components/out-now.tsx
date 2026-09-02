@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 export function OutNow({
   items,
   fromAll = false,
 }: {
-  items: Item[]
+  items: CatalogItem[]
   fromAll?: boolean
 }) {
   const out = items.filter((item) => item.status !== "owned")

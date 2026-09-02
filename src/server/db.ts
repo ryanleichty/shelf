@@ -1,427 +1,49 @@
-import { createClient } from "@libsql/client"
+import { createClient, type Client } from "@libsql/client"
 import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
-import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
+import {
+  SCHEMA_VERSION,
+  readSchemaVersion,
+  refreshSearchIndex as refreshSearchIndexWith,
+  runMigrations,
+} from "./migrate"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 
 const isEphemeral = !process.env.TURSO_DATABASE_URL
 const url = process.env.TURSO_DATABASE_URL ?? "file:/tmp/shelf.db"
 
-const client = import.meta.env.SSR
-  ? createClient({
-      url,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    })
+const rawClient = import.meta.env.SSR
+  ? createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN })
   : null
 
-export const db = import.meta.env.SSR
-  ? drizzle({ client: client!, schema })
-  : (undefined as unknown as ReturnType<typeof drizzle<typeof schema>>)
+let ready: Promise<void> | undefined
 
-function getClient() {
-  if (!client)
-    throw new Error("Database access is only available on the server.")
-  return client
+// One query per process; migrations only run when the schema version moved.
+function ensureReady() {
+  ready ??= (async () => {
+    const client = rawClient!
+    if ((await readSchemaVersion(client)) === SCHEMA_VERSION) return
+    await runMigrations(client)
+    if (isEphemeral) await seedSamples(client)
+  })()
+  return ready
 }
 
-let setupPromise: Promise<void> | undefined
-
-export function ensureDatabase() {
-  setupPromise ??= (async () => {
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        type TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'owned',
-        title TEXT NOT NULL,
-        creator TEXT NOT NULL,
-        year INTEGER NOT NULL,
-        cover_image_url TEXT,
-        backdrop_image_url TEXT,
-        open_library_key TEXT,
-        tmdb_id TEXT,
-        barcode TEXT UNIQUE,
-        borrower TEXT,
-        loaned_at TEXT,
-        format TEXT,
-        edition TEXT,
-        genres TEXT NOT NULL DEFAULT '[]',
-        description TEXT,
-        subtitle TEXT,
-        page_count INTEGER,
-        publisher TEXT,
-        isbn_13 TEXT,
-        notes TEXT NOT NULL DEFAULT '',
-        acquired_at TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+async function seedSamples(client: Client) {
+  const rawDb = drizzle({ client, schema })
+  const now = new Date().toISOString()
+  const count = await client.execute("SELECT COUNT(*) AS count FROM items")
+  if (Number(count.rows[0]?.count ?? 0) === 0) {
+    await rawDb
+      .insert(schema.items)
+      .values(
+        sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now }))
       )
-    `)
-    const columns = await getClient().execute("PRAGMA table_info(items)")
-    if (!columns.rows.some((column) => column.name === "status")) {
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'"
-      )
-    }
-    if (!columns.rows.some((column) => column.name === "open_library_key")) {
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN open_library_key TEXT"
-      )
-    }
-    if (!columns.rows.some((column) => column.name === "tmdb_id")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN tmdb_id TEXT")
-    }
-    if (!columns.rows.some((column) => column.name === "barcode")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN barcode TEXT")
-    }
-    await getClient().execute(
-      "CREATE UNIQUE INDEX IF NOT EXISTS items_barcode_unique ON items(barcode) WHERE barcode IS NOT NULL"
-    )
-    if (!columns.rows.some((column) => column.name === "borrower")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN borrower TEXT")
-    }
-    if (!columns.rows.some((column) => column.name === "loaned_at")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
-    }
-    if (!columns.rows.some((column) => column.name === "format")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN format TEXT")
-    }
-    if (!columns.rows.some((column) => column.name === "edition")) {
-      await getClient().execute("ALTER TABLE items ADD COLUMN edition TEXT")
-    }
-    if (!columns.rows.some((column) => column.name === "genres"))
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN genres TEXT NOT NULL DEFAULT '[]'"
-      )
-    if (!columns.rows.some((column) => column.name === "description"))
-      await getClient().execute("ALTER TABLE items ADD COLUMN description TEXT")
-    if (!columns.rows.some((column) => column.name === "backdrop_image_url"))
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN backdrop_image_url TEXT"
-      )
-    if (!columns.rows.some((column) => column.name === "certification"))
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN certification TEXT"
-      )
-    if (!columns.rows.some((column) => column.name === "runtime"))
-      await getClient().execute("ALTER TABLE items ADD COLUMN runtime INTEGER")
-    if (!columns.rows.some((column) => column.name === "subtitle"))
-      await getClient().execute("ALTER TABLE items ADD COLUMN subtitle TEXT")
-    if (!columns.rows.some((column) => column.name === "page_count"))
-      await getClient().execute(
-        "ALTER TABLE items ADD COLUMN page_count INTEGER"
-      )
-    if (!columns.rows.some((column) => column.name === "publisher"))
-      await getClient().execute("ALTER TABLE items ADD COLUMN publisher TEXT")
-    if (!columns.rows.some((column) => column.name === "isbn_13"))
-      await getClient().execute("ALTER TABLE items ADD COLUMN isbn_13 TEXT")
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        avatar_url TEXT,
-        role TEXT NOT NULL DEFAULT 'member',
-        password_hash TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `)
-    const userColumns = await getClient().execute("PRAGMA table_info(users)")
-    if (!userColumns.rows.some((column) => column.name === "avatar_url"))
-      await getClient().execute("ALTER TABLE users ADD COLUMN avatar_url TEXT")
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY NOT NULL,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        expires_at TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    `)
-    await getClient().execute(
-      "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)"
-    )
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS genres (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_genres (
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        genre_id INTEGER NOT NULL REFERENCES genres(id) ON DELETE CASCADE,
-        UNIQUE(item_id, genre_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS keywords (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_keywords (
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        keyword_id INTEGER NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
-        UNIQUE(item_id, keyword_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS authors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        open_library_key TEXT UNIQUE
-      )
-    `)
-    const authorColumns = await getClient().execute(
-      "PRAGMA table_info(authors)"
-    )
-    if (
-      !authorColumns.rows.some((column) => column.name === "open_library_key")
-    )
-      await getClient().execute(
-        "ALTER TABLE authors ADD COLUMN open_library_key TEXT"
-      )
-    await getClient().execute(
-      "CREATE UNIQUE INDEX IF NOT EXISTS authors_open_library_key_unique ON authors(open_library_key)"
-    )
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_authors (
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
-        UNIQUE(item_id, author_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS directors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        tmdb_person_id TEXT UNIQUE
-      )
-    `)
-    const directorColumns = await getClient().execute(
-      "PRAGMA table_info(directors)"
-    )
-    if (
-      !directorColumns.rows.some((column) => column.name === "tmdb_person_id")
-    )
-      await getClient().execute(
-        "ALTER TABLE directors ADD COLUMN tmdb_person_id TEXT"
-      )
-    await getClient().execute(
-      "CREATE UNIQUE INDEX IF NOT EXISTS directors_tmdb_person_id_unique ON directors(tmdb_person_id)"
-    )
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_directors (
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        director_id INTEGER NOT NULL REFERENCES directors(id) ON DELETE CASCADE,
-        UNIQUE(item_id, director_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS actors (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        tmdb_person_id TEXT UNIQUE
-      )
-    `)
-    const actorColumns = await getClient().execute("PRAGMA table_info(actors)")
-    if (!actorColumns.rows.some((column) => column.name === "tmdb_person_id"))
-      await getClient().execute(
-        "ALTER TABLE actors ADD COLUMN tmdb_person_id TEXT"
-      )
-    await getClient().execute(
-      "CREATE UNIQUE INDEX IF NOT EXISTS actors_tmdb_person_id_unique ON actors(tmdb_person_id)"
-    )
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_actors (
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        actor_id INTEGER NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
-        position INTEGER NOT NULL,
-        UNIQUE(item_id, actor_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS collections (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        tmdb_collection_id TEXT UNIQUE,
-        overview TEXT
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS item_collections (
-        item_id INTEGER NOT NULL UNIQUE REFERENCES items(id) ON DELETE CASCADE,
-        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-        UNIQUE(item_id, collection_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE VIRTUAL TABLE IF NOT EXISTS item_search USING fts5(
-        title, creator, description, genres, keywords
-      )
-    `)
-    await migrateLegacyGenres()
-    await migrateLegacyCreators()
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS lists (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        system INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL
-      )
-    `)
-    const listColumns = await getClient().execute("PRAGMA table_info(lists)")
-    if (!listColumns.rows.some((column) => column.name === "system")) {
-      await getClient().execute(
-        "ALTER TABLE lists ADD COLUMN system INTEGER NOT NULL DEFAULT 0"
-      )
-    }
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS list_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
-        item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-        position INTEGER NOT NULL,
-        added_at TEXT NOT NULL,
-        UNIQUE(list_id, item_id)
-      )
-    `)
-    await getClient().execute(`
-      CREATE TABLE IF NOT EXISTS list_placements (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
-        kind TEXT NOT NULL,
-        source_slug TEXT NOT NULL DEFAULT '',
-        type TEXT NOT NULL,
-        position INTEGER NOT NULL,
-        visible INTEGER NOT NULL DEFAULT 1,
-        UNIQUE(list_id, type)
-      )
-    `)
-    const placementColumns = await getClient().execute(
-      "PRAGMA table_info(list_placements)"
-    )
-    const needsCatalogPlacementDefaults = !placementColumns.rows.some(
-      (column) => column.name === "source_slug"
-    )
-    if (
-      !placementColumns.rows.some((column) => column.name === "kind") ||
-      placementColumns.rows.find((column) => column.name === "list_id")?.notnull
-    ) {
-      await getClient().execute(`
-        CREATE TABLE list_placements_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          list_id INTEGER REFERENCES lists(id) ON DELETE CASCADE,
-          kind TEXT NOT NULL,
-          type TEXT NOT NULL,
-          position INTEGER NOT NULL,
-          visible INTEGER NOT NULL DEFAULT 1,
-          UNIQUE(list_id, type)
-        );
-        INSERT INTO list_placements_new (id, list_id, kind, type, position, visible)
-        SELECT id, list_id, 'list', type, position, visible FROM list_placements;
-        DROP TABLE list_placements;
-        ALTER TABLE list_placements_new RENAME TO list_placements;
-      `)
-    }
-    if (needsCatalogPlacementDefaults) {
-      await getClient().execute(
-        "ALTER TABLE list_placements ADD COLUMN source_slug TEXT"
-      )
-      await getClient().execute(`
-        UPDATE list_placements
-        SET source_slug = CASE
-          WHEN kind = 'recent' THEN 'recent'
-          ELSE coalesce((SELECT slug FROM lists WHERE lists.id = list_placements.list_id), '')
-        END
-      `)
-    }
-    await getClient().execute(
-      "CREATE UNIQUE INDEX IF NOT EXISTS list_placements_type_kind_source_slug_unique ON list_placements(type, kind, source_slug)"
-    )
-    const now = new Date().toISOString()
-    await getClient().execute({
-      sql: `
-        INSERT INTO lists (slug, name, system, created_at)
-        VALUES (?, ?, 1, ?), (?, ?, 1, ?)
-        ON CONFLICT(slug) DO UPDATE SET system = 1
-      `,
-      args: ["watchlist", "Watchlist", now, READLIST_SLUG, READLIST_NAME, now],
-    })
-    await getClient().execute(`
-      INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'book', 0, 1 FROM lists WHERE slug = '${READLIST_SLUG}'
-      ON CONFLICT(list_id, type) DO NOTHING
-    `)
-    await getClient().execute(`
-      INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'movie', 0, 1 FROM lists WHERE slug = 'watchlist'
-      ON CONFLICT(list_id, type) DO NOTHING
-    `)
-    await getClient().execute(`
-      INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-      SELECT id, 'list', slug, 'tv', 0, 1 FROM lists WHERE slug = 'watchlist'
-      ON CONFLICT(list_id, type) DO NOTHING
-    `)
-    for (const type of ["book", "movie", "tv"]) {
-      await getClient().execute({
-        sql: `
-          INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-          SELECT NULL, 'recent', 'recent', ?, 1, 1
-          WHERE NOT EXISTS (
-            SELECT 1 FROM list_placements WHERE kind = 'recent' AND type = ?
-          )
-        `,
-        args: [type, type],
-      })
-    }
-    if (needsCatalogPlacementDefaults) {
-      await getClient().execute(`
-        INSERT INTO list_placements (list_id, kind, source_slug, type, position, visible)
-        SELECT NULL, 'genre', slug, type,
-          max_position + ROW_NUMBER() OVER (PARTITION BY type ORDER BY name, slug), 1
-        FROM (
-          SELECT DISTINCT genres.slug, genres.name, items.type,
-            COALESCE((
-              SELECT MAX(position) FROM list_placements AS placements
-              WHERE placements.type = items.type
-            ), -1) AS max_position
-          FROM item_genres
-          INNER JOIN genres ON item_genres.genre_id = genres.id
-          INNER JOIN items ON item_genres.item_id = items.id
-        )
-      `)
-    }
-    if (!isEphemeral) return
-    const count = await getClient().execute(
-      "SELECT COUNT(*) AS count FROM items"
-    )
-    if (Number(count.rows[0]?.count ?? 0) === 0) {
-      await db.insert(schema.items).values(
-        sampleItems.map((item) => ({
-          ...item,
-          createdAt: now,
-          updatedAt: now,
-        }))
-      )
-      await refreshSearchIndex()
-      return
-    }
+  } else {
     await Promise.all(
       sampleItems.map((item) =>
-        db
+        rawDb
           .update(schema.items)
           .set({
             status: item.status,
@@ -431,117 +53,33 @@ export function ensureDatabase() {
           .where(eq(schema.items.slug, item.slug))
       )
     )
-    await refreshSearchIndex()
-  })()
-  return setupPromise
-}
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-
-async function replaceGenreJoins(itemId: number, names: string[]) {
-  const client = getClient()
-  for (const name of [
-    ...new Set(names.map((name) => name.trim()).filter(Boolean)),
-  ]) {
-    const slug = slugify(name)
-    if (!slug) continue
-    await client.execute({
-      sql: "INSERT INTO genres (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING",
-      args: [slug, name],
-    })
-    await client.execute({
-      sql: "INSERT INTO item_genres (item_id, genre_id) SELECT ?, id FROM genres WHERE slug = ? ON CONFLICT DO NOTHING",
-      args: [itemId, slug],
-    })
   }
+  await refreshSearchIndexWith(client)
 }
 
-async function migrateLegacyGenres() {
-  const client = getClient()
-  const columns = await client.execute("PRAGMA table_info(items)")
-  if (!columns.rows.some((column) => column.name === "genres")) return
-  const legacyItems = await client.execute("SELECT id, genres FROM items")
-  for (const row of legacyItems.rows) {
-    try {
-      const names = JSON.parse(String(row.genres ?? "[]"))
-      if (Array.isArray(names)) await replaceGenreJoins(Number(row.id), names)
-    } catch {
-      // Ignore malformed legacy JSON rather than blocking database startup.
-    }
-  }
-}
+const gated = new Set(["execute", "batch", "transaction", "executeMultiple"])
 
-function parseCreatorNames(creator: string) {
-  return creator
-    .split(/,|\s+and\s+|\s+&\s+/i)
-    .map((name) => name.trim())
-    .filter(Boolean)
-}
-
-async function replaceCreatorJoins(
-  itemId: number,
-  kind: "author" | "director",
-  names: string[]
-) {
-  const client = getClient()
-  const table = kind === "author" ? "authors" : "directors"
-  const joinTable = kind === "author" ? "item_authors" : "item_directors"
-  const personColumn = kind === "author" ? "author_id" : "director_id"
-  for (const name of [...new Set(names)]) {
-    const slug = slugify(name)
-    if (!slug) continue
-    await client.execute({
-      sql: `INSERT INTO ${table} (slug, name) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING`,
-      args: [slug, name],
+// Every query waits for the schema check first, so callers never have to.
+const client = rawClient
+  ? new Proxy(rawClient, {
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver)
+        if (typeof value !== "function" || !gated.has(String(property)))
+          return value
+        return async (...args: unknown[]) => {
+          await ensureReady()
+          return (value as (...input: unknown[]) => unknown).apply(target, args)
+        }
+      },
     })
-    await client.execute({
-      sql: `INSERT INTO ${joinTable} (item_id, ${personColumn}) SELECT ?, id FROM ${table} WHERE slug = ? ON CONFLICT DO NOTHING`,
-      args: [itemId, slug],
-    })
-  }
-}
+  : null
 
-async function migrateLegacyCreators() {
-  const client = getClient()
-  const legacyItems = await client.execute(`
-    SELECT id, type, creator FROM items
-    WHERE
-      (type = 'book' AND NOT EXISTS (
-        SELECT 1 FROM item_authors WHERE item_authors.item_id = items.id
-      ))
-      OR
-      (type IN ('movie', 'tv') AND NOT EXISTS (
-        SELECT 1 FROM item_directors WHERE item_directors.item_id = items.id
-      ))
-  `)
-  for (const row of legacyItems.rows) {
-    const kind = row.type === "book" ? "author" : "director"
-    await replaceCreatorJoins(
-      Number(row.id),
-      kind,
-      parseCreatorNames(String(row.creator ?? ""))
-    )
-  }
-}
+export const db = import.meta.env.SSR
+  ? drizzle({ client: client!, schema })
+  : (undefined as unknown as ReturnType<typeof drizzle<typeof schema>>)
 
-export async function refreshSearchIndex() {
-  const client = getClient()
-  await client.execute("DELETE FROM item_search")
-  await client.execute(`
-    INSERT INTO item_search (rowid, title, creator, description, genres, keywords)
-    SELECT
-      items.id,
-      items.title,
-      items.creator,
-      COALESCE(items.description, ''),
-      COALESCE((SELECT group_concat(genres.name, ' ') FROM item_genres JOIN genres ON genres.id = item_genres.genre_id WHERE item_genres.item_id = items.id), ''),
-      COALESCE((SELECT group_concat(keywords.name, ' ') FROM item_keywords JOIN keywords ON keywords.id = item_keywords.keyword_id WHERE item_keywords.item_id = items.id), '')
-    FROM items
-  `)
+export function refreshSearchIndex() {
+  if (!client)
+    throw new Error("Database access is only available on the server.")
+  return refreshSearchIndexWith(client)
 }

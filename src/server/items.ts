@@ -1,22 +1,18 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  isNotNull,
-  isNull,
-  lte,
-  ne,
-  or,
-  sql,
-} from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { displayListName } from "@/lib/system-lists"
-import { db, ensureDatabase, refreshSearchIndex } from "./db"
+import { db, refreshSearchIndex } from "./db"
+import {
+  fetchTmdbCollectionPartIds,
+  fetchTmdbExtras,
+  TMDB_EXTRAS_APPEND,
+  tmdbExtrasFrom,
+  type TmdbExtrasSource,
+} from "./tmdb"
+import { systemListSlug, type CatalogItem } from "@/lib/catalog"
+import { bookGenreOptions, itemInput, type ItemInput } from "@/lib/item-input"
 import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
 import {
@@ -34,7 +30,6 @@ import {
   genres,
   keywords,
   itemEditions,
-  itemStatuses,
   itemTypes,
   listItems,
   listPlacements,
@@ -45,125 +40,11 @@ import {
   type Collection,
 } from "./schema"
 
-export const bookGenreOptions = [
-  "Fiction",
-  "Nonfiction",
-  "Science Fiction",
-  "Fantasy",
-  "Mystery",
-  "Romance",
-  "History",
-  "Biography",
-  "Young Adult",
-  "Poetry",
-  "Comics",
-] as const
-export const screenGenreOptions = [
-  "Action",
-  "Adventure",
-  "Animation",
-  "Comedy",
-  "Crime",
-  "Documentary",
-  "Drama",
-  "Family",
-  "Fantasy",
-  "History",
-  "Horror",
-  "Mystery",
-  "Romance",
-  "Science Fiction",
-  "Thriller",
-  "War",
-  "Western",
-] as const
-
-const itemInput = z
-  .object({
-    id: z.number().int().optional(),
-    slug: z.string().min(1).max(120),
-    type: z.enum(itemTypes),
-    status: z.enum(itemStatuses).default("owned"),
-    title: z.string().min(1).max(240),
-    creator: z.string().max(240).optional().default(""),
-    authors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
-    directors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
-    actors: z.array(z.string().trim().min(1).max(240)).max(100).default([]),
-    year: z.number().int().min(0).max(3000),
-    coverImageUrl: z.string().url().optional().or(z.literal("")),
-    openLibraryKey: z.string().max(120).optional().or(z.literal("")),
-    tmdbId: z.string().max(40).optional().or(z.literal("")),
-    barcode: z.string().max(80).optional().or(z.literal("")),
-    borrower: z.string().max(120).optional().or(z.literal("")),
-    loanedAt: z.string().date().optional().or(z.literal("")),
-    format: z
-      .enum(["hardcover", "paperback", "blu-ray", "dvd", "other"])
-      .optional()
-      .or(z.literal("")),
-    edition: z.enum(itemEditions).optional().or(z.literal("")),
-    genres: z.array(z.string().max(60)).max(20).default([]),
-    description: z.string().max(10000).optional().or(z.literal("")),
-  })
-  .superRefine((item, context) => {
-    const primaryPeople = item.type === "book" ? item.authors : item.directors
-    if (!primaryPeople.length && !item.creator.trim()) {
-      context.addIssue({
-        code: "custom",
-        message: `Add at least one ${item.type === "book" ? "author" : "director"}.`,
-        path: [item.type === "book" ? "authors" : "directors"],
-      })
-    }
-    if (item.type !== "book" && item.status === "reading") {
-      context.addIssue({
-        code: "custom",
-        message: "Only books can have Reading status.",
-        path: ["status"],
-      })
-    }
-    if (item.status === "borrowed" && !item.borrower?.trim()) {
-      context.addIssue({
-        code: "custom",
-        message: "Borrowed items need a borrower.",
-        path: ["borrower"],
-      })
-    }
-    if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
-      context.addIssue({
-        code: "custom",
-        message: "Loan details only apply to borrowed items.",
-        path: ["status"],
-      })
-    }
-    if (
-      item.type === "book" &&
-      ["blu-ray", "dvd"].includes(item.format ?? "")
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Choose a book format.",
-        path: ["format"],
-      })
-    }
-    if (
-      (item.type === "movie" || item.type === "tv") &&
-      ["hardcover", "paperback"].includes(item.format ?? "")
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Choose a movie format.",
-        path: ["format"],
-      })
-    }
-    if (item.type === "book" && item.edition) {
-      context.addIssue({
-        code: "custom",
-        message: "Only movies and TV shows can have an edition.",
-        path: ["edition"],
-      })
-    }
-  })
-
-export type ItemInput = z.infer<typeof itemInput>
+export {
+  bookGenreOptions,
+  screenGenreOptions,
+  type ItemInput,
+} from "@/lib/item-input"
 
 export type PersonOptions = {
   authors: string[]
@@ -191,7 +72,6 @@ export const importItems = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!isAgentToken(getRequestHeader("authorization")))
       await requireSignedIn()
-    await ensureDatabase()
     const added: Array<{ title: string; slug: string }> = []
     const skipped: Array<{ query: string; reason: string }> = []
     const failed: Array<{ query: string; reason: string }> = []
@@ -832,7 +712,7 @@ export async function replaceItemCollection(
   if (!collection) return
 
   const [existing] = await db
-    .select({ id: collections.id })
+    .select({ id: collections.id, partIds: collections.partIds })
     .from(collections)
     .where(
       collection.tmdbCollectionId
@@ -858,6 +738,16 @@ export async function replaceItemCollection(
     .insert(itemCollections)
     .values({ itemId, collectionId })
     .onConflictDoNothing()
+  if (collection.tmdbCollectionId && !existing?.partIds?.length) {
+    const partIds = await fetchTmdbCollectionPartIds(
+      collection.tmdbCollectionId
+    )
+    if (partIds.length)
+      await db
+        .update(collections)
+        .set({ partIds })
+        .where(eq(collections.id, collectionId))
+  }
 }
 
 async function uniqueCollectionSlug(name: string) {
@@ -884,7 +774,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     actorRows,
     collectionRows,
     systemListMembershipRows,
-  ] = await Promise.all([
+  ] = await db.batch([
     db
       .select({ itemId: itemGenres.itemId, name: genres.name })
       .from(itemGenres)
@@ -923,6 +813,7 @@ async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
         name: collections.name,
         tmdbCollectionId: collections.tmdbCollectionId,
         overview: collections.overview,
+        partIds: collections.partIds,
       })
       .from(itemCollections)
       .innerJoin(collections, eq(itemCollections.collectionId, collections.id))
@@ -1070,7 +961,6 @@ export const checkBarcode = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: barcodeInput }))
   .handler(async ({ data }): Promise<CheckResult> => {
     await requireAdmin()
-    await ensureDatabase()
 
     const stored = await itemForBarcode(data.code)
     if (stored) return { status: "owned", item: stored }
@@ -1101,7 +991,6 @@ export const resolveBarcode = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: barcodeInput, type: z.enum(itemTypes) }))
   .handler(async ({ data }): Promise<BarcodeResolution> => {
     await requireSignedIn()
-    await ensureDatabase()
 
     const stored = await itemForBarcode(data.code)
     if (stored) return { status: "owned", item: stored }
@@ -1612,6 +1501,9 @@ type SyncedFields = {
   pageCount?: number | null
   publisher?: string | null
   isbn13?: string | null
+  tagline?: string | null
+  logoImageUrl?: string | null
+  trailerKey?: string | null
 }
 
 export type ProviderSyncResult = {
@@ -1640,7 +1532,7 @@ export async function syncItemFromProvider(
   item: Item | ItemRecord,
   dryRun = false
 ): Promise<ProviderSyncResult> {
-  const syncedItem = "genres" in item ? item : (await enrichItems([item]))[0]!
+  const syncedItem = "genres" in item ? item : (await enrichItems([item]))[0]
   const providerId =
     syncedItem.type === "book" ? syncedItem.openLibraryKey : syncedItem.tmdbId
   if (!providerId)
@@ -1722,7 +1614,6 @@ export const syncItem = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [item] = await enrichItems(
       await db.select().from(items).where(eq(items.id, data.id))
     )
@@ -1740,15 +1631,16 @@ async function getTmdbSyncMetadata(
   url.searchParams.set(
     "append_to_response",
     type === "tv"
-      ? "aggregate_credits,keywords,content_ratings"
-      : "credits,keywords,release_dates"
+      ? `aggregate_credits,keywords,content_ratings,${TMDB_EXTRAS_APPEND}`
+      : `credits,keywords,release_dates,${TMDB_EXTRAS_APPEND}`
   )
+  url.searchParams.set("include_image_language", "en,null")
   url.searchParams.set("api_key", apiKey)
   const response = await fetch(url)
   if (response.status === 404)
     throw new Error(`Provider 404: TMDB ${type} ${tmdbId} was not found.`)
   if (!response.ok) throw new Error(`TMDB could not load ${type} ${tmdbId}.`)
-  const result = (await response.json()) as {
+  const result = (await response.json()) as TmdbExtrasSource & {
     title?: string
     name?: string
     release_date?: string
@@ -1852,6 +1744,7 @@ async function getTmdbSyncMetadata(
     backdropImageUrl: result.backdrop_path
       ? `https://image.tmdb.org/t/p/w1280${result.backdrop_path}`
       : null,
+    ...tmdbExtrasFrom(result),
   }
 }
 
@@ -2053,12 +1946,19 @@ function changedFields(
     "pageCount",
     "publisher",
     "isbn13",
+    "tagline",
+    "logoImageUrl",
+    "trailerKey",
   ] as const) {
     if (field === "collection" && item.type !== "movie" && item.type !== "book")
       continue
     if (field === "cast" && item.type === "book") continue
     if (
-      (field === "certification" || field === "runtime") &&
+      (field === "certification" ||
+        field === "runtime" ||
+        field === "tagline" ||
+        field === "logoImageUrl" ||
+        field === "trailerKey") &&
       item.type === "book"
     )
       continue
@@ -2097,40 +1997,6 @@ function yearFromDate(value?: string) {
   return match ? Number(match[1]) : null
 }
 
-export const getItems = createServerFn({ method: "GET" })
-  .inputValidator(
-    z
-      .object({
-        type: z.enum(itemTypes).optional(),
-        query: z.string().max(100).optional(),
-      })
-      .optional()
-  )
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const filters = []
-    if (data?.type) filters.push(eq(items.type, data.type))
-    if (data?.query?.trim()) {
-      const search = data.query
-        .trim()
-        .split(/\s+/)
-        .map((term) => term.replace(/[^a-z0-9]/gi, ""))
-        .filter(Boolean)
-        .map((term) => `${term}*`)
-        .join(" AND ")
-      if (search)
-        filters.push(
-          sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`
-        )
-    }
-    const records = await db
-      .select()
-      .from(items)
-      .where(filters.length ? and(...filters) : undefined)
-      .orderBy(asc(items.title))
-    return enrichItems(records)
-  })
-
 export type SearchFacets = {
   genres: Array<{ name: string; slug: string }>
   directors: Array<{ name: string; slug: string }>
@@ -2150,7 +2016,6 @@ function normalizeFacetQuery(value: string) {
 export const getSearchFacets = createServerFn({ method: "GET" })
   .inputValidator(z.object({ query: z.string().max(100) }))
   .handler(async ({ data }): Promise<SearchFacets> => {
-    await ensureDatabase()
     const query = normalizeFacetQuery(data.query)
     if (!query) return { genres: [], directors: [], actors: [], authors: [] }
 
@@ -2194,7 +2059,6 @@ export const getSearchFacets = createServerFn({ method: "GET" })
 export const getPersonOptions = createServerFn({ method: "GET" }).handler(
   async (): Promise<PersonOptions> => {
     await requireSignedIn()
-    await ensureDatabase()
     const [authorRows, directorRows, actorRows] = await Promise.all([
       db
         .select({ name: authors.name })
@@ -2214,87 +2078,66 @@ export const getPersonOptions = createServerFn({ method: "GET" }).handler(
   }
 )
 
-export const getItemsForYearBrowse = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      type: z.enum(itemTypes),
-      startYear: z.number().int().min(0).max(9999),
-      endYear: z.number().int().min(0).max(9999),
-    })
-  )
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const [catalogYears, records] = await Promise.all([
-      db
-        .select({ year: items.year })
-        .from(items)
-        .where(eq(items.type, data.type))
-        .orderBy(asc(items.year)),
-      db
-        .select()
-        .from(items)
-        .where(
-          and(
-            eq(items.type, data.type),
-            gte(items.year, data.startYear),
-            lte(items.year, data.endYear)
-          )
-        )
-        .orderBy(asc(items.title)),
-    ])
-    return {
-      years: [...new Set(catalogYears.map((item) => item.year))],
-      items: await enrichItems(records),
-    }
-  })
+export function toCatalogItem(item: Item): CatalogItem {
+  return {
+    id: item.id,
+    slug: item.slug,
+    type: item.type,
+    status: item.status,
+    title: item.title,
+    creator: item.creator,
+    year: item.year,
+    coverImageUrl: item.coverImageUrl,
+    backdropImageUrl: item.backdropImageUrl,
+    tmdbId: item.tmdbId,
+    format: item.format,
+    edition: item.edition,
+    certification: item.certification,
+    runtime: item.runtime,
+    pageCount: item.pageCount,
+    borrower: item.borrower,
+    tagline: item.tagline,
+    logoImageUrl: item.logoImageUrl,
+    trailerKey: item.trailerKey,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    genres: item.genres,
+    authors: item.authors,
+    directors: item.directors,
+    collectionId: item.collection?.id ?? null,
+    isInSystemList: item.isInSystemList,
+  }
+}
 
+function tagResult(rows: Array<{ name: string; itemId: number | null }>) {
+  const [first] = rows
+  if (!first) return null
+  return {
+    name: first.name,
+    itemIds: rows.flatMap((row) => (row.itemId === null ? [] : [row.itemId])),
+  }
+}
+
+// Person and tag pages return ids; the tiles come from the shared catalog.
 export const getItemsByTag = createServerFn({ method: "GET" })
   .inputValidator(
     z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() })
   )
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const tagTable = data.kind === "genre" ? genres : keywords
-    const joins = data.kind === "genre" ? itemGenres : itemKeywords
-    const [tag] = await db
-      .select({ name: tagTable.name })
-      .from(tagTable)
-      .where(eq(tagTable.slug, data.slug))
-      .limit(1)
-    if (!tag) return null
-    const records = await db
-      .select()
-      .from(items)
-      .innerJoin(joins, eq(joins.itemId, items.id))
-      .where(
-        data.kind === "genre"
-          ? eq(
-              itemGenres.genreId,
-              (
-                await db
-                  .select({ id: genres.id })
-                  .from(genres)
-                  .where(eq(genres.slug, data.slug))
-                  .limit(1)
-              )[0]!.id
-            )
-          : eq(
-              itemKeywords.keywordId,
-              (
-                await db
-                  .select({ id: keywords.id })
-                  .from(keywords)
-                  .where(eq(keywords.slug, data.slug))
-                  .limit(1)
-              )[0]!.id
-            )
-      )
-      .orderBy(asc(items.title))
-    return {
-      name: tag.name,
-      items: await enrichItems(records.map((row) => row.items)),
-    }
-  })
+  .handler(async ({ data }) =>
+    tagResult(
+      data.kind === "genre"
+        ? await db
+            .select({ name: genres.name, itemId: itemGenres.itemId })
+            .from(genres)
+            .leftJoin(itemGenres, eq(itemGenres.genreId, genres.id))
+            .where(eq(genres.slug, data.slug))
+        : await db
+            .select({ name: keywords.name, itemId: itemKeywords.itemId })
+            .from(keywords)
+            .leftJoin(itemKeywords, eq(itemKeywords.keywordId, keywords.id))
+            .where(eq(keywords.slug, data.slug))
+    )
+  )
 
 export const getItemsByPerson = createServerFn({ method: "GET" })
   .inputValidator(
@@ -2303,638 +2146,173 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
       slug: z.string(),
     })
   )
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    if (data.kind === "author") {
-      const [author] = await db
-        .select({ id: authors.id, name: authors.name })
-        .from(authors)
-        .where(eq(authors.slug, data.slug))
-        .limit(1)
-      if (!author) return null
-      const records = await db
-        .select()
-        .from(items)
-        .innerJoin(itemAuthors, eq(itemAuthors.itemId, items.id))
-        .where(eq(itemAuthors.authorId, author.id))
-        .orderBy(asc(items.title))
-      return {
-        name: author.name,
-        items: await enrichItems(records.map((row) => row.items)),
-      }
-    }
-
-    if (data.kind === "actor") {
-      const [actor] = await db
-        .select({ id: actors.id, name: actors.name })
-        .from(actors)
-        .where(eq(actors.slug, data.slug))
-        .limit(1)
-      if (!actor) return null
-      const records = await db
-        .select()
-        .from(items)
-        .innerJoin(itemActors, eq(itemActors.itemId, items.id))
-        .where(eq(itemActors.actorId, actor.id))
-        .orderBy(asc(items.title))
-      return {
-        name: actor.name,
-        items: await enrichItems(records.map((row) => row.items)),
-      }
-    }
-
-    const [director] = await db
-      .select({ id: directors.id, name: directors.name })
-      .from(directors)
-      .where(eq(directors.slug, data.slug))
-      .limit(1)
-    if (!director) return null
-    const records = await db
-      .select()
-      .from(items)
-      .innerJoin(itemDirectors, eq(itemDirectors.itemId, items.id))
-      .where(eq(itemDirectors.directorId, director.id))
-      .orderBy(asc(items.title))
-    return {
-      name: director.name,
-      items: await enrichItems(records.map((row) => row.items)),
-    }
-  })
-
-export const getItemsByCollection = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ slug: z.string() }))
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const [collection] = await db
-      .select({
-        id: collections.id,
-        name: collections.name,
-        overview: collections.overview,
-      })
-      .from(collections)
-      .where(eq(collections.slug, data.slug))
-      .limit(1)
-    if (!collection) return null
-    const records = await db
-      .select()
-      .from(items)
-      .innerJoin(itemCollections, eq(itemCollections.itemId, items.id))
-      .where(and(eq(itemCollections.collectionId, collection.id)))
-      .orderBy(asc(items.title))
-    return {
-      ...collection,
-      items: await enrichItems(records.map((row) => row.items)),
-    }
-  })
-
-export const getItemsByList = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      listSlug: z.string(),
-      type: z.enum(itemTypes),
-      query: z.string().max(100).optional(),
-    })
-  )
-  .handler(async ({ data }) => {
-    await ensureDatabase()
-    const [list] = await db
-      .select({ id: lists.id, name: lists.name })
-      .from(lists)
-      .innerJoin(listPlacements, eq(listPlacements.listId, lists.id))
-      .where(eq(lists.slug, data.listSlug))
-      .limit(1)
-    if (!list) return null
-    const [placement] = await db
-      .select({ id: listPlacements.id })
-      .from(listPlacements)
-      .where(
-        and(
-          eq(listPlacements.listId, list.id),
-          eq(listPlacements.type, data.type)
-        )
-      )
-      .limit(1)
-    if (!placement) return null
-
-    const listFilters = [
-      eq(listItems.listId, list.id),
-      eq(items.type, data.type),
-    ]
-    const filters = [...listFilters]
-    let hasSearch = false
-    if (data.query?.trim()) {
-      const search = data.query
-        .trim()
-        .split(/\s+/)
-        .map((term) => term.replace(/[^a-z0-9]/gi, ""))
-        .filter(Boolean)
-        .map((term) => `${term}*`)
-        .join(" AND ")
-      if (search) {
-        hasSearch = true
-        filters.push(
-          sql`${items.id} IN (SELECT rowid FROM item_search WHERE item_search MATCH ${search})`
-        )
-      }
-    }
-
-    const recordsQuery = db
-      .select()
-      .from(items)
-      .innerJoin(listItems, eq(listItems.itemId, items.id))
-      .where(and(...filters))
-      .orderBy(asc(listItems.position))
-    if (!hasSearch) {
-      const enrichedItems = await enrichItems(
-        (await recordsQuery).map((row) => row.items)
-      )
-      return {
-        name: displayListName(data.listSlug, list.name),
-        items: enrichedItems,
-        totalCount: enrichedItems.length,
-        collageItems: enrichedItems
-          .filter((item) => item.coverImageUrl)
-          .slice(0, 4),
-      }
-    }
-
-    const [records, [total], collageRecords] = await Promise.all([
-      recordsQuery,
-      db
-        .select({ totalCount: sql<number>`count(*)` })
-        .from(items)
-        .innerJoin(listItems, eq(listItems.itemId, items.id))
-        .where(and(...listFilters)),
-      db
-        .select()
-        .from(items)
-        .innerJoin(listItems, eq(listItems.itemId, items.id))
-        .where(and(...listFilters, isNotNull(items.coverImageUrl)))
-        .orderBy(asc(listItems.position))
-        .limit(4),
-    ])
-    const [enrichedItems, collageItems] = await Promise.all([
-      enrichItems(records.map((row) => row.items)),
-      enrichItems(collageRecords.map((row) => row.items)),
-    ])
-    return {
-      name: displayListName(data.listSlug, list.name),
-      items: enrichedItems,
-      totalCount: total.totalCount,
-      collageItems,
-    }
-  })
-
-type HomeRow =
-  | { title: string; kind: "recent"; items: Item[] }
-  | {
-      title: string
-      slug: string
-      kind: "list" | "genre" | "collection" | "director" | "actor" | "author"
-      items: Item[]
-    }
-
-export const getHomeRows = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ type: z.enum(itemTypes) }))
-  .handler(async ({ data }): Promise<HomeRow[]> => {
-    await ensureDatabase()
-    const recentItems = await enrichItems(
-      await db
-        .select()
-        .from(items)
-        .where(eq(items.type, data.type))
-        .orderBy(desc(items.createdAt))
-        .limit(12)
-    )
-    const placements = await db
-      .select({
-        listId: listPlacements.listId,
-        slug: lists.slug,
-        title: lists.name,
-        kind: listPlacements.kind,
-        sourceSlug: listPlacements.sourceSlug,
-      })
-      .from(listPlacements)
-      .leftJoin(lists, eq(listPlacements.listId, lists.id))
-      .where(
-        and(
-          eq(listPlacements.type, data.type),
-          eq(listPlacements.visible, true)
-        )
-      )
-      .orderBy(asc(listPlacements.position))
-    const allItems = await enrichItems(
-      await db.select().from(items).where(eq(items.type, data.type))
-    )
-    const memberships = await db
-      .select({
-        listId: listItems.listId,
-        itemId: listItems.itemId,
-        position: listItems.position,
-      })
-      .from(listItems)
-      .orderBy(asc(listItems.position))
-
-    const itemsById = new Map(allItems.map((item) => [item.id, item]))
-    const rows: HomeRow[] = placements.flatMap<HomeRow>((placement) => {
-      if (placement.kind === "recent")
-        return recentItems.length
-          ? [
-              {
-                title: "Recently added",
-                kind: "recent" as const,
-                items: recentItems,
-              },
-            ]
-          : []
-      if (placement.kind === "list" && (!placement.slug || !placement.title))
-        return []
-      const rowItems =
-        placement.kind === "list"
-          ? memberships.flatMap((membership) => {
-              const item = itemsById.get(membership.itemId)
-              return membership.listId === placement.listId && item
-                ? [item]
-                : []
-            })
-          : placement.kind === "genre"
-            ? allItems.filter((item) =>
-                item.genres.some(
-                  (genre) => slugify(genre) === placement.sourceSlug
-                )
+  .handler(async ({ data }) =>
+    tagResult(
+      data.kind === "author"
+        ? await db
+            .select({ name: authors.name, itemId: itemAuthors.itemId })
+            .from(authors)
+            .leftJoin(itemAuthors, eq(itemAuthors.authorId, authors.id))
+            .where(eq(authors.slug, data.slug))
+        : data.kind === "director"
+          ? await db
+              .select({ name: directors.name, itemId: itemDirectors.itemId })
+              .from(directors)
+              .leftJoin(
+                itemDirectors,
+                eq(itemDirectors.directorId, directors.id)
               )
-            : placement.kind === "collection"
-              ? allItems.filter(
-                  (item) => item.collection?.slug === placement.sourceSlug
-                )
-              : placement.kind === "director"
-                ? allItems.filter((item) =>
-                    item.directors.some(
-                      (director) => slugify(director) === placement.sourceSlug
-                    )
-                  )
-                : placement.kind === "actor"
-                  ? allItems.filter((item) =>
-                      item.actors.some(
-                        (actor) => slugify(actor) === placement.sourceSlug
-                      )
-                    )
-                  : allItems.filter((item) =>
-                      item.authors.some(
-                        (author) => slugify(author) === placement.sourceSlug
-                      )
-                    )
-      const title =
-        placement.kind === "list"
-          ? displayListName(placement.slug, placement.title)
-          : placement.kind === "genre"
-            ? rowItems
-                .flatMap((item) => item.genres)
-                .find((value) => slugify(value) === placement.sourceSlug)
-            : placement.kind === "collection"
-              ? rowItems.find((item) => item.collection)?.collection?.name
-              : placement.kind === "director"
-                ? rowItems
-                    .flatMap((item) => item.directors)
-                    .find((value) => slugify(value) === placement.sourceSlug)
-                : placement.kind === "actor"
-                  ? rowItems
-                      .flatMap((item) => item.actors)
-                      .find((value) => slugify(value) === placement.sourceSlug)
-                  : rowItems
-                      .flatMap((item) => item.authors)
-                      .find((value) => slugify(value) === placement.sourceSlug)
-      const slug =
-        placement.kind === "list" ? placement.slug : placement.sourceSlug
-      if (!rowItems.length || !title || !slug) return []
-      return [{ title, slug, kind: placement.kind, items: rowItems }]
-    })
-    return rows
-  })
+              .where(eq(directors.slug, data.slug))
+          : await db
+              .select({ name: actors.name, itemId: itemActors.itemId })
+              .from(actors)
+              .leftJoin(itemActors, eq(itemActors.actorId, actors.id))
+              .where(eq(actors.slug, data.slug))
+    )
+  )
 
-export const getItemBySlug = createServerFn({ method: "GET" })
+// Everything the item page needs in three round trips: the row, one batch
+// for lists + related rows, one batch to enrich them all.
+export const getItemPage = createServerFn({ method: "GET" })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
-    await ensureDatabase()
-    const [item] = await enrichItems(
-      await db.select().from(items).where(eq(items.slug, data.slug))
-    )
-    if (!item) return null
-    const customLists = await db
-      .select({
-        slug: lists.slug,
-        name: lists.name,
-        containsItem: sql<number>`exists(
-          select 1 from ${listItems}
-          where ${listItems.listId} = ${lists.id}
-            and ${listItems.itemId} = ${item.id}
-        )`,
-      })
-      .from(listPlacements)
-      .innerJoin(lists, eq(listPlacements.listId, lists.id))
-      .where(and(eq(listPlacements.type, item.type), eq(lists.system, false)))
-      .orderBy(asc(listPlacements.position))
-    const systemListSlug = item.type === "book" ? "reading-list" : "watchlist"
-    const [systemList] = await db
-      .select({
-        slug: lists.slug,
-        name: lists.name,
-        containsItem: sql<number>`exists(
-          select 1 from ${listItems}
-          where ${listItems.listId} = ${lists.id}
-            and ${listItems.itemId} = ${item.id}
-        )`,
-      })
-      .from(lists)
-      .where(eq(lists.slug, systemListSlug))
-      .limit(1)
-    return {
-      ...item,
-      customLists: customLists.map((list) => ({
-        ...list,
-        containsItem: Boolean(list.containsItem),
-      })),
-      systemList: systemList
-        ? {
-            ...systemList,
-            name: displayListName(systemList.slug, systemList.name),
-            containsItem: Boolean(systemList.containsItem),
-          }
-        : null,
-    }
-  })
-
-export const getSimilarOwnedItems = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ itemId: z.number().int() }))
-  .handler(async ({ data }): Promise<Item[]> => {
-    await ensureDatabase()
-    const sourceType = sql`(select type from items where id = ${data.itemId})`
-    const sharesPrimaryPerson = sql<number>`case when
-      (select type from items where id = ${data.itemId}) = 'book'
-        then exists(
-          select 1
-          from item_authors candidate_authors
-          inner join item_authors source_authors
-            on candidate_authors.author_id = source_authors.author_id
-          where candidate_authors.item_id = ${items.id}
-            and source_authors.item_id = ${data.itemId}
-        )
-      else exists(
-        select 1
-        from item_directors candidate_directors
-        inner join item_directors source_directors
-          on candidate_directors.director_id = source_directors.director_id
-        where candidate_directors.item_id = ${items.id}
-          and source_directors.item_id = ${data.itemId}
-      )
-    then 1 else 0 end`
-    const sharesGenre = sql<number>`case when exists(
-      select 1
-      from item_genres candidate_genres
-      inner join item_genres source_genres
-        on candidate_genres.genre_id = source_genres.genre_id
-      where candidate_genres.item_id = ${items.id}
-        and source_genres.item_id = ${data.itemId}
-    ) then 1 else 0 end`
-    const isOutsideSourceCollection = sql`not exists(
-      select 1
-      from item_collections candidate_collections
-      inner join item_collections source_collections
-        on candidate_collections.collection_id = source_collections.collection_id
-      where candidate_collections.item_id = ${items.id}
-        and source_collections.item_id = ${data.itemId}
-    )`
-    const isInSystemList = sql<number>`case when ${items.type} = 'book'
-      then exists(
-        select 1
-        from list_items
-        inner join lists on list_items.list_id = lists.id
-        where list_items.item_id = ${items.id}
-          and lists.slug = 'reading-list'
-      )
-      else exists(
-        select 1
-        from list_items
-        inner join lists on list_items.list_id = lists.id
-        where list_items.item_id = ${items.id}
-          and lists.slug = 'watchlist'
-      )
-    end`
-    const records = await db
-      .select({ item: items, isInSystemList, sharesPrimaryPerson, sharesGenre })
+    const [record] = await db
+      .select()
       .from(items)
-      .where(
-        and(
-          eq(items.type, sourceType),
-          eq(items.status, "owned"),
-          ne(items.id, data.itemId),
-          isOutsideSourceCollection,
-          or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
-        )
-      )
-      .orderBy(desc(sharesPrimaryPerson), desc(sharesGenre), asc(items.title))
-      .limit(12)
-    return records.map(({ item, isInSystemList }) => ({
-      ...item,
-      genres: [],
-      keywords: [],
-      authors: [],
-      directors: [],
-      actors: [],
-      isInSystemList: Boolean(isInSystemList),
-    }))
-  })
+      .where(eq(items.slug, data.slug))
+      .limit(1)
+    if (!record) return null
 
-const tmdbCollectionPartsCache = new Map<
-  string,
-  Promise<Array<string | null>>
->()
-const tmdbTrailerCache = new Map<string, Promise<{ key: string } | null>>()
-const tmdbBillboardDetailsCache = new Map<
-  string,
-  Promise<{ logoUrl: string | null; tagline: string | null }>
->()
+    const containsItem = sql<number>`exists(
+      select 1 from ${listItems}
+      where ${listItems.listId} = ${lists.id}
+        and ${listItems.itemId} = ${record.id}
+    )`
+    const sharesPrimaryPerson =
+      record.type === "book"
+        ? sql<number>`exists(
+            select 1 from item_authors candidate
+            inner join item_authors source
+              on candidate.author_id = source.author_id
+            where candidate.item_id = ${items.id}
+              and source.item_id = ${record.id}
+          )`
+        : sql<number>`exists(
+            select 1 from item_directors candidate
+            inner join item_directors source
+              on candidate.director_id = source.director_id
+            where candidate.item_id = ${items.id}
+              and source.item_id = ${record.id}
+          )`
+    const sharesGenre = sql<number>`exists(
+      select 1 from item_genres candidate
+      inner join item_genres source on candidate.genre_id = source.genre_id
+      where candidate.item_id = ${items.id} and source.item_id = ${record.id}
+    )`
+    const outsideSourceCollection = sql`not exists(
+      select 1 from item_collections candidate
+      inner join item_collections source
+        on candidate.collection_id = source.collection_id
+      where candidate.item_id = ${items.id} and source.item_id = ${record.id}
+    )`
 
-export const getTmdbCollectionParts = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ tmdbCollectionId: z.string().min(1).max(40) }))
-  .handler(async ({ data }): Promise<Array<string | null>> => {
-    const cached = tmdbCollectionPartsCache.get(data.tmdbCollectionId)
-    if (cached) return cached
+    const [customLists, systemLists, similarRecords, collectionRows] =
+      await db.batch([
+        db
+          .select({ slug: lists.slug, name: lists.name, containsItem })
+          .from(listPlacements)
+          .innerJoin(lists, eq(listPlacements.listId, lists.id))
+          .where(
+            and(eq(listPlacements.type, record.type), eq(lists.system, false))
+          )
+          .orderBy(asc(listPlacements.position)),
+        db
+          .select({ slug: lists.slug, name: lists.name, containsItem })
+          .from(lists)
+          .where(eq(lists.slug, systemListSlug(record.type)))
+          .limit(1),
+        db
+          .select()
+          .from(items)
+          .where(
+            and(
+              eq(items.type, record.type),
+              eq(items.status, "owned"),
+              ne(items.id, record.id),
+              outsideSourceCollection,
+              or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
+            )
+          )
+          .orderBy(
+            desc(sharesPrimaryPerson),
+            desc(sharesGenre),
+            asc(items.title)
+          )
+          .limit(12),
+        db
+          .select({ item: items })
+          .from(items)
+          .innerJoin(itemCollections, eq(itemCollections.itemId, items.id))
+          .where(
+            and(
+              eq(
+                itemCollections.collectionId,
+                sql`(select collection_id from item_collections where item_id = ${record.id})`
+              ),
+              eq(items.status, "owned"),
+              ne(items.id, record.id)
+            )
+          ),
+      ])
 
-    const result = loadTmdbCollectionParts(data.tmdbCollectionId)
-    tmdbCollectionPartsCache.set(data.tmdbCollectionId, result)
-    return result
-  })
-
-async function loadTmdbCollectionParts(
-  tmdbCollectionId: string
-): Promise<Array<string | null>> {
-  const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) return []
-
-  try {
-    const url = new URL(
-      `https://api.themoviedb.org/3/collection/${tmdbCollectionId}`
-    )
-    url.searchParams.set("api_key", apiKey)
-    const response = await fetch(url)
-    if (!response.ok) return []
-    const body = (await response.json()) as {
-      parts?: Array<{ id?: number | string }>
-    }
-    return (body.parts ?? []).map((part) =>
-      typeof part.id === "number" || typeof part.id === "string"
-        ? String(part.id)
-        : null
-    )
-  } catch {
-    return []
-  }
-}
-
-export const getTmdbTrailer = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      tmdbId: z.string().min(1).max(40),
-      type: z.enum(["movie", "tv"]),
-    })
-  )
-  .handler(async ({ data }): Promise<{ key: string } | null> => {
-    const cacheKey = `${data.type}:${data.tmdbId}`
-    const cached = tmdbTrailerCache.get(cacheKey)
-    if (cached) return cached
-
-    const result = loadTmdbTrailer(data.type, data.tmdbId)
-    tmdbTrailerCache.set(cacheKey, result)
-    return result
-  })
-
-async function loadTmdbTrailer(
-  type: "movie" | "tv",
-  tmdbId: string
-): Promise<{ key: string } | null> {
-  const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) return null
-
-  try {
-    const url = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}/videos`)
-    url.searchParams.set("api_key", apiKey)
-    url.searchParams.set("language", "en-US")
-    const response = await fetch(url)
-    if (!response.ok) return null
-    const body = (await response.json()) as {
-      results?: Array<{
-        key?: string
-        official?: boolean
-        iso_3166_1?: string
-        iso_639_1?: string
-        site?: string
-        type?: string
-      }>
-    }
-    const trailers = (body.results ?? []).filter(
-      (video) =>
-        video.official === true &&
-        video.type === "Trailer" &&
-        video.site === "YouTube" &&
-        video.iso_3166_1 === "US" &&
-        video.iso_639_1 === "en" &&
-        Boolean(video.key?.trim())
-    )
-    const trailer = trailers[0]
-    return trailer?.key ? { key: trailer.key } : null
-  } catch {
-    return null
-  }
-}
-
-export const getTmdbBillboardDetails = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({
-      tmdbId: z.string().min(1).max(40),
-      type: z.enum(["movie", "tv"]),
-    })
-  )
-  .handler(
-    async ({
-      data,
-    }): Promise<{ logoUrl: string | null; tagline: string | null }> => {
-      const cacheKey = `${data.type}:${data.tmdbId}`
-      const cached = tmdbBillboardDetailsCache.get(cacheKey)
-      if (cached) return cached
-
-      const result = loadTmdbBillboardDetails(data.type, data.tmdbId)
-      tmdbBillboardDetailsCache.set(cacheKey, result)
-      return result
-    }
-  )
-
-async function loadTmdbBillboardDetails(
-  type: "movie" | "tv",
-  tmdbId: string
-): Promise<{ logoUrl: string | null; tagline: string | null }> {
-  const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) return { logoUrl: null, tagline: null }
-
-  try {
-    const imageUrl = new URL(
-      `https://api.themoviedb.org/3/${type}/${tmdbId}/images`
-    )
-    imageUrl.searchParams.set("api_key", apiKey)
-    imageUrl.searchParams.set("include_image_language", "en")
-
-    const detailsUrl = new URL(`https://api.themoviedb.org/3/${type}/${tmdbId}`)
-    detailsUrl.searchParams.set("api_key", apiKey)
-    detailsUrl.searchParams.set("language", "en-US")
-
-    const [imagesResponse, detailsResponse] = await Promise.all([
-      fetch(imageUrl),
-      fetch(detailsUrl),
+    const collectionRecords = collectionRows.map((row) => row.item)
+    const [item, ...related] = await enrichItems([
+      record,
+      ...similarRecords,
+      ...collectionRecords,
     ])
-    const imageBody = imagesResponse.ok
-      ? ((await imagesResponse.json()) as {
-          logos?: Array<{
-            file_path?: string
-            file_type?: string
-            iso_639_1?: string | null
-            width?: number
-          }>
-        })
-      : null
-    const detailsBody = detailsResponse.ok
-      ? ((await detailsResponse.json()) as { tagline?: string | null })
-      : null
-    const englishLogos = (imageBody?.logos ?? []).filter(
-      (logo) => logo.iso_639_1 === "en" && Boolean(logo.file_path)
-    )
-    const logo =
-      englishLogos.find((image) =>
-        image.file_path?.toLocaleLowerCase().endsWith(".svg")
-      ) ??
-      [...englishLogos]
-        .filter((image) =>
-          image.file_path?.toLocaleLowerCase().endsWith(".png")
-        )
-        .sort((left, right) => (right.width ?? 0) - (left.width ?? 0))[0] ??
-      englishLogos[0] ??
-      null
+    const relatedById = new Map(related.map((entry) => [entry.id, entry]))
+    const partIds = item.collection?.partIds ?? null
+    const partIndex = (tmdbId: string | null) =>
+      partIds && tmdbId ? partIds.indexOf(tmdbId) : -1
+    const collectionPart = partIndex(item.tmdbId)
+    const [systemList] = systemLists
 
     return {
-      logoUrl: logo?.file_path
-        ? `https://image.tmdb.org/t/p/original${logo.file_path}`
-        : null,
-      tagline: detailsBody?.tagline?.trim() || null,
+      item: {
+        ...item,
+        customLists: customLists.map((list) => ({
+          ...list,
+          containsItem: Boolean(list.containsItem),
+        })),
+        systemList: systemList
+          ? {
+              ...systemList,
+              name: displayListName(systemList.slug, systemList.name),
+              containsItem: Boolean(systemList.containsItem),
+            }
+          : null,
+      },
+      similarItems: similarRecords.map((row) =>
+        toCatalogItem(relatedById.get(row.id)!)
+      ),
+      collectionItems: collectionRecords
+        .map((row) => toCatalogItem(relatedById.get(row.id)!))
+        .sort((left, right) =>
+          partIds
+            ? (partIndex(left.tmdbId) + 1 || 999) -
+              (partIndex(right.tmdbId) + 1 || 999)
+            : left.title.localeCompare(right.title)
+        ),
+      collectionPart: collectionPart >= 0 ? collectionPart : null,
+      collectionPartCount: partIds?.length ?? 0,
     }
-  } catch {
-    return { logoUrl: null, tagline: null }
-  }
-}
+  })
 
 export const getItemById = createServerFn({ method: "GET" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const [item] = await enrichItems(
       await db.select().from(items).where(eq(items.id, data.id))
     )
@@ -2957,7 +2335,6 @@ export const getAdminStatus = createServerFn({ method: "GET" }).handler(
 
 export const getLoginMode = createServerFn({ method: "GET" }).handler(
   async () => {
-    await ensureDatabase()
     const [admin] = await db
       .select({ id: users.id })
       .from(users)
@@ -2971,7 +2348,6 @@ export const saveItem = createServerFn({ method: "POST" })
   .inputValidator(itemInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const now = new Date().toISOString()
     const coverImageUrl = await storeCover(data.coverImageUrl ?? "", data.slug)
     const primaryPeople =
@@ -2993,6 +2369,9 @@ export const saveItem = createServerFn({ method: "POST" })
       status: data.status,
       title: data.title,
       creator,
+      ...(data.type !== "book" && data.tmdbId
+        ? await fetchTmdbExtras(data.type, data.tmdbId)
+        : {}),
       year: data.year,
       coverImageUrl: coverImageUrl || null,
       openLibraryKey: data.openLibraryKey || null,
@@ -3060,7 +2439,6 @@ export const deleteItem = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     await db.delete(listItems).where(eq(listItems.itemId, data.id))
     await db.delete(items).where(eq(items.id, data.id))
     return { ok: true }
@@ -3076,7 +2454,6 @@ export const login = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { startBootstrapSession, startUserSession, verifyStoredPassword } =
       await import("./auth")
-    await ensureDatabase()
     const [storedAdmin] = await db
       .select({ id: users.id })
       .from(users)

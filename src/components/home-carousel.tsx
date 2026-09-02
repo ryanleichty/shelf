@@ -10,7 +10,7 @@ import { type ReactNode, useState } from "react"
 import { CoverTile } from "@/components/cover-tile"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 export function HomeCarousel({
   contained = false,
@@ -24,8 +24,8 @@ export function HomeCarousel({
 }: {
   contained?: boolean
   id: string
-  items: Item[]
-  renderCaption?: (item: Item) => ReactNode
+  items: CatalogItem[]
+  renderCaption?: (item: CatalogItem) => ReactNode
   renderSection?: (carousel: ReactNode) => ReactNode
   hideMissingCoverTitle?: boolean
   slideClassName?: string

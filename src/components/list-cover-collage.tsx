@@ -1,11 +1,11 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
-type ItemWithCover = Item & { coverImageUrl: string }
+type ItemWithCover = CatalogItem & { coverImageUrl: string }
 
-export function ListCoverCollage({ items }: { items: Item[] }) {
+export function ListCoverCollage({ items }: { items: CatalogItem[] }) {
   const covers = items
     .filter((item): item is ItemWithCover => Boolean(item.coverImageUrl))
     .slice(0, 4)
@@ -53,6 +53,8 @@ function CoverImage({
     <img
       alt=""
       className={cn("h-full w-full object-cover", className)}
+      decoding="async"
+      loading="lazy"
       referrerPolicy="no-referrer"
       src={item.coverImageUrl}
     />

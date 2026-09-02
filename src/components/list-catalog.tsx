@@ -3,7 +3,7 @@
 import { Catalog } from "@/components/catalog"
 import { ListCoverCollage } from "@/components/list-cover-collage"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
 export function ListCatalog({
   collageItems,
@@ -14,13 +14,13 @@ export function ListCatalog({
   totalCount,
   type,
 }: {
-  collageItems: Item[]
-  items: Item[]
+  collageItems: CatalogItem[]
+  items: CatalogItem[]
   name: string
   query?: string
   onQueryChange: (query: string) => void
   totalCount: number
-  type: Item["type"]
+  type: CatalogItem["type"]
 }) {
   const hasCover = collageItems.some((item) => item.coverImageUrl)
 

@@ -7,16 +7,12 @@ import { SystemListToggle } from "@/components/system-list-toggle"
 import { TrailerDialog } from "@/components/trailer-dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { Item } from "@/server/schema"
+import type { CatalogItem } from "@/lib/catalog"
 
-type Billboard = {
-  item: Item & {
-    type: "movie" | "tv"
-    tmdbId: string
-    backdropImageUrl: string
-  }
-  details: { logoUrl: string | null; tagline: string | null }
-  trailer: { key: string } | null
+export type Billboard = CatalogItem & {
+  type: "movie" | "tv"
+  tmdbId: string
+  backdropImageUrl: string
 }
 
 export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
@@ -60,7 +56,7 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
 
   return (
     <section
-      aria-label={`Featured ${billboard.item.type}`}
+      aria-label={`Featured ${billboard.type}`}
       className="group relative isolate min-h-[70svh] overflow-hidden bg-hero text-hero-foreground [--primary-foreground:var(--hero)] [--primary:var(--hero-foreground)]"
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget))
@@ -70,66 +66,73 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {billboards.map((candidate, index) => (
-        <img
-          alt=""
-          className={cn(
-            "absolute inset-0 size-full object-cover transition-opacity duration-700 motion-reduce:transition-none",
-            index === activeIndex ? "opacity-100" : "opacity-0"
-          )}
-          key={candidate.item.id}
-          referrerPolicy="no-referrer"
-          src={candidate.item.backdropImageUrl}
-        />
-      ))}
+      {billboards.map((candidate, index) => {
+        const offset = Math.abs(index - activeIndex)
+        // Only the active backdrop and its neighbours are in the DOM, so the
+        // browser fetches three images instead of five.
+        if (Math.min(offset, billboards.length - offset) > 1) return null
+        return (
+          <img
+            alt=""
+            className={cn(
+              "absolute inset-0 size-full object-cover transition-opacity duration-700 motion-reduce:transition-none",
+              index === activeIndex ? "opacity-100" : "opacity-0"
+            )}
+            fetchPriority={index === activeIndex ? "high" : "low"}
+            key={candidate.id}
+            referrerPolicy="no-referrer"
+            src={candidate.backdropImageUrl}
+          />
+        )
+      })}
       <div className="absolute inset-0 bg-linear-to-r from-hero to-transparent" />
       <div className="relative flex min-h-[70svh] items-end px-6 py-12 sm:items-center sm:px-10">
         <div className="max-w-md">
-          {billboard.details.logoUrl ? (
+          {billboard.logoImageUrl ? (
             <>
-              <h1 className="sr-only">{billboard.item.title}</h1>
+              <h1 className="sr-only">{billboard.title}</h1>
               <img
-                alt={billboard.item.title}
+                alt={billboard.title}
                 className="max-h-28 max-w-70 object-contain object-left drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)]"
                 referrerPolicy="no-referrer"
-                src={billboard.details.logoUrl}
+                src={billboard.logoImageUrl}
               />
             </>
           ) : (
             <h1 className="text-4xl font-semibold tracking-tight drop-shadow-[0_1px_1px_rgb(0_0_0_/_0.8)] sm:text-5xl">
-              {billboard.item.title}
+              {billboard.title}
             </h1>
           )}
           <p className="mt-4 text-sm text-hero-foreground/75">
-            {billboard.item.year}
-            {billboard.item.certification?.trim() &&
-              ` · ${billboard.item.certification.trim()}`}
-            {billboard.item.runtime && billboard.item.runtime > 0
-              ? ` · ${formatRuntime(billboard.item.runtime)}`
+            {billboard.year}
+            {billboard.certification?.trim() &&
+              ` · ${billboard.certification.trim()}`}
+            {billboard.runtime && billboard.runtime > 0
+              ? ` · ${formatRuntime(billboard.runtime)}`
               : ""}
           </p>
-          {billboard.details.tagline && (
+          {billboard.tagline && (
             <p className="mt-3 text-lg text-hero-foreground/75">
-              {billboard.details.tagline}
+              {billboard.tagline}
             </p>
           )}
           <div className="mt-6 flex flex-wrap gap-2">
-            {billboard.trailer && (
+            {billboard.trailerKey && (
               <TrailerDialog
                 showLabel
-                title={billboard.item.title}
-                trailerKey={billboard.trailer.key}
+                title={billboard.title}
+                trailerKey={billboard.trailerKey}
                 variant="default"
               />
             )}
             {signedIn && (
               <SystemListToggle
                 className="border-hero-foreground/60 bg-transparent text-hero-foreground hover:bg-hero-foreground/10 hover:text-hero-foreground"
-                itemId={billboard.item.id}
+                itemId={billboard.id}
                 list={{
                   slug: "watchlist",
                   name: "Watchlist",
-                  containsItem: billboard.item.isInSystemList,
+                  containsItem: billboard.isInSystemList,
                 }}
                 showLabel
                 variant="outline"
@@ -143,13 +146,13 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
           <div className="absolute right-4 bottom-4 left-4 flex items-center justify-center gap-2">
             {billboards.map((candidate, index) => (
               <Button
-                aria-label={`Show ${candidate.item.title}`}
+                aria-label={`Show ${candidate.title}`}
                 aria-pressed={index === activeIndex}
                 className={cn(
                   "size-2 rounded-full bg-hero-foreground/40 p-0 hover:bg-hero-foreground",
                   index === activeIndex && "bg-hero-foreground"
                 )}
-                key={candidate.item.id}
+                key={candidate.id}
                 onClick={() => showBillboard(index)}
                 size="icon-xs"
                 variant="ghost"

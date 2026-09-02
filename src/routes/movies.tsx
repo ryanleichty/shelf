@@ -1,17 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { useMemo } from "react"
 import { TypeHome } from "@/components/type-home"
-import { getHomeRows } from "@/server/items"
+import { homeRows } from "@/lib/catalog"
+import { useCatalog } from "@/lib/use-catalog"
 
-export const Route = createFileRoute("/movies")({
-  loader: () => getHomeRows({ data: { type: "movie" } }),
-  component: Movies,
-})
+export const Route = createFileRoute("/movies")({ component: Movies })
 
 function Movies() {
+  const catalog = useCatalog()
+  const rows = useMemo(() => homeRows(catalog, "movie"), [catalog])
   return (
     <TypeHome
       addLabel="Add movie"
-      rows={Route.useLoaderData()}
+      rows={rows}
       subtitle="The film shelf"
       title="Movies"
       type="movie"

@@ -10,7 +10,7 @@ import {
   requireSignedIn,
   startUserSession,
 } from "./auth"
-import { db, ensureDatabase } from "./db"
+import { db } from "./db"
 import { sessions, users, userRoles } from "./schema"
 
 const profileInput = z.object({
@@ -51,7 +51,6 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const currentUser = await getCurrentUser()
     if (!currentUser) throw new Error("A user account is required.")
     if (!process.env.BLOB_READ_WRITE_TOKEN)
@@ -154,7 +153,6 @@ export const saveProfile = createServerFn({ method: "POST" })
   .inputValidator(profileInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
-    await ensureDatabase()
     const currentUser = await getCurrentUser()
     const email = data.email.toLowerCase()
     const now = new Date().toISOString()
@@ -198,7 +196,6 @@ export const saveUser = createServerFn({ method: "POST" })
   .inputValidator(userInput)
   .handler(async ({ data }) => {
     await requireAdmin()
-    await ensureDatabase()
     const email = data.email.toLowerCase()
     const now = new Date().toISOString()
     if (!data.id) {
@@ -248,7 +245,6 @@ export const deleteUser = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireAdmin()
-    await ensureDatabase()
     const [user] = await db
       .select()
       .from(users)
