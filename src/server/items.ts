@@ -2450,8 +2450,27 @@ export const login = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data }) => {
-    const { startBootstrapSession, startUserSession, verifyStoredPassword } =
-      await import("./auth")
+    const {
+      clearLoginFailures,
+      DUMMY_PASSWORD_HASH,
+      loginLockoutSeconds,
+      passwordsMatch,
+      recordLoginFailure,
+      startBootstrapSession,
+      startUserSession,
+      verifyStoredPassword,
+    } = await import("./auth")
+    const wrongPassword = {
+      ok: false,
+      error: "That password doesn’t open this shelf.",
+    }
+    const lockedOut = (seconds: number) => ({
+      ok: false,
+      error: `Too many attempts. Try again in ${Math.max(
+        1,
+        Math.ceil(seconds / 60)
+      )} minute${seconds > 60 ? "s" : ""}.`,
+    })
     const [storedAdmin] = await db
       .select({ id: users.id })
       .from(users)
@@ -2465,9 +2484,13 @@ export const login = createServerFn({ method: "POST" })
             "Admin access is not configured. Set ADMIN_PASSWORD to enable it.",
         }
       }
-      const expected = process.env.ADMIN_PASSWORD.trim()
-      if (data.password !== expected)
-        return { ok: false, error: "That password doesn’t open this shelf." }
+      const wait = await loginLockoutSeconds("bootstrap")
+      if (wait) return lockedOut(wait)
+      if (!passwordsMatch(data.password, process.env.ADMIN_PASSWORD.trim())) {
+        await recordLoginFailure("bootstrap")
+        return wrongPassword
+      }
+      await clearLoginFailures("bootstrap")
       startBootstrapSession()
       return { ok: true, error: "" }
     }
@@ -2477,16 +2500,24 @@ export const login = createServerFn({ method: "POST" })
         error: "Enter your email and password.",
       }
     }
+    const email = data.email.trim().toLowerCase()
+    const key = `email:${email}`
+    const wait = await loginLockoutSeconds(key)
+    if (wait) return lockedOut(wait)
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, data.email.trim().toLowerCase()))
+      .where(eq(users.email, email))
       .limit(1)
-    if (
-      !user ||
-      !(await verifyStoredPassword(data.password, user.passwordHash))
+    const valid = await verifyStoredPassword(
+      data.password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH
     )
-      return { ok: false, error: "That password doesn’t open this shelf." }
+    if (!user || !valid) {
+      await recordLoginFailure(key)
+      return wrongPassword
+    }
+    await clearLoginFailures(key)
     await startUserSession(user.id)
     return { ok: true, error: "" }
   })

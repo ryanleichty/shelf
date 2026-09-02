@@ -20,6 +20,7 @@ describe("runMigrations", () => {
       "items",
       "users",
       "sessions",
+      "login_attempts",
       "genres",
       "item_genres",
       "authors",
