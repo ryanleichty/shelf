@@ -66,6 +66,7 @@ import {
   type LookupResult,
   type PersonOptions,
 } from "@/server/items"
+import { parseCreatorNames } from "@/lib/catalog"
 import type { Item } from "@/server/schema"
 
 const itemFormFields = [
@@ -124,13 +125,6 @@ function parseValidationIssues(message: string) {
   } catch {
     return null
   }
-}
-
-function namesFromCreator(creator: string) {
-  return creator
-    .split(/,|\s+and\s+|\s+&\s+/i)
-    .map((name) => name.trim())
-    .filter(Boolean)
 }
 
 function peopleItems(options: string[], selected: string[], query: string) {
@@ -206,9 +200,9 @@ export function ItemForm({
   })
   const [values, setValues] = useState({
     title: item?.title ?? "",
-    author: item?.authors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
+    author: item?.authors[0] ?? parseCreatorNames(item?.creator ?? "")[0] ?? "",
     director:
-      item?.directors[0] ?? namesFromCreator(item?.creator ?? "")[0] ?? "",
+      item?.directors[0] ?? parseCreatorNames(item?.creator ?? "")[0] ?? "",
     actors: item?.actors ?? [],
     slug: item?.slug ?? "",
     year: item?.year ? String(item.year) : "",
@@ -352,12 +346,12 @@ export function ItemForm({
         title: resolved.title,
         author:
           resolved.type === "book"
-            ? (namesFromCreator(creator)[0] ?? "")
+            ? (parseCreatorNames(creator)[0] ?? "")
             : current.author,
         director:
           resolved.type === "book"
             ? current.director
-            : (namesFromCreator(creator)[0] ?? ""),
+            : (parseCreatorNames(creator)[0] ?? ""),
         actors:
           resolved.type === "book" ? current.actors : (resolved.cast ?? []),
         year: resolved.year ? String(resolved.year) : "",

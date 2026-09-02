@@ -11,6 +11,14 @@ export const itemStatuses = [
 export type ItemStatus = (typeof itemStatuses)[number]
 export const itemEditions = ["theatrical", "extended", "director-cut"] as const
 export type ItemEdition = (typeof itemEditions)[number]
+export const itemFormats = [
+  "hardcover",
+  "paperback",
+  "blu-ray",
+  "dvd",
+  "other",
+] as const
+export type ItemFormat = (typeof itemFormats)[number]
 export const userRoles = ["admin", "member"] as const
 export type UserRole = (typeof userRoles)[number]
 
@@ -108,6 +116,19 @@ export function slugify(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
+}
+
+export const normalizeTitle = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "")
+
+export const normalizeEdition = (edition?: string | null) =>
+  edition?.trim() || null
+
+export function parseCreatorNames(creator: string) {
+  return creator
+    .split(/,|\s+and\s+|\s+&\s+/i)
+    .map((name) => name.trim())
+    .filter(Boolean)
 }
 
 export function systemListSlug(type: ItemType) {

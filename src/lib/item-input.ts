@@ -1,5 +1,10 @@
 import { z } from "zod"
-import { itemEditions, itemStatuses, itemTypes } from "@/lib/catalog"
+import {
+  itemEditions,
+  itemFormats,
+  itemStatuses,
+  itemTypes,
+} from "@/lib/catalog"
 
 export const bookGenreOptions = [
   "Fiction",
@@ -52,10 +57,7 @@ export const itemInput = z
     barcode: z.string().max(80).optional().or(z.literal("")),
     borrower: z.string().max(120).optional().or(z.literal("")),
     loanedAt: z.string().date().optional().or(z.literal("")),
-    format: z
-      .enum(["hardcover", "paperback", "blu-ray", "dvd", "other"])
-      .optional()
-      .or(z.literal("")),
+    format: z.enum(itemFormats).optional().or(z.literal("")),
     edition: z.enum(itemEditions).optional().or(z.literal("")),
     genres: z.array(z.string().max(60)).max(20).default([]),
     description: z.string().max(10000).optional().or(z.literal("")),

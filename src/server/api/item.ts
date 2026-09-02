@@ -4,7 +4,7 @@ import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
 import { storeCover } from "@/server/covers"
 import { itemExists } from "@/server/items"
-import { items } from "@/server/schema"
+import { items, itemEditions, itemStatuses } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -13,11 +13,8 @@ const patch = z.object({
   creator: z.string().min(1).optional(),
   year: z.number().int().optional(),
   format: z.string().nullable().optional(),
-  edition: z
-    .enum(["theatrical", "extended", "director-cut"])
-    .nullable()
-    .optional(),
-  status: z.enum(["owned", "reading", "watching", "borrowed"]).optional(),
+  edition: z.enum(itemEditions).nullable().optional(),
+  status: z.enum(itemStatuses).optional(),
   coverImageUrl: z.string().url().nullable().optional(),
   slug: z.string().min(1).optional(),
 })

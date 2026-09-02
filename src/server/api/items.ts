@@ -3,19 +3,16 @@ import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
 import {
+  createItemFromProvider,
   getCollectionResultById,
   itemExists,
   lookupCollection,
-  normalizeTitle,
   normalizeOpenLibraryWorkKey,
-  replaceItemCollection,
-  replaceItemCast,
-  replaceItemCreators,
-  upsertTags,
   uniqueSlug,
 } from "@/server/items"
-import { storeCover } from "@/server/covers"
-import { items, itemTypes } from "@/server/schema"
+import { slugify } from "@/lib/catalog"
+import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
+import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -69,13 +66,8 @@ export const handlers = {
               type: z.enum(itemTypes).default("movie"),
               query: z.string().min(1),
               format: z.string().optional(),
-              edition: z
-                .enum(["theatrical", "extended", "director-cut"])
-                .optional()
-                .or(z.literal("")),
-              status: z
-                .enum(["", "reading", "watching", "borrowed"])
-                .optional(),
+              edition: z.enum(itemEditions).optional().or(z.literal("")),
+              status: z.enum(itemStatuses).or(z.literal("")).optional(),
               year: z.number().optional(),
               tmdbId: z.string().regex(/^\d+$/).optional(),
               openLibraryKey: z.string().max(120).optional(),
@@ -105,9 +97,8 @@ export const handlers = {
               ? normalizeOpenLibraryWorkKey(input.openLibraryKey)
               : undefined
             : input.tmdbId?.trim() || undefined
-        const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
-        const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
-        const title = input.query.replace(/(?:\(|\s)\d{4}\)?\s*$/, "").trim()
+        const { title, year: parsedYear } = parseImportQuery(input.query)
+        const year = input.year ?? parsedYear
         let top
         if (pinnedId) {
           top = await getCollectionResultById({
@@ -119,26 +110,12 @@ export const handlers = {
             type: input.type,
             query: title,
           })
-          const ranked = [...matches].sort(
-            (a, b) =>
-              Number(b.year === year) - Number(a.year === year) ||
-              Number(normalizeTitle(a.title) === normalizeTitle(title)) -
-                Number(normalizeTitle(b.title) === normalizeTitle(title))
+          const { top: best, ranked } = rankImportCandidates(
+            matches,
+            title,
+            year
           )
-          const exactTitles = ranked.filter(
-            (candidate) =>
-              normalizeTitle(candidate.title) === normalizeTitle(title)
-          )
-          const yearMatches =
-            year === undefined
-              ? exactTitles
-              : exactTitles.filter((candidate) => candidate.year === year)
-          top =
-            yearMatches.length === 1
-              ? yearMatches[0]
-              : year === undefined && exactTitles.length === 1
-                ? exactTitles[0]
-                : undefined
+          top = best
           if (!top) {
             needsReview.push({
               query: input.query,
@@ -166,58 +143,26 @@ export const handlers = {
               type: input.type,
               id: providerId,
             })
-        const resolved = {
-          ...providerResult,
-          creator:
-            providerResult.creator === "Unknown author"
-              ? top.creator
-              : providerResult.creator,
-          coverImageUrl: providerResult.coverImageUrl || top.coverImageUrl,
-          slug: await uniqueSlug(slugify(providerResult.title), input.edition),
-        }
         if (body.data.dryRun) {
-          added.push({ title: resolved.title, slug: resolved.slug })
+          added.push({
+            title: providerResult.title,
+            slug: await uniqueSlug(
+              slugify(providerResult.title),
+              input.edition
+            ),
+          })
           continue
         }
-        const now = new Date().toISOString()
-        const [created] = await db
-          .insert(items)
-          .values({
-            slug: resolved.slug,
-            type: input.type,
-            status: input.status || "owned",
-            title: resolved.title,
-            creator: resolved.creator,
-            year: resolved.year ?? 0,
-            format: input.format || null,
-            edition: input.edition || null,
-            description: resolved.description || null,
-            certification: resolved.certification ?? null,
-            runtime: resolved.runtime ?? null,
-            coverImageUrl:
-              (await storeCover(resolved.coverImageUrl, resolved.slug)) || null,
-            backdropImageUrl: resolved.backdropImageUrl || null,
-            tmdbId: input.type === "book" ? null : providerId,
-            openLibraryKey: input.type === "book" ? providerId : null,
-            notes: "",
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning({ id: items.id, title: items.title, slug: items.slug })
-        await upsertTags(created.id, "genre", resolved.genres)
-        await upsertTags(created.id, "keyword", resolved.keywords ?? [])
-        await replaceItemCreators(
-          created.id,
-          input.type,
-          resolved.creatorPeople ?? resolved.creator
-        )
-        if (input.type !== "book" && resolved.cast !== undefined)
-          await replaceItemCast(
-            created.id,
-            resolved.castPeople ?? resolved.cast.map((name) => ({ name }))
-          )
-        if (input.type === "movie")
-          await replaceItemCollection(created.id, resolved.collection ?? null)
+        const created = await createItemFromProvider({
+          type: input.type,
+          providerId,
+          result: providerResult,
+          fallbackCreator: top.creator,
+          fallbackCoverImageUrl: top.coverImageUrl,
+          format: input.format,
+          edition: input.edition,
+          status: input.status,
+        })
         added.push(created)
       } catch (error) {
         failed.push({
@@ -228,11 +173,4 @@ export const handlers = {
     }
     return Response.json({ added, skipped, failed, needsReview })
   },
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
 }
