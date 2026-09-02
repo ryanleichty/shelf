@@ -230,11 +230,9 @@ export async function runMigrations(client: Client) {
       UNIQUE(item_id, collection_id)
     )
   `)
-  await client.execute(`
-    CREATE VIRTUAL TABLE IF NOT EXISTS item_search USING fts5(
-      title, creator, description, genres, keywords
-    )
-  `)
+  // Legacy FTS index; nothing ever queried it. Dropped in place so existing
+  // databases stop carrying it.
+  await client.execute("DROP TABLE IF EXISTS item_search")
   await migrateLegacyGenres(client)
   await migrateLegacyCreators(client)
   await client.execute(`
@@ -512,19 +510,4 @@ async function migrateLegacyCreators(client: Client) {
       parseCreatorNames(String(row.creator ?? ""))
     )
   }
-}
-
-export async function refreshSearchIndex(client: Client) {
-  await client.execute("DELETE FROM item_search")
-  await client.execute(`
-    INSERT INTO item_search (rowid, title, creator, description, genres, keywords)
-    SELECT
-      items.id,
-      items.title,
-      items.creator,
-      COALESCE(items.description, ''),
-      COALESCE((SELECT group_concat(genres.name, ' ') FROM item_genres JOIN genres ON genres.id = item_genres.genre_id WHERE item_genres.item_id = items.id), ''),
-      COALESCE((SELECT group_concat(keywords.name, ' ') FROM item_keywords JOIN keywords ON keywords.id = item_keywords.keyword_id WHERE item_keywords.item_id = items.id), '')
-    FROM items
-  `)
 }

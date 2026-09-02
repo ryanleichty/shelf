@@ -36,6 +36,7 @@ describe("runMigrations", () => {
       "schema_meta",
     ])
       expect(tables).toContain(table)
+    expect(tables).not.toContain("item_search")
   })
 
   test("is idempotent", async () => {

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
-import { db, refreshSearchIndex } from "@/server/db"
+import { db } from "@/server/db"
 import {
   getCollectionResultById,
   itemExists,
@@ -218,7 +218,6 @@ export const handlers = {
           )
         if (input.type === "movie")
           await replaceItemCollection(created.id, resolved.collection ?? null)
-        await refreshSearchIndex()
         added.push(created)
       } catch (error) {
         failed.push({

@@ -1,12 +1,7 @@
 import { createClient, type Client } from "@libsql/client"
 import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
-import {
-  SCHEMA_VERSION,
-  readSchemaVersion,
-  refreshSearchIndex as refreshSearchIndexWith,
-  runMigrations,
-} from "./migrate"
+import { SCHEMA_VERSION, readSchemaVersion, runMigrations } from "./migrate"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 
@@ -54,7 +49,6 @@ async function seedSamples(client: Client) {
       )
     )
   }
-  await refreshSearchIndexWith(client)
 }
 
 const gated = new Set(["execute", "batch", "transaction", "executeMultiple"])
@@ -77,9 +71,3 @@ const client = rawClient
 export const db = import.meta.env.SSR
   ? drizzle({ client: client!, schema })
   : (undefined as unknown as ReturnType<typeof drizzle<typeof schema>>)
-
-export function refreshSearchIndex() {
-  if (!client)
-    throw new Error("Database access is only available on the server.")
-  return refreshSearchIndexWith(client)
-}
