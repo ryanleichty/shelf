@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "groupName": "TanStack",
+      "matchPackagePatterns": ["^@tanstack/"]
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": false
+    },
+    {
+      "matchPackageNames": ["nitro"],
+      "enabled": false
+    }
+  ]
+}

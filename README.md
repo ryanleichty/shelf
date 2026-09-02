@@ -50,6 +50,8 @@ When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the
 3. Set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in Vercel’s project settings for durable collection data. Without them, Vercel uses an ephemeral `/tmp` database: the catalog still boots with sample content, but additions disappear when the serverless instance is replaced. Set `ADMIN_PASSWORD` to bootstrap the first admin account, plus optionally `TMDB_API_KEY` and `BLOB_READ_WRITE_TOKEN`.
 4. Deploy. The included Nitro Vite plugin supplies TanStack Start SSR and server functions to Vercel; no custom output directory is needed.
 
+`nitro` is pinned to an exact prerelease build; the CI SSR smoke test guards the upgrade.
+
 ## Checks
 
 ```bash
