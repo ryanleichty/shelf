@@ -14,7 +14,8 @@ import {
   uniqueSlug,
 } from "@/server/items"
 import { storeCover } from "@/server/covers"
-import { normalizeTitle, slugify } from "@/lib/catalog"
+import { slugify } from "@/lib/catalog"
+import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
 import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"
 
 const unauthorized = () =>
@@ -100,9 +101,8 @@ export const handlers = {
               ? normalizeOpenLibraryWorkKey(input.openLibraryKey)
               : undefined
             : input.tmdbId?.trim() || undefined
-        const parsed = input.query.match(/(?:\(|\s)(\d{4})\)?\s*$/)
-        const year = input.year ?? (parsed ? Number(parsed[1]) : undefined)
-        const title = input.query.replace(/(?:\(|\s)\d{4}\)?\s*$/, "").trim()
+        const { title, year: parsedYear } = parseImportQuery(input.query)
+        const year = input.year ?? parsedYear
         let top
         if (pinnedId) {
           top = await getCollectionResultById({
@@ -114,26 +114,12 @@ export const handlers = {
             type: input.type,
             query: title,
           })
-          const ranked = [...matches].sort(
-            (a, b) =>
-              Number(b.year === year) - Number(a.year === year) ||
-              Number(normalizeTitle(a.title) === normalizeTitle(title)) -
-                Number(normalizeTitle(b.title) === normalizeTitle(title))
+          const { top: best, ranked } = rankImportCandidates(
+            matches,
+            title,
+            year
           )
-          const exactTitles = ranked.filter(
-            (candidate) =>
-              normalizeTitle(candidate.title) === normalizeTitle(title)
-          )
-          const yearMatches =
-            year === undefined
-              ? exactTitles
-              : exactTitles.filter((candidate) => candidate.year === year)
-          top =
-            yearMatches.length === 1
-              ? yearMatches[0]
-              : year === undefined && exactTitles.length === 1
-                ? exactTitles[0]
-                : undefined
+          top = best
           if (!top) {
             needsReview.push({
               query: input.query,
