@@ -114,6 +114,14 @@ export function systemListSlug(type: ItemType) {
   return type === "book" ? "reading-list" : "watchlist"
 }
 
+export function statusLabel(status: Exclude<ItemStatus, "owned">) {
+  return status === "reading"
+    ? "Reading"
+    : status === "watching"
+      ? "Watching"
+      : "Borrowed"
+}
+
 const byTitle = (left: CatalogItem, right: CatalogItem) =>
   left.title.localeCompare(right.title)
 

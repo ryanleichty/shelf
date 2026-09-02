@@ -3,6 +3,7 @@ import {
   homeRows,
   listPage,
   matchesQuery,
+  statusLabel,
   yearBrowse,
   type Catalog,
   type CatalogItem,
@@ -129,5 +130,13 @@ describe("catalog derivations", () => {
     expect(matchesQuery(catalog.items[2], "piper")).toBe(true)
     expect(matchesQuery(catalog.items[0], "spielberg action")).toBe(true)
     expect(matchesQuery(catalog.items[1], "action")).toBe(false)
+  })
+})
+
+describe("statusLabel", () => {
+  test("names every non-owned status", () => {
+    expect(statusLabel("reading")).toBe("Reading")
+    expect(statusLabel("watching")).toBe("Watching")
+    expect(statusLabel("borrowed")).toBe("Borrowed")
   })
 })
