@@ -11,7 +11,15 @@ import {
   tmdbExtrasFrom,
   type TmdbExtrasSource,
 } from "./tmdb"
-import { systemListSlug, type CatalogItem } from "@/lib/catalog"
+import {
+  itemFormats,
+  normalizeEdition,
+  normalizeTitle,
+  parseCreatorNames,
+  slugify,
+  systemListSlug,
+  type CatalogItem,
+} from "@/lib/catalog"
 import { bookGenreOptions, itemInput, type ItemInput } from "@/lib/item-input"
 import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import { storeCover } from "./covers"
@@ -61,10 +69,7 @@ export const importItems = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       type: z.enum(itemTypes),
-      format: z
-        .enum(["hardcover", "paperback", "blu-ray", "dvd", "other"])
-        .optional()
-        .or(z.literal("")),
+      format: z.enum(itemFormats).optional().or(z.literal("")),
       edition: z.enum(itemEditions).optional().or(z.literal("")),
       queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
     })
@@ -393,16 +398,6 @@ export const getCoverOptions = createServerFn({ method: "GET" })
     return []
   })
 
-const slugify = (title: string) =>
-  title
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-
-const normalizeEdition = (edition?: string | null) => edition?.trim() || null
-
 type TagKind = "genre" | "keyword" | "author" | "director"
 
 export async function upsertTags(
@@ -464,13 +459,6 @@ export async function upsertTags(
         .onConflictDoNothing()
     }
   }
-}
-
-function parseCreatorNames(creator: string) {
-  return creator
-    .split(/,|\s+and\s+|\s+&\s+/i)
-    .map((name) => name.trim())
-    .filter(Boolean)
 }
 
 export async function replaceItemCreators(
@@ -934,9 +922,6 @@ export async function uniqueSlug(
     if (!collision.length || collision[0].id === excludeId) return slug
   }
 }
-
-export const normalizeTitle = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 const barcodeInput = z
   .string()

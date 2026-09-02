@@ -6,7 +6,6 @@ import {
   getCollectionResultById,
   itemExists,
   lookupCollection,
-  normalizeTitle,
   normalizeOpenLibraryWorkKey,
   replaceItemCollection,
   replaceItemCast,
@@ -15,7 +14,8 @@ import {
   uniqueSlug,
 } from "@/server/items"
 import { storeCover } from "@/server/covers"
-import { items, itemTypes } from "@/server/schema"
+import { normalizeTitle, slugify } from "@/lib/catalog"
+import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -69,13 +69,8 @@ export const handlers = {
               type: z.enum(itemTypes).default("movie"),
               query: z.string().min(1),
               format: z.string().optional(),
-              edition: z
-                .enum(["theatrical", "extended", "director-cut"])
-                .optional()
-                .or(z.literal("")),
-              status: z
-                .enum(["", "reading", "watching", "borrowed"])
-                .optional(),
+              edition: z.enum(itemEditions).optional().or(z.literal("")),
+              status: z.enum(itemStatuses).or(z.literal("")).optional(),
               year: z.number().optional(),
               tmdbId: z.string().regex(/^\d+$/).optional(),
               openLibraryKey: z.string().max(120).optional(),
@@ -228,11 +223,4 @@ export const handlers = {
     }
     return Response.json({ added, skipped, failed, needsReview })
   },
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
 }

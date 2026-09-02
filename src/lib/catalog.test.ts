@@ -3,6 +3,8 @@ import {
   homeRows,
   listPage,
   matchesQuery,
+  parseCreatorNames,
+  slugify,
   statusLabel,
   yearBrowse,
   type Catalog,
@@ -138,5 +140,21 @@ describe("statusLabel", () => {
     expect(statusLabel("reading")).toBe("Reading")
     expect(statusLabel("watching")).toBe("Watching")
     expect(statusLabel("borrowed")).toBe("Borrowed")
+  })
+})
+
+describe("slugify", () => {
+  test("strips accents and punctuation", () => {
+    expect(slugify("Amélie")).toBe("amelie")
+    expect(slugify("Léon: The Professional")).toBe("leon-the-professional")
+    expect(slugify("WALL·E")).toBe("wall-e")
+    expect(slugify("!!!")).toBe("")
+  })
+})
+
+describe("parseCreatorNames", () => {
+  test("splits on commas, and, ampersand", () => {
+    expect(parseCreatorNames("A, B and C & D")).toEqual(["A", "B", "C", "D"])
+    expect(parseCreatorNames("  ")).toEqual([])
   })
 })

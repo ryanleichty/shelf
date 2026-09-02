@@ -1,4 +1,5 @@
 import type { Client } from "@libsql/client"
+import { parseCreatorNames, slugify } from "@/lib/catalog"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 
 // Derived from the migration source, so any edit to runMigrations re-runs it
@@ -412,14 +413,6 @@ export function readSchemaVersion(client: Client) {
     )
 }
 
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-
 async function replaceGenreJoins(
   client: Client,
   itemId: number,
@@ -457,13 +450,6 @@ async function migrateLegacyGenres(client: Client) {
     }
   }
   await client.execute("UPDATE items SET genres = '[]' WHERE genres != '[]'")
-}
-
-function parseCreatorNames(creator: string) {
-  return creator
-    .split(/,|\s+and\s+|\s+&\s+/i)
-    .map((name) => name.trim())
-    .filter(Boolean)
 }
 
 async function replaceCreatorJoins(
