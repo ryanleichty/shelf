@@ -19,6 +19,7 @@ import {
   SystemListToggle,
   type SystemListOption,
 } from "@/components/system-list-toggle"
+import { acceptServerValue } from "@/lib/optimistic"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
 type ListOption = { slug: string; name: string; containsItem: boolean }
@@ -54,11 +55,11 @@ export function ItemListMenu({
       const optimisticList = customListsRef.current.find(
         (candidate) => candidate.slug === list.slug
       )
-      const optimisticValue = optimisticListValues.current.get(list.slug)
+      const optimisticValue =
+        optimisticListValues.current.get(list.slug) ?? null
       if (
         optimisticList &&
-        optimisticValue !== undefined &&
-        list.containsItem !== optimisticValue
+        !acceptServerValue(optimisticValue, list.containsItem)
       )
         return { ...list, containsItem: optimisticList.containsItem }
       return list
@@ -68,8 +69,10 @@ export function ItemListMenu({
   }, [lists])
   useEffect(() => {
     if (
-      optimisticBookmarkValue.current !== null &&
-      systemList?.containsItem !== optimisticBookmarkValue.current
+      !acceptServerValue(
+        optimisticBookmarkValue.current,
+        systemList?.containsItem
+      )
     )
       return
     bookmarkRef.current = systemList
@@ -104,7 +107,9 @@ export function ItemListMenu({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (listRequestGenerations.current.get(list.slug) !== generation) return
-      void router.invalidate()
+      await router.invalidate()
+      if (listRequestGenerations.current.get(list.slug) !== generation) return
+      optimisticListValues.current.delete(list.slug)
     } catch (cause) {
       if (listRequestGenerations.current.get(list.slug) !== generation) return
       const revertedLists = customListsRef.current.map((candidate) =>
@@ -139,6 +144,9 @@ export function ItemListMenu({
             bookmarkRef.current = nextBookmark
             optimisticBookmarkValue.current = containsItem
             setBookmark(nextBookmark)
+          }}
+          onSettled={() => {
+            optimisticBookmarkValue.current = null
           }}
           showLabel
         />

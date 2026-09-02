@@ -9,6 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { acceptServerValue } from "@/lib/optimistic"
 import { addItemToList, removeItemFromList } from "@/server/lists"
 
 export type SystemListOption = {
@@ -23,6 +24,7 @@ export function SystemListToggle({
   list,
   onError,
   onMembershipChange,
+  onSettled,
   showLabel = false,
   showTooltip = !showLabel,
   variant,
@@ -32,6 +34,7 @@ export function SystemListToggle({
   list: SystemListOption
   onError?: (message: string) => void
   onMembershipChange?: (containsItem: boolean) => void
+  onSettled?: () => void
   showLabel?: boolean
   showTooltip?: boolean
   variant?: "default" | "outline"
@@ -43,10 +46,7 @@ export function SystemListToggle({
   const optimisticContainsItem = useRef<boolean | null>(null)
 
   useEffect(() => {
-    if (
-      optimisticContainsItem.current !== null &&
-      list.containsItem !== optimisticContainsItem.current
-    )
+    if (!acceptServerValue(optimisticContainsItem.current, list.containsItem))
       return
     containsItemRef.current = list.containsItem
     setContainsItem(list.containsItem)
@@ -66,13 +66,17 @@ export function SystemListToggle({
         await removeItemFromList({ data: { itemId, listSlug: list.slug } })
       else await addItemToList({ data: { itemId, listSlug: list.slug } })
       if (generation !== requestGeneration.current) return
-      void router.invalidate()
+      await router.invalidate()
+      if (generation !== requestGeneration.current) return
+      optimisticContainsItem.current = null
+      onSettled?.()
     } catch (cause) {
       if (generation !== requestGeneration.current) return
       optimisticContainsItem.current = null
       containsItemRef.current = previousContainsItem
       setContainsItem(previousContainsItem)
       onMembershipChange?.(previousContainsItem)
+      onSettled?.()
       onError?.(
         cause instanceof Error
           ? cause.message
