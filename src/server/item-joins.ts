@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm"
+import { asc, eq, inArray, sql } from "drizzle-orm"
 import { parseCreatorNames, slugify } from "@/lib/catalog"
 import { db } from "./db"
 import {
@@ -150,6 +150,51 @@ export async function replaceItemCast(
       .values({ itemId, actorId: id, position })
       .onConflictDoNothing()
   }
+}
+
+// Do the joins already hold exactly these people, in this order? An undefined
+// list means the provider sent nothing to compare, so nothing needs rewriting.
+export function samePeople(
+  current: Array<{ name: string; providerId: string | null }>,
+  next: ProviderPerson[] | undefined
+) {
+  if (next === undefined) return true
+  if (current.length !== next.length) return false
+  return current.every((person, index) => {
+    const candidate = next[index]!
+    return person.providerId && candidate.providerId
+      ? person.providerId === candidate.providerId
+      : slugify(person.name) === slugify(candidate.name)
+  })
+}
+
+export async function itemCreators(
+  itemId: number,
+  type: Item["type"],
+  database: Database = db
+) {
+  if (type === "book")
+    return database
+      .select({ name: authors.name, providerId: authors.openLibraryKey })
+      .from(itemAuthors)
+      .innerJoin(authors, eq(itemAuthors.authorId, authors.id))
+      .where(eq(itemAuthors.itemId, itemId))
+      .orderBy(sql`item_authors.rowid`)
+  return database
+    .select({ name: directors.name, providerId: directors.tmdbPersonId })
+    .from(itemDirectors)
+    .innerJoin(directors, eq(itemDirectors.directorId, directors.id))
+    .where(eq(itemDirectors.itemId, itemId))
+    .orderBy(sql`item_directors.rowid`)
+}
+
+export async function itemCast(itemId: number, database: Database = db) {
+  return database
+    .select({ name: actors.name, providerId: actors.tmdbPersonId })
+    .from(itemActors)
+    .innerJoin(actors, eq(itemActors.actorId, actors.id))
+    .where(eq(itemActors.itemId, itemId))
+    .orderBy(asc(itemActors.position))
 }
 
 type PersonKind = "author" | "director" | "actor"

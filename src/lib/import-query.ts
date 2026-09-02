@@ -40,9 +40,7 @@ export function rankImportCandidates<T extends ImportCandidate>(
   )
   const exactTitles = ranked.filter((c) => normalizeTitle(c.title) === wanted)
   const yearMatches =
-    year === undefined
-      ? exactTitles
-      : exactTitles.filter((c) => c.year === year)
+    year === undefined ? exactTitles : exactTitles.filter((c) => c.year === year)
   const top =
     yearMatches.length === 1
       ? yearMatches[0]

@@ -25,9 +25,12 @@ import {
 import { bookGenreOptions, itemInput, type ItemInput } from "@/lib/item-input"
 import { isAgentToken, requireAdmin, requireSignedIn } from "./auth"
 import {
+  itemCast,
+  itemCreators,
   replaceItemCast,
   replaceItemCreators,
   replaceItemTags,
+  samePeople,
   type ProviderPerson,
 } from "./item-joins"
 import { storeCover } from "./covers"
@@ -1292,12 +1295,23 @@ export async function syncItemFromProvider(
   const changes = changedFields(syncedItem, metadata)
   if (!Object.keys(changes).length) {
     if (!dryRun) {
-      await replaceItemCreators(
-        syncedItem.id,
-        syncedItem.type,
-        metadata.creatorPeople ?? syncedItem.creator
+      // Nothing changed, so only rewrite a join whose stored people differ.
+      if (
+        !samePeople(
+          await itemCreators(syncedItem.id, syncedItem.type),
+          metadata.creatorPeople
+        )
       )
-      if (syncedItem.type !== "book" && metadata.castPeople)
+        await replaceItemCreators(
+          syncedItem.id,
+          syncedItem.type,
+          metadata.creatorPeople ?? syncedItem.creator
+        )
+      if (
+        syncedItem.type !== "book" &&
+        metadata.castPeople &&
+        !samePeople(await itemCast(syncedItem.id), metadata.castPeople)
+      )
         await replaceItemCast(syncedItem.id, metadata.castPeople)
     }
     return {
