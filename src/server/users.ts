@@ -11,6 +11,7 @@ import {
   startUserSession,
 } from "./auth"
 import { db } from "./db"
+import { fetchRemoteImage, isBlobUrl, RemoteImageError } from "./remote-image"
 import { sessions, users, userRoles } from "./schema"
 
 const profileInput = z.object({
@@ -57,7 +58,7 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
       throw new Error("Photo uploads are not configured.")
 
     const image = data.get("image")
-    let source: File | ReadableStream<Uint8Array>
+    let source: Blob
     let fileName: string
     let contentType: string
     if (image instanceof File) {
@@ -69,17 +70,18 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
       fileName = image.name
       contentType = image.type
     } else if (typeof image === "string") {
-      const url = new URL(image)
-      if (!["http:", "https:"].includes(url.protocol))
-        throw new Error("Choose an image file.")
-      const response = await fetch(url)
-      if (!response.ok || !response.body)
-        throw new Error("Couldn’t download that image.")
-      contentType = response.headers.get("content-type") ?? ""
-      if (!contentType.startsWith("image/"))
-        throw new Error("Choose an image file.")
-      source = response.body
-      fileName = url.pathname
+      try {
+        const remote = await fetchRemoteImage(image, {
+          maxBytes: 5 * 1024 * 1024,
+        })
+        source = remote.body
+        fileName = remote.url.pathname
+        contentType = remote.contentType
+      } catch (cause) {
+        throw cause instanceof RemoteImageError
+          ? cause
+          : new Error("Couldn’t download that image.")
+      }
     } else {
       throw new Error("Choose an image file.")
     }
@@ -98,12 +100,7 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
       .set({ avatarUrl: blob.url, updatedAt: new Date().toISOString() })
       .where(eq(users.id, currentUser.id))
 
-    if (
-      currentUser.avatarUrl &&
-      new URL(currentUser.avatarUrl).hostname.endsWith(
-        ".blob.vercel-storage.com"
-      )
-    ) {
+    if (currentUser.avatarUrl && isBlobUrl(new URL(currentUser.avatarUrl))) {
       await del(currentUser.avatarUrl).catch(() => undefined)
     }
 

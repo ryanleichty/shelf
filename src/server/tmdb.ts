@@ -74,7 +74,7 @@ export async function fetchTmdbExtras(
     url.searchParams.set("language", "en-US")
     url.searchParams.set("append_to_response", TMDB_EXTRAS_APPEND)
     url.searchParams.set("include_image_language", "en,null")
-    const response = await fetch(url)
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
     if (!response.ok) return empty
     return tmdbExtrasFrom((await response.json()) as TmdbExtrasSource)
   } catch {
@@ -92,7 +92,7 @@ export async function fetchTmdbCollectionPartIds(
       `https://api.themoviedb.org/3/collection/${tmdbCollectionId}`
     )
     url.searchParams.set("api_key", apiKey)
-    const response = await fetch(url)
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
     if (!response.ok) return []
     const body = (await response.json()) as {
       parts?: Array<{ id?: number | string; release_date?: string }>

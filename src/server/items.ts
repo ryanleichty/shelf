@@ -207,6 +207,7 @@ export async function lookupCollection(data: {
     )
     url.searchParams.set("limit", "6")
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(10_000),
       headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
     })
     if (!response.ok)
@@ -265,7 +266,7 @@ export async function lookupCollection(data: {
   url.searchParams.set("include_adult", "false")
   url.searchParams.set("language", "en-US")
   url.searchParams.set("api_key", apiKey)
-  const response = await fetch(url)
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (!response.ok)
     throw new Error("TMDB could not complete that search. Check TMDB_API_KEY.")
   const body = (await response.json()) as {
@@ -311,7 +312,7 @@ export const getCoverOptions = createServerFn({ method: "GET" })
     z.object({
       type: z.enum(itemTypes),
       openLibraryKey: z.string().optional(),
-      tmdbId: z.string().optional(),
+      tmdbId: z.string().regex(/^\d+$/).optional(),
     })
   )
   .handler(async ({ data }): Promise<string[]> => {
@@ -321,6 +322,7 @@ export const getCoverOptions = createServerFn({ method: "GET" })
       const response = await fetch(
         `https://openlibrary.org/works/${workId}/editions.json?limit=100`,
         {
+          signal: AbortSignal.timeout(10_000),
           headers: {
             "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
           },
@@ -367,7 +369,9 @@ export const getCoverOptions = createServerFn({ method: "GET" })
         url.searchParams.set("api_key", apiKey)
         if (includeImageLanguage)
           url.searchParams.set("include_image_language", includeImageLanguage)
-        const response = await fetch(url)
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(10_000),
+        })
         if (!response.ok) throw new Error("TMDB could not load poster options.")
         const body = (await response.json()) as {
           posters?: Array<{ file_path?: string }>
@@ -1028,6 +1032,7 @@ async function itemForBarcode(barcode: string) {
 
 async function itemForIsbn(isbn: string) {
   const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    signal: AbortSignal.timeout(10_000),
     headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
   })
   if (response.status === 404) return null
@@ -1052,6 +1057,7 @@ async function itemForBookWork(workKey: string) {
 
 async function lookupBookBarcode(isbn: string): Promise<LookupResult | null> {
   const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    signal: AbortSignal.timeout(10_000),
     headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
   })
   if (response.status === 404) return null
@@ -1086,6 +1092,7 @@ async function lookupBookBarcode(isbn: string): Promise<LookupResult | null> {
 
 async function lookupOpenLibraryAuthor(key: string) {
   const response = await fetch(`https://openlibrary.org${key}.json`, {
+    signal: AbortSignal.timeout(10_000),
     headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
   })
   if (!response.ok) return ""
@@ -1097,6 +1104,7 @@ async function lookupDiscBarcode(barcode: string) {
   const apiKey = process.env.UPCMDB_API_KEY?.trim()
   if (!apiKey) return null
   const response = await fetch(`https://upcmdb.com/api/v1/lookup/${barcode}`, {
+    signal: AbortSignal.timeout(10_000),
     headers: { "x-api-key": apiKey },
   })
   if (response.status === 404) return null
@@ -1172,10 +1180,14 @@ export const searchCollection = createServerFn({ method: "GET" })
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ id: z.string().min(1), type: z.enum(itemTypes) }))
+  .inputValidator(
+    z.object({ id: z.string().min(1).max(120), type: z.enum(itemTypes) })
+  )
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {
     if (!isAgentToken(getRequestHeader("authorization")))
       await requireSignedIn()
+    if (data.type === "book") normalizeOpenLibraryWorkKey(data.id)
+    else if (!/^\d+$/.test(data.id)) throw new Error("Invalid provider id.")
     return getCollectionResultById(data)
   })
 
@@ -1184,7 +1196,10 @@ export function normalizeOpenLibraryWorkKey(key: string) {
     .trim()
     .replace(/^\/?works\//, "")
     .replace(/^\//, "")
-  return `/works/${workId}`
+  const workKey = `/works/${workId}`
+  if (!/^\/works\/OL\d+W$/.test(workKey))
+    throw new Error("Invalid Open Library key.")
+  return workKey
 }
 
 function normalizeOpenLibraryAuthorKey(key?: string) {
@@ -1193,7 +1208,11 @@ function normalizeOpenLibraryAuthorKey(key?: string) {
     .trim()
     .replace(/^\/?authors\//, "")
     .replace(/^\//, "")
-  return `/authors/${authorId}`
+  const authorKey = `/authors/${authorId}`
+  // Provider responses carry well-formed keys; drop an odd one rather than
+  // failing the whole search or sync it arrived in.
+  if (!/^\/authors\/OL\d+A$/.test(authorKey)) return undefined
+  return authorKey
 }
 
 export async function getCollectionResultById(data: {
@@ -1203,6 +1222,7 @@ export async function getCollectionResultById(data: {
   if (data.type === "book") {
     const id = normalizeOpenLibraryWorkKey(data.id)
     const response = await fetch(`https://openlibrary.org${id}.json`, {
+      signal: AbortSignal.timeout(10_000),
       headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
     })
     if (response.status === 404)
@@ -1244,7 +1264,7 @@ export async function getCollectionResultById(data: {
       : "credits,keywords,release_dates"
   )
   url.searchParams.set("api_key", apiKey)
-  const response = await fetch(url)
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (response.status === 404)
     throw new Error(`Provider 404: TMDB ${data.type} ${data.id} was not found.`)
   if (!response.ok)
@@ -1632,7 +1652,7 @@ async function getTmdbSyncMetadata(
   )
   url.searchParams.set("include_image_language", "en,null")
   url.searchParams.set("api_key", apiKey)
-  const response = await fetch(url)
+  const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (response.status === 404)
     throw new Error(`Provider 404: TMDB ${type} ${tmdbId} was not found.`)
   if (!response.ok) throw new Error(`TMDB could not load ${type} ${tmdbId}.`)
@@ -1752,6 +1772,7 @@ async function getBookSyncMetadata(
   const response = await fetch(
     `https://openlibrary.org${openLibraryKey}.json`,
     {
+      signal: AbortSignal.timeout(10_000),
       headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
     }
   )
@@ -1820,6 +1841,7 @@ async function openLibraryEditionForCopy(
     const response = await fetch(
       `https://openlibrary.org/isbn/${existingIsbn}.json`,
       {
+        signal: AbortSignal.timeout(10_000),
         headers: {
           "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
         },
@@ -1844,6 +1866,7 @@ async function openLibraryEditionForCopy(
     const response = await fetch(
       `https://openlibrary.org${normalizedWorkKey}/editions.json?limit=1000`,
       {
+        signal: AbortSignal.timeout(10_000),
         headers: {
           "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
         },
@@ -1908,6 +1931,7 @@ async function openLibraryAuthors(
         const response = await fetch(
           `https://openlibrary.org${providerId}.json`,
           {
+            signal: AbortSignal.timeout(10_000),
             headers: {
               "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)",
             },
