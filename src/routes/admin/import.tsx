@@ -31,25 +31,32 @@ function Import() {
     ReturnType<typeof importItems>
   > | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     setBusy(true)
     setResult(null)
-    setResult(
-      await importItems({
-        data: {
-          type,
-          format,
-          edition,
-          queries: queries
-            .split("\n")
-            .map((q) => q.trim())
-            .filter(Boolean),
-        },
-      })
-    )
-    await router.invalidate()
-    setBusy(false)
+    setError("")
+    try {
+      setResult(
+        await importItems({
+          data: {
+            type,
+            format,
+            edition,
+            queries: queries
+              .split("\n")
+              .map((q) => q.trim())
+              .filter(Boolean),
+          },
+        })
+      )
+      await router.invalidate()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Import failed.")
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
@@ -123,6 +130,11 @@ function Import() {
             {busy ? "Importing…" : "Import items"}
           </Button>
         </div>
+        {error && (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )}
       </form>
       {result && (
         <div className="mt-8 space-y-4 text-sm">
