@@ -1,5 +1,4 @@
 import {
-  createHash,
   randomUUID,
   scrypt as scryptCallback,
   timingSafeEqual,
@@ -12,10 +11,17 @@ import {
 } from "@tanstack/react-start/server"
 import { and, eq, gt, sql } from "drizzle-orm"
 import { db } from "./db"
-import { loginAttempts, sessions, users, type UserRole } from "./schema"
+import {
+  bootstrapSessions,
+  loginAttempts,
+  sessions,
+  users,
+  type UserRole,
+} from "./schema"
 
 const COOKIE_NAME = "shelf-session"
 const SESSION_MAX_AGE = 60 * 60 * 24 * 14
+const BOOTSTRAP_MAX_AGE = 60 * 60
 const scrypt = promisify(scryptCallback)
 const LOCKOUT_AFTER = 5
 const LOCKOUT_BASE_MS = 30_000
@@ -30,22 +36,20 @@ export type CurrentUser = {
   role: UserRole
 }
 
-function bootstrapToken() {
-  const password = process.env.ADMIN_PASSWORD?.trim()
-  if (!password) return null
-  return createHash("sha256")
-    .update(`shelf-bootstrap:${password}`)
-    .digest("hex")
-}
-
-export function isBootstrapSession() {
-  const cookie = getCookie(COOKIE_NAME)
-  const expected = bootstrapToken()
-  if (!cookie || !expected) return false
-  return (
-    cookie.length === expected.length &&
-    timingSafeEqual(Buffer.from(cookie), Buffer.from(expected))
-  )
+export async function isBootstrapSession() {
+  const id = getCookie(COOKIE_NAME)
+  if (!id) return false
+  const [row] = await db
+    .select({ id: bootstrapSessions.id })
+    .from(bootstrapSessions)
+    .where(
+      and(
+        eq(bootstrapSessions.id, id),
+        gt(bootstrapSessions.expiresAt, new Date().toISOString())
+      )
+    )
+    .limit(1)
+  return Boolean(row)
 }
 
 async function hasStoredAdmin() {
@@ -57,16 +61,16 @@ async function hasStoredAdmin() {
   return Boolean(admin)
 }
 
-// Session id from the cookie, or null when there is none or it is the
-// bootstrap token. Lets callers batch the session lookup with other queries.
+// Session id from the cookie, or null when there is none. A bootstrap id
+// matches no sessions row. Lets callers batch the session lookup with other
+// queries.
 export function getSessionId() {
-  const sessionId = getCookie(COOKIE_NAME)
-  return sessionId && !isBootstrapSession() ? sessionId : null
+  return getCookie(COOKIE_NAME) ?? null
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const sessionId = getCookie(COOKIE_NAME)
-  if (!sessionId || isBootstrapSession()) return null
+  if (!sessionId) return null
   const [session] = await db
     .select({
       id: sessions.id,
@@ -101,7 +105,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 export async function isSignedIn() {
   return Boolean(
     (await getCurrentUser()) ||
-    (!(await hasStoredAdmin()) && isBootstrapSession())
+    (!(await hasStoredAdmin()) && (await isBootstrapSession()))
   )
 }
 
@@ -109,7 +113,7 @@ export async function isAdmin() {
   const user = await getCurrentUser()
   return (
     user?.role === "admin" ||
-    (!(await hasStoredAdmin()) && isBootstrapSession())
+    (!(await hasStoredAdmin()) && (await isBootstrapSession()))
   )
 }
 
@@ -221,16 +225,26 @@ export async function startUserSession(userId: number) {
   setSessionCookie(id)
 }
 
-export function startBootstrapSession() {
-  const token = bootstrapToken()
-  if (!token) throw new Error("ADMIN_PASSWORD is required.")
-  setSessionCookie(token)
+export async function startBootstrapSession() {
+  const id = randomUUID()
+  const now = Date.now()
+  await db.insert(bootstrapSessions).values({
+    id,
+    createdAt: new Date(now).toISOString(),
+    expiresAt: new Date(now + BOOTSTRAP_MAX_AGE * 1000).toISOString(),
+  })
+  setSessionCookie(id)
+}
+
+export async function endBootstrapSessions() {
+  await db.delete(bootstrapSessions)
 }
 
 export async function endSession() {
   const id = getCookie(COOKIE_NAME)
-  if (id && !isBootstrapSession()) {
+  if (id) {
     await db.delete(sessions).where(eq(sessions.id, id))
+    await db.delete(bootstrapSessions).where(eq(bootstrapSessions.id, id))
   }
   setCookie(COOKIE_NAME, "", {
     httpOnly: true,

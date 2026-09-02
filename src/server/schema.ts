@@ -58,6 +58,15 @@ export const loginAttempts = /* #__PURE__ */ sqliteTable("login_attempts", {
   lastFailedAt: text("last_failed_at").notNull(),
 })
 
+export const bootstrapSessions = /* #__PURE__ */ sqliteTable(
+  "bootstrap_sessions",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  }
+)
+
 export const items = /* #__PURE__ */ sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),

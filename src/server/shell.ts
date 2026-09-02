@@ -204,10 +204,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
   }
 
   const currentUser: CurrentUser | null = sessionRows[0] ?? null
-  return {
-    currentUser,
-    signedIn:
-      Boolean(currentUser) || (!adminRows.length && isBootstrapSession()),
-    catalog,
-  }
+  const bootstrap =
+    !currentUser && !adminRows.length ? await isBootstrapSession() : false
+  return { currentUser, signedIn: Boolean(currentUser) || bootstrap, catalog }
 })

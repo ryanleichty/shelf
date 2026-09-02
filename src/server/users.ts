@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { del, put } from "@vercel/blob"
 import { z } from "zod"
 import {
+  endBootstrapSessions,
   getCurrentUser,
   hashPassword,
   isAdmin,
@@ -171,6 +172,7 @@ export const saveProfile = createServerFn({ method: "POST" })
         })
         .returning({ id: users.id })
       await startUserSession(created.id)
+      await endBootstrapSessions()
       return { ok: true }
     }
 
