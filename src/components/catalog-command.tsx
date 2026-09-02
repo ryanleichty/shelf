@@ -176,11 +176,6 @@ export function CatalogCommand({
   }
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        onOpenChange(true)
-        return
-      }
       if (!open || !signedIn || (!event.metaKey && !event.ctrlKey)) return
       if (event.key === "1") {
         event.preventDefault()
@@ -377,3 +372,5 @@ export function CatalogCommand({
     </>
   )
 }
+
+export default CatalogCommand

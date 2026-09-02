@@ -14,10 +14,9 @@ import {
   SettingsIcon,
   TvIcon,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { logout } from "@/server/items"
-import { CatalogCommand } from "@/components/catalog-command"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Collapsible,
@@ -48,6 +47,8 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+
+const CatalogCommand = lazy(() => import("@/components/catalog-command"))
 
 const catalogNavigation = [
   {
@@ -84,6 +85,20 @@ export function AppSidebar({
     {}
   )
   const [searchOpen, setSearchOpen] = useState(false)
+  const [searchMounted, setSearchMounted] = useState(false)
+  useEffect(() => {
+    if (searchOpen) setSearchMounted(true)
+  }, [searchOpen])
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    document.addEventListener("keydown", keydown)
+    return () => document.removeEventListener("keydown", keydown)
+  }, [])
   useEffect(() => {
     const currentParent = catalogNavigation.find(
       (item) =>
@@ -339,7 +354,11 @@ export function AppSidebar({
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <CatalogCommand onOpenChange={setSearchOpen} open={searchOpen} />
+      {searchMounted && (
+        <Suspense fallback={null}>
+          <CatalogCommand onOpenChange={setSearchOpen} open={searchOpen} />
+        </Suspense>
+      )}
     </>
   )
 }
