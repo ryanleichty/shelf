@@ -1,7 +1,7 @@
 import { createClient } from "@libsql/client"
 import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
-import { SCHEMA_VERSION, readSchemaVersion, runMigrations } from "./migrate"
+import { readSchemaVersion, runMigrations, schemaVersion } from "./migrate"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 
@@ -20,7 +20,7 @@ let ready: Promise<void> | undefined
 function ensureReady() {
   ready ??= (async () => {
     const client = rawClient!
-    if ((await readSchemaVersion(client)) === SCHEMA_VERSION) return
+    if ((await readSchemaVersion(client)) === schemaVersion()) return
     await runMigrations(client)
     if (isEphemeral) await seedSampleItems(drizzle({ client, schema }))
   })().catch((error: unknown) => {
