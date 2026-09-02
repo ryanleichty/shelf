@@ -52,6 +52,12 @@ When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the
 ## Checks
 
 ```bash
+pnpm lint
+pnpm check
 pnpm typecheck
+pnpm test
 pnpm build
 ```
+
+`pnpm typecheck` generates `src/routeTree.gen.ts` if it is missing; the file is
+gitignored, and `pnpm dev`/`pnpm build` keep it current.
