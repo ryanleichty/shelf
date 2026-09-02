@@ -13,6 +13,8 @@ pnpm db:seed
 pnpm dev
 ```
 
+Working with an agent? Read `AGENTS.md` for commands, conventions and the agent JSON API.
+
 Visit `http://localhost:3000`. Browse the catalog without signing in. Before the first stored admin account exists, use `/admin/login` with `ADMIN_PASSWORD`, then finish that admin's profile at `/settings`. Afterward, everyone signs in using their email and password.
 
 The seed command adds sample classics to make a first run feel complete. They are example content only, not Ryan Leichty’s actual collection. To start over locally:
