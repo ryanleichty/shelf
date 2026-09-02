@@ -52,6 +52,11 @@ When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the
 ## Checks
 
 ```bash
+pnpm lint
+pnpm check
 pnpm typecheck
+pnpm test
 pnpm build
 ```
+
+`pnpm typecheck` generates `src/routeTree.gen.ts` first; the file is gitignored.
