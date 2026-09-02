@@ -10,13 +10,16 @@ import {
   getRequestHeader,
   setCookie,
 } from "@tanstack/react-start/server"
-import { and, eq, gt } from "drizzle-orm"
+import { and, eq, gt, sql } from "drizzle-orm"
 import { db } from "./db"
-import { sessions, users, type UserRole } from "./schema"
+import { loginAttempts, sessions, users, type UserRole } from "./schema"
 
 const COOKIE_NAME = "shelf-session"
 const SESSION_MAX_AGE = 60 * 60 * 24 * 14
 const scrypt = promisify(scryptCallback)
+const LOCKOUT_AFTER = 5
+const LOCKOUT_BASE_MS = 30_000
+const LOCKOUT_MAX_MS = 15 * 60_000
 
 export type CurrentUser = {
   id: number
@@ -119,18 +122,18 @@ export async function requireAdmin() {
 }
 
 export function isAgentRequest(request: Request) {
-  const headers = [
-    request.headers.get("authorization")?.trim(),
-    getRequestHeader("authorization")?.trim(),
-  ]
-  return headers.some((header) =>
-    isAgentToken(header?.replace(/^Bearer\s+/i, "").trim())
-  )
+  return [
+    request.headers.get("authorization"),
+    getRequestHeader("authorization"),
+  ].some((header) => isAgentToken(header))
 }
 
 export function isAgentToken(value: string | null | undefined) {
   const token = process.env.SHELF_AGENT_TOKEN?.trim()
-  const presented = value?.trim()
+  const presented = value
+    ?.trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim()
   return Boolean(
     token &&
     presented &&
@@ -155,6 +158,47 @@ export async function verifyStoredPassword(
   const stored = Buffer.from(storedKey, "hex")
   return stored.length === key.length && timingSafeEqual(stored, key)
 }
+
+// Seconds the caller must still wait, or 0 when the key is not locked.
+export async function loginLockoutSeconds(key: string) {
+  const [row] = await db
+    .select()
+    .from(loginAttempts)
+    .where(eq(loginAttempts.key, key))
+    .limit(1)
+  if (!row || row.failures < LOCKOUT_AFTER) return 0
+  const wait = Math.min(
+    LOCKOUT_BASE_MS * 2 ** (row.failures - LOCKOUT_AFTER),
+    LOCKOUT_MAX_MS
+  )
+  const remaining = new Date(row.lastFailedAt).getTime() + wait - Date.now()
+  return remaining > 0 ? Math.ceil(remaining / 1000) : 0
+}
+
+export async function recordLoginFailure(key: string) {
+  const now = new Date().toISOString()
+  await db
+    .insert(loginAttempts)
+    .values({ key, failures: 1, lastFailedAt: now })
+    .onConflictDoUpdate({
+      target: loginAttempts.key,
+      set: { failures: sql`${loginAttempts.failures} + 1`, lastFailedAt: now },
+    })
+}
+
+export async function clearLoginFailures(key: string) {
+  await db.delete(loginAttempts).where(eq(loginAttempts.key, key))
+}
+
+export function passwordsMatch(presented: string, expected: string) {
+  const left = Buffer.from(presented)
+  const right = Buffer.from(expected)
+  return left.length === right.length && timingSafeEqual(left, right)
+}
+
+// A syntactically valid hash that matches nothing, so unknown-account logins
+// cost the same scrypt work as wrong-password logins.
+export const DUMMY_PASSWORD_HASH = `00000000-0000-4000-8000-000000000000:${"0".repeat(128)}`
 
 function setSessionCookie(value: string) {
   setCookie(COOKIE_NAME, value, {

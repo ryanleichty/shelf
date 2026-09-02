@@ -123,6 +123,13 @@ export async function runMigrations(client: Client) {
     "CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id)"
   )
   await client.execute(`
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      key TEXT PRIMARY KEY NOT NULL,
+      failures INTEGER NOT NULL DEFAULT 0,
+      last_failed_at TEXT NOT NULL
+    )
+  `)
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS genres (
       id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       slug TEXT NOT NULL UNIQUE,

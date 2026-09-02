@@ -52,6 +52,12 @@ export const sessions = /* #__PURE__ */ sqliteTable(
   (table) => [index("sessions_user_id_idx").on(table.userId)]
 )
 
+export const loginAttempts = /* #__PURE__ */ sqliteTable("login_attempts", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull().default(0),
+  lastFailedAt: text("last_failed_at").notNull(),
+})
+
 export const items = /* #__PURE__ */ sqliteTable("items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   slug: text("slug").notNull().unique(),
