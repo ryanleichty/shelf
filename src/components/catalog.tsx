@@ -63,10 +63,17 @@ export function Catalog({
   const [draftQuery, setDraftQuery] = useState(query ?? "")
   const [genre, setGenre] = useState("all")
   const [sort, setSort] = useState<Sort>("year-desc")
-  const catalogItems = type ? items.filter((item) => item.type === type) : items
-  const genreOptions = [
-    ...new Set(catalogItems.flatMap((item) => item.genres)),
-  ].sort((left, right) => left.localeCompare(right))
+  const catalogItems = useMemo(
+    () => (type ? items.filter((item) => item.type === type) : items),
+    [items, type]
+  )
+  const genreOptions = useMemo(
+    () =>
+      [...new Set(catalogItems.flatMap((item) => item.genres))].sort(
+        (left, right) => left.localeCompare(right)
+      ),
+    [catalogItems]
+  )
   const genreItems = [
     { value: "all", label: "All genres" },
     ...genreOptions.map((option) => ({ value: option, label: option })),
