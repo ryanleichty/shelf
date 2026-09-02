@@ -153,7 +153,8 @@ function Settings() {
   }
 
   async function uploadPhoto(event: React.ChangeEvent<HTMLInputElement>) {
-    const image = event.currentTarget.files?.[0]
+    const input = event.currentTarget
+    const image = input.files?.[0]
     if (!image) return
     setBusy(true)
     setError("")
@@ -168,8 +169,8 @@ function Settings() {
         cause instanceof Error ? cause.message : "Couldn’t upload your photo."
       )
     } finally {
-      event.currentTarget.value = ""
       setBusy(false)
+      input.value = ""
     }
   }
 
