@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client"
 import { describe, expect, test } from "vitest"
-import { SCHEMA_VERSION, readSchemaVersion, runMigrations } from "./migrate"
+import { readSchemaVersion, runMigrations, schemaVersion } from "./migrate"
 
 async function tableNames(client: ReturnType<typeof createClient>) {
   const result = await client.execute(
@@ -14,7 +14,7 @@ describe("runMigrations", () => {
     const client = createClient({ url: ":memory:" })
     expect(await readSchemaVersion(client)).toBe(0)
     await runMigrations(client)
-    expect(await readSchemaVersion(client)).toBe(SCHEMA_VERSION)
+    expect(await readSchemaVersion(client)).toBe(schemaVersion())
     const tables = await tableNames(client)
     for (const table of [
       "items",
@@ -69,9 +69,10 @@ describe("runMigrations", () => {
     const stored = await client.execute(
       "SELECT value FROM schema_meta WHERE key = 'version'"
     )
-    expect(Number.isInteger(SCHEMA_VERSION)).toBe(true)
-    expect(SCHEMA_VERSION).toBeGreaterThan(0)
-    expect(Number(stored.rows[0]?.value)).toBe(SCHEMA_VERSION)
+    expect(Number.isInteger(schemaVersion())).toBe(true)
+    expect(schemaVersion()).toBeGreaterThan(0)
+    expect(schemaVersion()).toBe(schemaVersion())
+    expect(Number(stored.rows[0]?.value)).toBe(schemaVersion())
   })
 
   test("bootstrap sessions expire by timestamp comparison", async () => {

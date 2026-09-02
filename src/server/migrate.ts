@@ -4,9 +4,12 @@ import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 
 // Derived from the migration source, so any edit to runMigrations re-runs it
 // once per database. db.ts compares it with the schema_meta row so a warm
-// schema still costs one query per process. FNV-1a, kept in pure JS because
-// this module is reachable from client bundles (no node:crypto).
-export const SCHEMA_VERSION = fingerprint(runMigrations.toString())
+// schema still costs one query per process. Computed lazily: a top-level
+// reference to runMigrations would pull the whole function into client
+// bundles, which import this module through db.ts.
+export function schemaVersion() {
+  return fingerprint(runMigrations.toString())
+}
 
 function fingerprint(source: string) {
   let hash = 2166136261
@@ -410,7 +413,7 @@ export async function runMigrations(client: Client) {
   )
   await client.execute({
     sql: "INSERT INTO schema_meta (key, value) VALUES ('version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    args: [SCHEMA_VERSION],
+    args: [schemaVersion()],
   })
 }
 

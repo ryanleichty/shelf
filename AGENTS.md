@@ -46,7 +46,7 @@ There is exactly one migration system: `runMigrations` in
 To add a column: append an idempotent statement to `runMigrations` (a
 `CREATE TABLE IF NOT EXISTS`, or an `ALTER TABLE` guarded by
 `PRAGMA table_info`) and mirror it in `src/server/schema.ts`. Do not bump a
-version by hand — `SCHEMA_VERSION` is an FNV-1a fingerprint of
+version by hand — `schemaVersion()` is an FNV-1a fingerprint of
 `runMigrations.toString()`, so editing the function is the version bump.
 `src/server/db.ts` compares it with the `schema_meta` row once per process and
 migrates when they differ.
