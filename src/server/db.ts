@@ -1,5 +1,5 @@
-import { createClient, type Client } from "@libsql/client"
-import { eq } from "drizzle-orm"
+import { createClient } from "@libsql/client"
+import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/libsql"
 import { SCHEMA_VERSION, readSchemaVersion, runMigrations } from "./migrate"
 import { sampleItems } from "./sample-items"
@@ -15,40 +15,41 @@ const rawClient = import.meta.env.SSR
 let ready: Promise<void> | undefined
 
 // One query per process; migrations only run when the schema version moved.
+// A failed check is forgotten so the next request retries instead of the
+// process staying broken until redeploy.
 function ensureReady() {
   ready ??= (async () => {
     const client = rawClient!
     if ((await readSchemaVersion(client)) === SCHEMA_VERSION) return
     await runMigrations(client)
-    if (isEphemeral) await seedSamples(client)
-  })()
+    if (isEphemeral) await seedSampleItems(drizzle({ client, schema }))
+  })().catch((error: unknown) => {
+    ready = undefined
+    throw error
+  })
   return ready
 }
 
-async function seedSamples(client: Client) {
-  const rawDb = drizzle({ client, schema })
+// Inserts the sample classics, or refreshes their status while keeping any
+// cover an admin already replaced. Shared by the ephemeral boot path and
+// `pnpm db:seed`.
+export async function seedSampleItems(
+  database: ReturnType<typeof drizzle<typeof schema>>
+) {
   const now = new Date().toISOString()
-  const count = await client.execute("SELECT COUNT(*) AS count FROM items")
-  if (Number(count.rows[0]?.count ?? 0) === 0) {
-    await rawDb
-      .insert(schema.items)
-      .values(
-        sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now }))
-      )
-  } else {
-    await Promise.all(
-      sampleItems.map((item) =>
-        rawDb
-          .update(schema.items)
-          .set({
-            status: item.status,
-            coverImageUrl: item.coverImageUrl,
-            updatedAt: now,
-          })
-          .where(eq(schema.items.slug, item.slug))
-      )
+  await database
+    .insert(schema.items)
+    .values(
+      sampleItems.map((item) => ({ ...item, createdAt: now, updatedAt: now }))
     )
-  }
+    .onConflictDoUpdate({
+      target: schema.items.slug,
+      set: {
+        status: sql`excluded.status`,
+        coverImageUrl: sql`coalesce(${schema.items.coverImageUrl}, excluded.cover_image_url)`,
+        updatedAt: now,
+      },
+    })
 }
 
 const gated = new Set(["execute", "batch", "transaction", "executeMultiple"])
