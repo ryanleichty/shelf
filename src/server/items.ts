@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
 import { displayListName } from "@/lib/system-lists"
+import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
 import { db } from "./db"
 import {
   fetchTmdbCollectionPartIds,
@@ -73,7 +74,16 @@ export const importItems = createServerFn({ method: "POST" })
       type: z.enum(itemTypes),
       format: z.enum(itemFormats).optional().or(z.literal("")),
       edition: z.enum(itemEditions).optional().or(z.literal("")),
-      queries: z.array(z.string().trim().min(1).max(200)).min(1).max(80),
+      dryRun: z.boolean().optional(),
+      items: z
+        .array(
+          z.object({
+            query: z.string().trim().min(1).max(200),
+            providerId: z.string().trim().min(1).max(120).optional(),
+          })
+        )
+        .min(1)
+        .max(80),
     })
   )
   .handler(async ({ data }) => {
@@ -82,48 +92,98 @@ export const importItems = createServerFn({ method: "POST" })
     const added: Array<{ title: string; slug: string }> = []
     const skipped: Array<{ query: string; reason: string }> = []
     const failed: Array<{ query: string; reason: string }> = []
-    for (const query of data.queries) {
+    const needsReview: Array<{
+      query: string
+      candidates: Array<{
+        id: string
+        title: string
+        year: number | null
+        creator: string
+        coverImageUrl: string
+      }>
+    }> = []
+    for (const input of data.items) {
       try {
-        const matches = await lookupCollection({ type: data.type, query })
-        const match = matches[0]
-        if (!match) {
-          skipped.push({ query, reason: "No match found" })
-          continue
+        const { title, year } = parseImportQuery(input.query)
+        const pinnedId = input.providerId
+          ? data.type === "book"
+            ? normalizeOpenLibraryWorkKey(input.providerId)
+            : input.providerId
+          : undefined
+        let top
+        if (pinnedId) {
+          top = await getCollectionResultById({
+            type: data.type,
+            id: pinnedId,
+          })
+        } else {
+          const matches = await lookupCollection({ type: data.type, query: title })
+          const { top: best, ranked } = rankImportCandidates(
+            matches,
+            title,
+            year
+          )
+          top = best
+          if (!top) {
+            needsReview.push({
+              query: input.query,
+              candidates: ranked
+                .slice(0, 5)
+                .map(({ id, title, year, creator, coverImageUrl }) => ({
+                  id,
+                  title,
+                  year,
+                  creator,
+                  coverImageUrl,
+                })),
+            })
+            continue
+          }
         }
-        const providerResult = await getCollectionResultById({
-          type: data.type,
-          id: match.id,
-        })
+        const providerId = pinnedId ?? top.id
         if (
           await itemExists({
             type: data.type,
-            title: providerResult.title,
-            year: providerResult.year ?? 0,
-            providerId: match.id,
+            title: top.title,
+            year: top.year ?? 0,
+            providerId,
             edition: data.edition,
           })
         ) {
-          skipped.push({ query, reason: "Already on Shelf" })
+          skipped.push({ query: input.query, reason: "Already on Shelf" })
+          continue
+        }
+        const providerResult = pinnedId
+          ? top
+          : await getCollectionResultById({ type: data.type, id: providerId })
+        if (data.dryRun) {
+          added.push({
+            title: providerResult.title,
+            slug: await uniqueSlug(
+              slugify(providerResult.title),
+              data.edition
+            ),
+          })
           continue
         }
         const created = await createItemFromProvider({
           type: data.type,
-          providerId: match.id,
+          providerId,
           result: providerResult,
-          fallbackCreator: match.creator,
-          fallbackCoverImageUrl: match.coverImageUrl,
+          fallbackCreator: top.creator,
+          fallbackCoverImageUrl: top.coverImageUrl,
           format: data.format,
           edition: data.edition,
         })
         added.push({ title: created.title, slug: created.slug })
       } catch (cause) {
         failed.push({
-          query,
+          query: input.query,
           reason: cause instanceof Error ? cause.message : "Import failed",
         })
       }
     }
-    return { added, skipped, failed }
+    return { added, skipped, failed, needsReview }
   })
 
 export type ProviderImportInput = {
