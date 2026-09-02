@@ -21,6 +21,8 @@ import { getSearchFacets } from "@/server/items"
 import type { SearchFacets } from "@/server/items"
 import type { CatalogItem } from "@/lib/catalog"
 
+const MAX_RESULTS_PER_GROUP = 8
+
 type SearchFacet = { name: string; slug: string }
 const emptySearchFacets: SearchFacets = {
   genres: [],
@@ -102,7 +104,10 @@ export function CatalogCommand({
   const [checkBarcodeOpen, setCheckBarcodeOpen] = useState(false)
   const catalog = useCatalog()
   const items = useMemo(
-    () => catalog.items.filter((item) => matchesQuery(item, query)),
+    () =>
+      query.trim()
+        ? catalog.items.filter((item) => matchesQuery(item, query))
+        : [],
     [catalog, query]
   )
   const [facets, setFacets] = useState<SearchFacets>(emptySearchFacets)
@@ -159,6 +164,16 @@ export function CatalogCommand({
     onOpenChange(false)
     router.navigate({ to: "/admin/new", search: { type } })
   }
+  const seeAll = (type: "book" | "movie" | "tv") => {
+    onOpenChange(false)
+    const to =
+      type === "book"
+        ? "/books/all"
+        : type === "movie"
+          ? "/movies/all"
+          : "/tv/all"
+    router.navigate({ to, search: { query: query.trim() } })
+  }
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -199,7 +214,11 @@ export function CatalogCommand({
             value={query}
           />
           <CommandList className="max-h-96">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>
+              {query.trim()
+                ? "No results found."
+                : "Type to search titles, people and genres."}
+            </CommandEmpty>
             {signedIn && (
               <CommandGroup heading="Actions">
                 <CommandItem
@@ -238,35 +257,62 @@ export function CatalogCommand({
             )}
             {books.length > 0 && (
               <CommandGroup heading="Books">
-                {books.map((item) => (
+                {books.slice(0, MAX_RESULTS_PER_GROUP).map((item) => (
                   <CatalogCommandItem
                     item={item}
                     key={item.id}
                     onSelect={() => select(item)}
                   />
                 ))}
+                {books.length > MAX_RESULTS_PER_GROUP && (
+                  <CommandItem
+                    onSelect={() => seeAll("book")}
+                    value="see-all:book"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      See all {books.length} books
+                    </span>
+                  </CommandItem>
+                )}
               </CommandGroup>
             )}
             {movies.length > 0 && (
               <CommandGroup heading="Movies">
-                {movies.map((item) => (
+                {movies.slice(0, MAX_RESULTS_PER_GROUP).map((item) => (
                   <CatalogCommandItem
                     item={item}
                     key={item.id}
                     onSelect={() => select(item)}
                   />
                 ))}
+                {movies.length > MAX_RESULTS_PER_GROUP && (
+                  <CommandItem
+                    onSelect={() => seeAll("movie")}
+                    value="see-all:movie"
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      See all {movies.length} movies
+                    </span>
+                  </CommandItem>
+                )}
               </CommandGroup>
             )}
             {tv.length > 0 && (
               <CommandGroup heading="TV">
-                {tv.map((item) => (
+                {tv.slice(0, MAX_RESULTS_PER_GROUP).map((item) => (
                   <CatalogCommandItem
                     item={item}
                     key={item.id}
                     onSelect={() => select(item)}
                   />
                 ))}
+                {tv.length > MAX_RESULTS_PER_GROUP && (
+                  <CommandItem onSelect={() => seeAll("tv")} value="see-all:tv">
+                    <span className="min-w-0 flex-1 truncate">
+                      See all {tv.length} shows
+                    </span>
+                  </CommandItem>
+                )}
               </CommandGroup>
             )}
             {facets.genres.length > 0 && (
