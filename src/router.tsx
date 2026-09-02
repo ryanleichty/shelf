@@ -12,7 +12,6 @@ export function getRouter() {
     defaultPendingMs: 150,
     defaultPendingMinMs: 300,
     defaultPendingComponent: PendingShelf,
-    defaultViewTransition: true,
   })
 
   return router
