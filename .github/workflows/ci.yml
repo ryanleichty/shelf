@@ -25,7 +25,7 @@ jobs:
       - run: pnpm check
       - run: pnpm test
       - run: pnpm build
-      - run: node scripts/check-bundle-budget.mjs
+      - run: pnpm bundle:check
       - run: pnpm typecheck
       - name: Smoke test production SSR
         run: |
