@@ -36,6 +36,7 @@ describe("runMigrations", () => {
       "schema_meta",
     ])
       expect(tables).toContain(table)
+    expect(tables).not.toContain("item_search")
   })
 
   test("is idempotent", async () => {
@@ -58,5 +59,22 @@ describe("runMigrations", () => {
     const names = columns.rows.map((row) => row.name)
     for (const column of ["certification", "runtime", "tagline", "trailer_key"])
       expect(names).toContain(column)
+  })
+
+  test("stores a stable non-negative integer version", async () => {
+    const client = createClient({ url: ":memory:" })
+    await runMigrations(client)
+    const stored = await client.execute(
+      "SELECT value FROM schema_meta WHERE key = 'version'"
+    )
+    expect(Number.isInteger(SCHEMA_VERSION)).toBe(true)
+    expect(SCHEMA_VERSION).toBeGreaterThan(0)
+    expect(Number(stored.rows[0]?.value)).toBe(SCHEMA_VERSION)
+  })
+
+  test("readSchemaVersion rethrows errors other than a missing table", async () => {
+    const client = createClient({ url: ":memory:" })
+    await client.execute("CREATE TABLE schema_meta (wrong TEXT)")
+    await expect(readSchemaVersion(client)).rejects.toThrow()
   })
 })

@@ -25,20 +25,21 @@ Or remove the individual examples from `/admin` and add the real collection.
 
 ## Data and database
 
-Shelf uses Drizzle ORM with libSQL. When `TURSO_DATABASE_URL` is present, Shelf uses Turso-compatible libSQL. Without it, Shelf boots from an ephemeral local database at `/tmp/shelf.db` and seeds its sample content automatically on the first request. Schema migrations live in `src/server/migrate.ts`; they run once per database when `SCHEMA_VERSION` changes (checked with one `PRAGMA user_version` query per process), and `pnpm db:migrate` applies them ahead of time.
+Shelf uses Drizzle ORM with libSQL. When `TURSO_DATABASE_URL` is present, Shelf uses Turso-compatible libSQL. Without it, Shelf boots from an ephemeral local database at `/tmp/shelf.db` and seeds its sample content automatically on the first request. Schema migrations are hand-written in `src/server/migrate.ts` (`runMigrations`). They run automatically on the first query of a process when the stored version in the `schema_meta` table differs from `SCHEMA_VERSION`, which is derived from the migration source, and `pnpm db:migrate` applies them ahead of time.
 
 | Variable                | Purpose                                                                                               |
 | ----------------------- | ----------------------------------------------------------------------------------------------------- |
 | `ADMIN_PASSWORD`        | Temporary first-admin bootstrap password; no longer used once an admin account has been configured    |
 | `TMDB_API_KEY`          | Free TMDB API key for signed-in movie lookup and for storing taglines, logos and trailer keys on save |
+| `UPCMDB_API_KEY`        | Optional UPCitemdb key for disc barcode lookup in the barcode check and item form                     |
 | `BLOB_READ_WRITE_TOKEN` | Optional Vercel Blob token for storing uploaded cover images                                          |
 | `SHELF_AGENT_TOKEN`     | Bearer token required by the private agent JSON API                                                   |
 | `TURSO_DATABASE_URL`    | Turso/libSQL database URL                                                                             |
 | `TURSO_AUTH_TOKEN`      | Token for the production database                                                                     |
 
-Schema changes are created with `pnpm db:generate`; apply the local schema with `pnpm db:migrate`.
+To change the schema, add an idempotent statement to `runMigrations` (`CREATE TABLE IF NOT EXISTS`, or a `PRAGMA table_info` guarded `ALTER TABLE`) and update `src/server/schema.ts` to match. The version updates itself.
 
-The admin’s book search uses Open Library and requires no key. Movie search uses TMDB and needs `TMDB_API_KEY`; the key is only used by authenticated server functions and never reaches the browser.
+The admin’s book search uses Open Library and requires no key. Movie and TV search use TMDB and need `TMDB_API_KEY`; the key is only used by authenticated server functions and never reaches the browser.
 
 When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the admin is fetched server-side and persisted to Vercel Blob. Without it, Shelf keeps the original remote URL for local development.
 
