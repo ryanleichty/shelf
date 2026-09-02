@@ -17,9 +17,11 @@ export const Route = createFileRoute("/admin/import")({
   component: Import,
 })
 
+type ImportResult = Awaited<ReturnType<typeof importItems>>
+
 function Import() {
   const router = useRouter()
-  const [type, setType] = useState<"book" | "movie">("movie")
+  const [type, setType] = useState<"book" | "movie" | "tv">("movie")
   const [format, setFormat] = useState<
     "" | "hardcover" | "paperback" | "blu-ray" | "dvd" | "other"
   >("blu-ray")
@@ -27,13 +29,11 @@ function Import() {
     "" | "theatrical" | "extended" | "director-cut"
   >("")
   const [queries, setQueries] = useState("")
-  const [result, setResult] = useState<Awaited<
-    ReturnType<typeof importItems>
-  > | null>(null)
+  const [result, setResult] = useState<ImportResult | null>(null)
+  const [lastRunWasPreview, setLastRunWasPreview] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
-  async function submit(event: React.FormEvent) {
-    event.preventDefault()
+  async function run(dryRun: boolean) {
     setBusy(true)
     setResult(null)
     setError("")
@@ -44,12 +44,41 @@ function Import() {
             type,
             format,
             edition,
-            queries: queries
+            dryRun,
+            items: queries
               .split("\n")
               .map((q) => q.trim())
-              .filter(Boolean),
+              .filter(Boolean)
+              .map((query) => ({ query })),
           },
         })
+      )
+      setLastRunWasPreview(dryRun)
+      if (!dryRun) await router.invalidate()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Import failed.")
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function addCandidate(query: string, providerId: string) {
+    setBusy(true)
+    setError("")
+    try {
+      const response = await importItems({
+        data: { type, format, edition, items: [{ query, providerId }] },
+      })
+      setResult((current) =>
+        current
+          ? {
+              added: [...current.added, ...response.added],
+              skipped: [...current.skipped, ...response.skipped],
+              failed: [...current.failed, ...response.failed],
+              needsReview: current.needsReview.filter(
+                (entry) => entry.query !== query
+              ),
+            }
+          : response
       )
       await router.invalidate()
     } catch (cause) {
@@ -62,14 +91,21 @@ function Import() {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Bulk import</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        One title per line. Shelf finds and adds the first matching item.
+        One title per line, optionally with a year like <code>Dune (2021)</code>
+        . Ambiguous titles are listed for you to pick.
       </p>
-      <form className="mt-6 grid gap-5" onSubmit={submit}>
+      <form
+        className="mt-6 grid gap-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void run(false)
+        }}
+      >
         <Tabs
           onValueChange={(value) => {
-            const next = value as "book" | "movie"
+            const next = value as "book" | "movie" | "tv"
             setType(next)
-            setFormat(next === "movie" ? "blu-ray" : "hardcover")
+            setFormat(next === "book" ? "hardcover" : "blu-ray")
             setEdition("")
           }}
           value={type}
@@ -77,6 +113,7 @@ function Import() {
           <TabsList>
             <TabsTrigger value="book">Books</TabsTrigger>
             <TabsTrigger value="movie">Movies</TabsTrigger>
+            <TabsTrigger value="tv">TV</TabsTrigger>
           </TabsList>
         </Tabs>
         <label className="grid gap-2 text-sm font-medium">
@@ -86,21 +123,21 @@ function Import() {
             onChange={(e) => setFormat(e.target.value as typeof format)}
             value={format}
           >
-            {type === "movie" ? (
-              <>
-                <option value="blu-ray">Blu-ray</option>
-                <option value="dvd">DVD</option>
-              </>
-            ) : (
+            {type === "book" ? (
               <>
                 <option value="hardcover">Hardcover</option>
                 <option value="paperback">Paperback</option>
+              </>
+            ) : (
+              <>
+                <option value="blu-ray">Blu-ray</option>
+                <option value="dvd">DVD</option>
               </>
             )}
             <option value="other">Other</option>
           </select>
         </label>
-        {type === "movie" && (
+        {type !== "book" && (
           <label className="grid gap-2 text-sm font-medium">
             Edition
             <select
@@ -126,6 +163,14 @@ function Import() {
           <Button render={<Link to="/admin" />} variant="outline">
             Cancel
           </Button>
+          <Button
+            disabled={busy}
+            onClick={() => void run(true)}
+            type="button"
+            variant="outline"
+          >
+            Preview
+          </Button>
           <Button disabled={busy} type="submit">
             {busy ? "Importing…" : "Import items"}
           </Button>
@@ -140,12 +185,49 @@ function Import() {
         <div className="mt-8 space-y-4 text-sm">
           {result.added.length > 0 && (
             <section>
-              <h2 className="font-medium">Added</h2>
+              <h2 className="font-medium">
+                {lastRunWasPreview ? "Would add" : "Added"}
+              </h2>
               {result.added.map((item) => (
                 <p key={item.slug}>{item.title}</p>
               ))}
             </section>
           )}
+          {result.needsReview.map((entry) => (
+            <section key={entry.query}>
+              <h2 className="font-medium">Which “{entry.query}”?</h2>
+              <ul className="mt-2 grid gap-2">
+                {entry.candidates.map((candidate) => (
+                  <li className="flex items-center gap-3" key={candidate.id}>
+                    {candidate.coverImageUrl && (
+                      <img
+                        alt=""
+                        className="h-12 w-8 rounded-sm object-cover"
+                        loading="lazy"
+                        src={candidate.coverImageUrl}
+                      />
+                    )}
+                    <span className="flex-1">
+                      {candidate.title}
+                      {candidate.year ? ` (${candidate.year})` : ""}
+                      {candidate.creator ? ` — ${candidate.creator}` : ""}
+                    </span>
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        void addCandidate(entry.query, candidate.id)
+                      }
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Add this
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           {result.skipped.length > 0 && (
             <section>
               <h2 className="font-medium">Skipped</h2>
