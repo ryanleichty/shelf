@@ -77,8 +77,8 @@ export const handlers = {
                 .enum(["", "reading", "watching", "borrowed"])
                 .optional(),
               year: z.number().optional(),
-              tmdbId: z.string().optional(),
-              openLibraryKey: z.string().optional(),
+              tmdbId: z.string().regex(/^\d+$/).optional(),
+              openLibraryKey: z.string().max(120).optional(),
             })
           )
           .max(40),

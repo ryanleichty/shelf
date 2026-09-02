@@ -73,7 +73,9 @@ export async function fetchRemoteImage(
       throw new RemoteImageError("That image is too large.")
     const chunks: Uint8Array<ArrayBuffer>[] = []
     let received = 0
-    for await (const chunk of response.body as AsyncIterable<Uint8Array<ArrayBuffer>>) {
+    for await (const chunk of response.body as AsyncIterable<
+      Uint8Array<ArrayBuffer>
+    >) {
       received += chunk.byteLength
       if (received > maxBytes)
         throw new RemoteImageError("That image is too large.")
