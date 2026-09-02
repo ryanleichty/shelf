@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { CatalogItem } from "@/lib/catalog"
+import { statusLabel, type CatalogItem, type ItemStatus } from "@/lib/catalog"
 
 export function OutNow({
   items,
@@ -10,7 +10,10 @@ export function OutNow({
   items: CatalogItem[]
   fromAll?: boolean
 }) {
-  const out = items.filter((item) => item.status !== "owned")
+  const out = items.filter(
+    (item): item is CatalogItem & { status: Exclude<ItemStatus, "owned"> } =>
+      item.status !== "owned"
+  )
   if (!out.length) return null
   return (
     <section className="mb-8" aria-labelledby="out-now-heading">
@@ -33,11 +36,9 @@ export function OutNow({
                   <small className="text-xs text-muted-foreground">
                     {item.status === "borrowed" && item.borrower
                       ? `With ${item.borrower}`
-                      : "Reading"}
+                      : statusLabel(item.status)}
                   </small>
-                  <Badge variant="outline">
-                    {item.status === "reading" ? "Reading" : "Borrowed"}
-                  </Badge>
+                  <Badge variant="outline">{statusLabel(item.status)}</Badge>
                 </span>
               </div>
             </Link>

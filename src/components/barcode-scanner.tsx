@@ -20,11 +20,13 @@ export function BarcodeScanner({
   const mediaStream = useRef<MediaStream | null>(null)
   const detectionTimer = useRef<number | null>(null)
   const handlingCode = useRef(false)
+  const startGeneration = useRef(0)
   const [error, setError] = useState("")
   const [scanning, setScanning] = useState(false)
   const [starting, setStarting] = useState(false)
 
   const stopScanner = useCallback(() => {
+    startGeneration.current++
     scannerControls.current?.stop()
     scannerControls.current = null
     mediaStream.current?.getTracks().forEach((track) => track.stop())
@@ -56,6 +58,7 @@ export function BarcodeScanner({
   )
 
   const startScanner = useCallback(async () => {
+    const generation = ++startGeneration.current
     setError("")
     handlingCode.current = false
     setStarting(true)
@@ -82,9 +85,14 @@ export function BarcodeScanner({
           video: { facingMode: { ideal: "environment" } },
           audio: false,
         })
+        if (generation !== startGeneration.current) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
         mediaStream.current = stream
         videoRef.current.srcObject = stream
         await videoRef.current.play()
+        if (generation !== startGeneration.current) return
         const detector = new Detector({
           formats: ["ean_13", "upc_a", "ean_8", "code_128"],
         })
@@ -100,14 +108,20 @@ export function BarcodeScanner({
         }, 250)
       } else {
         const { BrowserMultiFormatReader } = await import("@zxing/browser")
+        if (generation !== startGeneration.current) return
         const reader = new BrowserMultiFormatReader()
-        scannerControls.current = await reader.decodeFromConstraints(
+        const controls = await reader.decodeFromConstraints(
           { video: { facingMode: { ideal: "environment" } }, audio: false },
           videoRef.current,
           (decoded) => {
             if (decoded) handleDetectedCode(decoded.getText())
           }
         )
+        if (generation !== startGeneration.current) {
+          controls.stop()
+          return
+        }
+        scannerControls.current = controls
       }
       setStarting(false)
     } catch {
