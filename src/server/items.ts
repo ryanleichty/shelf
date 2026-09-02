@@ -117,7 +117,10 @@ export const importItems = createServerFn({ method: "POST" })
             id: pinnedId,
           })
         } else {
-          const matches = await lookupCollection({ type: data.type, query: title })
+          const matches = await lookupCollection({
+            type: data.type,
+            query: title,
+          })
           const { top: best, ranked } = rankImportCandidates(
             matches,
             title,
@@ -159,10 +162,7 @@ export const importItems = createServerFn({ method: "POST" })
         if (data.dryRun) {
           added.push({
             title: providerResult.title,
-            slug: await uniqueSlug(
-              slugify(providerResult.title),
-              data.edition
-            ),
+            slug: await uniqueSlug(slugify(providerResult.title), data.edition),
           })
           continue
         }

@@ -91,8 +91,8 @@ function Import() {
     <main className="container mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Bulk import</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        One title per line, optionally with a year like{" "}
-        <code>Dune (2021)</code>. Ambiguous titles are listed for you to pick.
+        One title per line, optionally with a year like <code>Dune (2021)</code>
+        . Ambiguous titles are listed for you to pick.
       </p>
       <form
         className="mt-6 grid gap-5"
