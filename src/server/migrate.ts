@@ -1,9 +1,18 @@
 import type { Client } from "@libsql/client"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 
-// Bump when runMigrations gains a statement. db.ts compares it with the
-// schema_meta row so a warm schema costs one query per process.
-export const SCHEMA_VERSION = 1
+// Derived from the migration source, so any edit to runMigrations re-runs it
+// once per database. db.ts compares it with the schema_meta row so a warm
+// schema still costs one query per process. FNV-1a, kept in pure JS because
+// this module is reachable from client bundles (no node:crypto).
+export const SCHEMA_VERSION = fingerprint(runMigrations.toString())
+
+function fingerprint(source: string) {
+  let hash = 2166136261
+  for (const character of source)
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16777619)
+  return hash >>> 0
+}
 
 export async function runMigrations(client: Client) {
   await client.execute(`
@@ -397,7 +406,11 @@ export function readSchemaVersion(client: Client) {
     .execute("SELECT value FROM schema_meta WHERE key = 'version'")
     .then(
       (result) => Number(result.rows[0]?.value ?? 0),
-      () => 0
+      (error: unknown) => {
+        if (error instanceof Error && /no such table/i.test(error.message))
+          return 0
+        throw error
+      }
     )
 }
 
