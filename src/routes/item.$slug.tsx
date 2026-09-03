@@ -1,10 +1,16 @@
-import { Link, createFileRoute, notFound } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  notFound,
+  useRouter,
+} from "@tanstack/react-router"
 import { ArrowLeft, BookOpenIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
 import { getLastCatalogQuery } from "@/components/catalog-search"
 import { HomeCarousel } from "@/components/home-carousel"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemLoanActions } from "@/components/item-loan-actions"
@@ -12,10 +18,10 @@ import { ItemListMenu } from "@/components/item-list-menu"
 import { ItemStateToggle } from "@/components/item-state-toggle"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { TrailerDialog } from "@/components/trailer-dialog"
-import { slugify } from "@/lib/catalog"
+import { slugify, statusLabel } from "@/lib/catalog"
 import { coverPlateBackground } from "@/lib/cover-plate"
 import { useCatalog } from "@/lib/use-catalog"
-import { getItemPage } from "@/server/items"
+import { getItemPage, markItemOwned } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
   validateSearch: z.object({ from: z.literal("all").optional() }),
@@ -64,12 +70,30 @@ function ItemDetail() {
   const { viewerStates } = useCatalog()
   const viewerState = viewerStates[item.id] ?? null
   const search = Route.useSearch()
+  const router = useRouter()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
+  const [markingOwned, setMarkingOwned] = useState(false)
+  const [markOwnedError, setMarkOwnedError] = useState("")
   const openLoan = loans.find((loan) => loan.returnedAt === null) ?? null
   const isOverdue = Boolean(
     openLoan?.dueAt && new Date(`${openLoan.dueAt}T12:00:00`) < new Date()
   )
   const pastLoans = loans.filter((loan) => loan.returnedAt !== null)
+
+  async function markOwned() {
+    setMarkingOwned(true)
+    setMarkOwnedError("")
+    try {
+      await markItemOwned({ data: { id: item.id } })
+      await router.invalidate()
+    } catch (cause) {
+      setMarkOwnedError(
+        cause instanceof Error ? cause.message : "Could not update this item."
+      )
+    } finally {
+      setMarkingOwned(false)
+    }
+  }
 
   useEffect(() => {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
@@ -113,27 +137,44 @@ function ItemDetail() {
                 ? "TV"
                 : "movies"}
           </Link>
-          <div className="flex gap-2">
-            <ItemStateToggle
-              itemId={item.id}
-              signedIn={signedIn}
-              state={viewerState}
-              type={item.type}
-            />
-            <ItemLoanActions
-              hasOpenLoan={openLoan !== null}
-              itemId={item.id}
-              signedIn={signedIn}
-            />
-            <ItemAdminActions
-              id={item.id}
-              providerId={
-                item.type === "book" ? item.openLibraryKey : item.tmdbId
-              }
-              signedIn={signedIn}
-              title={item.title}
-              type={item.type}
-            />
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-2">
+              {item.status === "wanted" ? (
+                signedIn && (
+                  <Button disabled={markingOwned} onClick={markOwned}>
+                    Mark as owned
+                  </Button>
+                )
+              ) : (
+                <>
+                  <ItemStateToggle
+                    itemId={item.id}
+                    signedIn={signedIn}
+                    state={viewerState}
+                    type={item.type}
+                  />
+                  <ItemLoanActions
+                    hasOpenLoan={openLoan !== null}
+                    itemId={item.id}
+                    signedIn={signedIn}
+                  />
+                </>
+              )}
+              <ItemAdminActions
+                id={item.id}
+                providerId={
+                  item.type === "book" ? item.openLibraryKey : item.tmdbId
+                }
+                signedIn={signedIn}
+                title={item.title}
+                type={item.type}
+              />
+            </div>
+            {markOwnedError && (
+              <p className="text-right text-sm text-destructive" role="alert">
+                {markOwnedError}
+              </p>
+            )}
           </div>
         </div>
         <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
@@ -175,7 +216,7 @@ function ItemDetail() {
                 <Badge variant="outline">
                   {openLoan
                     ? `With ${openLoan.borrowerName} since ${formatLoanDate(openLoan.lentAt)}`
-                    : "Borrowed"}
+                    : statusLabel(item.status)}
                 </Badge>
               )}
               {viewerState && (

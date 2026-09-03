@@ -967,6 +967,24 @@ export const saveItem = createServerFn({ method: "POST" })
     })
   })
 
+export const markItemOwned = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.number().int().positive() }))
+  .handler(async ({ data }) => {
+    await requireSignedIn()
+    const [item] = await db
+      .select({ status: items.status })
+      .from(items)
+      .where(eq(items.id, data.id))
+      .limit(1)
+    if (!item || item.status !== "wanted")
+      throw new Error("That item is already on the shelf.")
+    await db
+      .update(items)
+      .set({ status: "owned", updatedAt: new Date().toISOString() })
+      .where(eq(items.id, data.id))
+    return { ok: true }
+  })
+
 export const deleteItem = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {

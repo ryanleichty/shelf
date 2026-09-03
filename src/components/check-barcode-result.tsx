@@ -34,7 +34,9 @@ export function CheckBarcodeResult({
               params={{ slug: result.item.slug }}
               to="/item/$slug"
             >
-              On the shelf
+              {result.item.status === "wanted"
+                ? "On your wishlist"
+                : "On the shelf"}
             </Link>
           </div>
         </CardContent>
@@ -53,13 +55,23 @@ export function CheckBarcodeResult({
             {result.format ? ` · ${result.format}` : ""}
           </p>
         )}
-        <Button
-          className="mt-3"
-          render={<Link search={{ barcode: code }} to="/admin/new" />}
-          size="sm"
-        >
-          <PlusIcon /> Add to Shelf
-        </Button>
+        <div className="mt-3 flex gap-2">
+          <Button
+            render={<Link search={{ barcode: code }} to="/admin/new" />}
+            size="sm"
+          >
+            <PlusIcon /> Add to Shelf
+          </Button>
+          <Button
+            render={
+              <Link search={{ barcode: code, wanted: true }} to="/admin/new" />
+            }
+            size="sm"
+            variant="outline"
+          >
+            <PlusIcon /> Add to Wishlist
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
