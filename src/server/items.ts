@@ -949,7 +949,11 @@ export const saveItem = createServerFn({ method: "POST" })
     return db.transaction(async (tx) => {
       const [item] = await tx
         .insert(items)
-        .values({ ...values, status: "owned", createdAt: now })
+        .values({
+          ...values,
+          status: data.wanted ? "wanted" : "owned",
+          createdAt: now,
+        })
         .returning({ id: items.id, slug: items.slug })
       await replaceItemTags(item.id, { genres: data.genres }, tx)
       await replaceItemCreators(item.id, data.type, primaryPeople, tx)

@@ -53,6 +53,7 @@ export const itemInput = z
     edition: z.enum(itemEditions).optional().or(z.literal("")),
     genres: z.array(z.string().max(60)).max(20).default([]),
     description: z.string().max(10000).optional().or(z.literal("")),
+    wanted: z.boolean().default(false),
   })
   .superRefine((item, context) => {
     const primaryPeople = item.type === "book" ? item.authors : item.directors

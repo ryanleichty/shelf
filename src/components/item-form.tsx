@@ -144,12 +144,14 @@ export function ItemForm({
   initialBarcode,
   type: controlledType,
   onTypeChange,
+  wanted = false,
 }: {
   item?: Item
   initialType?: "book" | "movie" | "tv"
   initialBarcode?: string
   type?: "book" | "movie" | "tv"
   onTypeChange?: (type: "book" | "movie" | "tv") => void
+  wanted?: boolean
 }) {
   const router = useRouter()
   const [error, setError] = useState<ValidationIssue[]>([])
@@ -429,6 +431,7 @@ export function ItemForm({
           edition: values.edition as ItemInput["edition"],
           genres: values.genres,
           description: values.description,
+          wanted,
         } satisfies ItemInput,
       })
       await router.invalidate()
