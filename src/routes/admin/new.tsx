@@ -6,6 +6,7 @@ import { getSignedInStatus } from "@/server/session"
 export const Route = createFileRoute("/admin/new")({
   validateSearch: z.object({
     type: z.enum(["book", "movie", "tv"]).optional(),
+    barcode: z.string().max(80).optional(),
   }),
   beforeLoad: async () => {
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/admin/new")({
 })
 
 function NewItem() {
-  const { type: selectedType } = Route.useSearch()
+  const { type: selectedType, barcode } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <main className="container mx-auto max-w-4xl px-4 py-10">
@@ -23,6 +24,7 @@ function NewItem() {
         Add to Shelf
       </h1>
       <ItemForm
+        initialBarcode={barcode}
         onTypeChange={(type) => navigate({ search: { type } })}
         type={selectedType}
       />

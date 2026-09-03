@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { ScanLineIcon } from "lucide-react"
 import { BarcodeScanner } from "@/components/barcode-scanner"
@@ -143,11 +143,13 @@ function peopleItems(options: string[], selected: string[], query: string) {
 export function ItemForm({
   item,
   initialType,
+  initialBarcode,
   type: controlledType,
   onTypeChange,
 }: {
   item?: Item
   initialType?: "book" | "movie" | "tv"
+  initialBarcode?: string
   type?: "book" | "movie" | "tv"
   onTypeChange?: (type: "book" | "movie" | "tv") => void
 }) {
@@ -408,10 +410,17 @@ export function ItemForm({
           ? cause.message
           : "Could not look up that barcode. You can still complete the form manually."
       )
+      setValues((current) => ({ ...current, barcode: code }))
     } finally {
       setResolvingBarcode(false)
     }
   }
+  const initialBarcodeHandled = useRef(false)
+  useEffect(() => {
+    if (!initialBarcode || initialBarcodeHandled.current) return
+    initialBarcodeHandled.current = true
+    void resolveScannedBarcode(initialBarcode)
+  }, [initialBarcode])
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true)
@@ -465,6 +474,11 @@ export function ItemForm({
   }
   return (
     <form className="item-form" onSubmit={submit}>
+      {!scanOpen && barcodeError && (
+        <p className="text-sm text-destructive" role="alert">
+          {barcodeError}
+        </p>
+      )}
       <Tabs
         onValueChange={(value) => changeType(value as "book" | "movie" | "tv")}
         value={type}

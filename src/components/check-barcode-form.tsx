@@ -21,7 +21,7 @@ export function CheckBarcodeForm({
 }: {
   active?: boolean
   onCheckStart?: () => void
-  onResult: (result: CheckBarcodeResult) => void
+  onResult: (result: CheckBarcodeResult, code: string) => void
 }) {
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
@@ -35,7 +35,7 @@ export function CheckBarcodeForm({
       setError("")
       onCheckStart?.()
       try {
-        onResult(await checkBarcode({ data: { code: value } }))
+        onResult(await checkBarcode({ data: { code: value } }), value)
       } catch (cause) {
         setError(
           cause instanceof Error

@@ -1,10 +1,18 @@
 import { Link } from "@tanstack/react-router"
+import { PlusIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import type { checkBarcode } from "@/server/barcode"
 
 type CheckBarcodeResult = Awaited<ReturnType<typeof checkBarcode>>
 
-export function CheckBarcodeResult({ result }: { result: CheckBarcodeResult }) {
+export function CheckBarcodeResult({
+  code,
+  result,
+}: {
+  code: string
+  result: CheckBarcodeResult
+}) {
   if (result.status === "owned") {
     return (
       <Card>
@@ -45,6 +53,13 @@ export function CheckBarcodeResult({ result }: { result: CheckBarcodeResult }) {
             {result.format ? ` · ${result.format}` : ""}
           </p>
         )}
+        <Button
+          className="mt-3"
+          render={<Link search={{ barcode: code }} to="/admin/new" />}
+          size="sm"
+        >
+          <PlusIcon /> Add to Shelf
+        </Button>
       </CardContent>
     </Card>
   )
