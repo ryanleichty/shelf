@@ -45,6 +45,12 @@ export const lendItem = createServerFn({ method: "POST" })
       if (!data.borrowerName?.trim()) throw new Error("Say who has it.")
       borrowerName = data.borrowerName.trim()
     }
+    const [item] = await db
+      .select({ status: items.status })
+      .from(items)
+      .where(eq(items.id, data.itemId))
+      .limit(1)
+    if (item?.status === "wanted") throw new Error("You don't own that yet.")
     const [openLoan] = await db
       .select({ id: loans.id })
       .from(loans)
