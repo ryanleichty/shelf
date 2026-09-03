@@ -33,8 +33,6 @@ export async function runMigrations(client: Client) {
       open_library_key TEXT,
       tmdb_id TEXT,
       barcode TEXT UNIQUE,
-      borrower TEXT,
-      loaned_at TEXT,
       format TEXT,
       edition TEXT,
       genres TEXT NOT NULL DEFAULT '[]',
@@ -67,12 +65,6 @@ export async function runMigrations(client: Client) {
   await client.execute(
     "CREATE UNIQUE INDEX IF NOT EXISTS items_barcode_unique ON items(barcode) WHERE barcode IS NOT NULL"
   )
-  if (!columns.rows.some((column) => column.name === "borrower")) {
-    await client.execute("ALTER TABLE items ADD COLUMN borrower TEXT")
-  }
-  if (!columns.rows.some((column) => column.name === "loaned_at")) {
-    await client.execute("ALTER TABLE items ADD COLUMN loaned_at TEXT")
-  }
   if (!columns.rows.some((column) => column.name === "format")) {
     await client.execute("ALTER TABLE items ADD COLUMN format TEXT")
   }
@@ -251,6 +243,49 @@ export async function runMigrations(client: Client) {
   // Legacy FTS index; nothing ever queried it. Dropped in place so existing
   // databases stop carrying it.
   await client.execute("DROP TABLE IF EXISTS item_search")
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS loans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+      borrower_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      borrower_name TEXT NOT NULL,
+      lent_at TEXT NOT NULL,
+      due_at TEXT,
+      returned_at TEXT,
+      created_at TEXT NOT NULL
+    )
+  `)
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS loans_item_id_idx ON loans(item_id)"
+  )
+  // One open loan per item, enforced by the database rather than by callers.
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS loans_open_item_unique ON loans(item_id) WHERE returned_at IS NULL"
+  )
+  await migrateLegacyLoans(client)
+  // Read a fresh PRAGMA: the `columns` snapshot above predates the backfill.
+  const itemColumnsAfterLoans = await client.execute("PRAGMA table_info(items)")
+  for (const column of ["borrower", "loaned_at"]) {
+    if (itemColumnsAfterLoans.rows.some((row) => row.name === column))
+      await client.execute(`ALTER TABLE items DROP COLUMN ${column}`)
+  }
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS user_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS user_items_user_id_item_id_unique ON user_items(user_id, item_id)"
+  )
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS user_items_item_id_idx ON user_items(item_id)"
+  )
+  await migrateLegacyProgress(client)
   await migrateLegacyGenres(client)
   await migrateLegacyCreators(client)
   await client.execute(`
@@ -449,6 +484,59 @@ async function replaceGenreJoins(
       args: [itemId, slug],
     })
   }
+}
+
+async function migrateLegacyLoans(client: Client) {
+  const columns = await client.execute("PRAGMA table_info(items)")
+  if (!columns.rows.some((column) => column.name === "borrower")) return
+  await client.execute(`
+    INSERT INTO loans (item_id, borrower_user_id, borrower_name, lent_at, created_at)
+    SELECT id, NULL, trim(borrower), coalesce(loaned_at, created_at), created_at
+    FROM items
+    WHERE status = 'borrowed'
+      AND borrower IS NOT NULL
+      AND trim(borrower) != ''
+      AND NOT EXISTS (
+        SELECT 1 FROM loans
+        WHERE loans.item_id = items.id AND loans.returned_at IS NULL
+      )
+  `)
+  // A 'borrowed' row with no borrower name carries no loan information and
+  // would violate the status/open-loan invariant, so it returns to 'owned'.
+  await client.execute(`
+    UPDATE items SET status = 'owned'
+    WHERE status = 'borrowed'
+      AND NOT EXISTS (
+        SELECT 1 FROM loans
+        WHERE loans.item_id = items.id AND loans.returned_at IS NULL
+      )
+  `)
+}
+
+// 'reading'/'watching' used to live on items.status, which meant only one
+// person could be reading anything. Existing rows belong to the shelf's
+// first admin; on a database with no admin yet (bootstrap flow, no stored
+// user), there is nobody to own the state, so those rows simply return to
+// 'owned' and the state is dropped. The UPDATE runs unconditionally, so
+// re-running this once no reading/watching rows remain is a no-op.
+async function migrateLegacyProgress(client: Client) {
+  const now = new Date().toISOString()
+  await client.execute({
+    sql: `
+      INSERT INTO user_items (user_id, item_id, state, started_at, updated_at)
+      SELECT
+        (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1),
+        items.id, items.status, ?, ?
+      FROM items
+      WHERE items.status IN ('reading', 'watching')
+        AND EXISTS (SELECT 1 FROM users WHERE role = 'admin')
+      ON CONFLICT(user_id, item_id) DO NOTHING
+    `,
+    args: [now, now],
+  })
+  await client.execute(
+    "UPDATE items SET status = 'owned' WHERE status IN ('reading', 'watching')"
+  )
 }
 
 async function migrateLegacyGenres(client: Client) {

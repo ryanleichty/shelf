@@ -9,11 +9,12 @@ export const sampleItems: Array<{
   year: number
   notes: string
   coverImageUrl: string
+  borrowedBy?: string
 }> = [
   {
     slug: "the-left-hand-of-darkness",
     type: "book",
-    status: "reading",
+    status: "owned",
     title: "The Left Hand of Darkness",
     creator: "Ursula K. Le Guin",
     year: 1969,
@@ -30,6 +31,7 @@ export const sampleItems: Array<{
     notes:
       "A novel of memory, love, and the things that refuse to stay buried.",
     coverImageUrl: "https://covers.openlibrary.org/b/id/8261367-L.jpg",
+    borrowedBy: "Dana",
   },
   {
     slug: "the-dispossessed",
@@ -64,6 +66,7 @@ export const sampleItems: Array<{
       "Vienna in ruins; shadows, zither, and a friend who is not quite gone.",
     coverImageUrl:
       "https://upload.wikimedia.org/wikipedia/commons/7/77/The_Third_Man_%281949_American_theatrical_poster%29.jpg",
+    borrowedBy: "Marcus",
   },
   {
     slug: "paris-texas",

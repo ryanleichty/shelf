@@ -15,6 +15,7 @@ export function OutNow({
       item.status !== "owned"
   )
   if (!out.length) return null
+  const now = new Date()
   return (
     <section className="mb-8" aria-labelledby="out-now-heading">
       <Card>
@@ -39,6 +40,10 @@ export function OutNow({
                       : statusLabel(item.status)}
                   </small>
                   <Badge variant="outline">{statusLabel(item.status)}</Badge>
+                  {item.loanDueAt &&
+                    new Date(`${item.loanDueAt}T12:00:00`) < now && (
+                      <Badge variant="destructive">Overdue</Badge>
+                    )}
                 </span>
               </div>
             </Link>
