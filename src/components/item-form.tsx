@@ -56,7 +56,6 @@ import {
   getCollectionResult,
   getCoverOptions,
   getPersonOptions,
-  resolveBarcode,
   saveItem,
   searchCollection,
   bookGenreOptions,
@@ -65,6 +64,7 @@ import {
   type LookupResult,
   type PersonOptions,
 } from "@/server/items"
+import { resolveBarcode } from "@/server/barcode"
 import { parseCreatorNames } from "@/lib/catalog"
 import type { Item } from "@/server/schema"
 

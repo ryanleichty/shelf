@@ -10,7 +10,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { Spinner } from "@/components/ui/spinner"
-import { checkBarcode } from "@/server/items"
+import { checkBarcode } from "@/server/barcode"
 
 export type CheckBarcodeResult = Awaited<ReturnType<typeof checkBarcode>>
 
