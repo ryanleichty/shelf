@@ -7,7 +7,9 @@ export const Route = createFileRoute("/admin/$id")({
     if (!(await getSignedInStatus())) throw redirect({ to: "/admin/login" })
   },
   loader: async ({ params }) => {
-    const item = await getItemById({ data: { id: Number(params.id) } })
+    const id = Number(params.id)
+    if (!Number.isInteger(id) || id <= 0) throw notFound()
+    const item = await getItemById({ data: { id } })
     if (!item) throw notFound()
     return item
   },
