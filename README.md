@@ -17,7 +17,7 @@ Working with an agent? Read `AGENTS.md` for commands, conventions and the agent 
 
 Visit `http://localhost:3000`. Browse the catalog without signing in. Before the first stored admin account exists, use `/admin/login` with `ADMIN_PASSWORD`, then finish that admin's profile at `/settings`. Afterward, everyone signs in using their email and password.
 
-The seed command adds sample classics to make a first run feel complete. They are example content only, not Ryan Leichty’s actual collection. To start over locally:
+The seed command adds sample classics to make a first run feel complete. They are example content only, not Ryan Leichty’s actual collection. Reading and watching are tracked per member, so two people can be reading different books at once (or the same one) — the seed no longer ships a "reading" example, since in-progress state belongs to an account rather than to the item. To start over locally:
 
 ```bash
 pnpm db:reset

@@ -65,7 +65,22 @@ writes in one transaction — a reviewer should grep for any other
 `update(items).set({ status: "borrowed" })`. A loan links to a `users` row
 when the borrower has an account, but `borrower_name` is always stored as a
 point-in-time snapshot so a loan still reads correctly after the account is
-renamed or deleted.
+renamed or deleted. `items.status` means only where the object is —
+`"owned"` or `"borrowed"` — and only the loan actions above ever change it;
+the form no longer offers a status field, and `saveItem`'s update path never
+touches `status`.
+
+Reading and watching are per-member state, not a property of the item: a
+`user_items` row (`user_id`, `item_id`, `state`, `started_at`, `updated_at`,
+unique on `(user_id, item_id)`, both foreign keys `ON DELETE CASCADE`) exists
+only while that member is currently reading or watching something — no
+history, no rating, no progress. Finishing removes the row. `setItemState`
+and `clearItemState` (`src/server/user-items.ts`) enforce the type rule
+server-side (`"reading"` is books only, `"watching"` is movies and TV only)
+and require a stored user — a bootstrap session has none. `getShell`
+(`src/server/shell.ts`) adds the signed-in viewer's own states as
+`catalog.viewerStates` (item id → state); it is empty for anonymous
+visitors, and no other member's state is ever sent.
 
 ## Bundle hygiene
 
@@ -137,15 +152,17 @@ live in `src/server/api/{items,item,sync}.ts`.
   `{ dryRun?, items: [{ type? (default "movie"), query, format?, edition?, status?, year?, tmdbId?, openLibraryKey? }] }`,
   max 40 entries. `query` may carry a trailing year (`"Dune (1984)"`).
   `tmdbId` is digits; `edition` is `theatrical|extended|director-cut` and is
-  movie/TV only; `status` is `""|owned|reading|watching` and defaults to
-  `owned` — `borrowed` is rejected (lending is managed through the app's loan
-  actions, not this API) and falls into the `400 { "error": "Invalid body" }`
-  case. → `{ added, skipped, failed, needsReview }`, where `needsReview`
-  carries up to 5 candidates for an ambiguous `query`.
+  movie/TV only; `status` is `""|owned` — `borrowed`, and reading/watching
+  (now per-member, not an item field — see the database section above), fall
+  into the `400 { "error": "Invalid body" }` case. →
+  `{ added, skipped, failed, needsReview }`, where `needsReview` carries up to
+  5 candidates for an ambiguous `query`.
 - `PATCH /api/items/:id` — partial
   `{ title, creator, year, format, edition, status, coverImageUrl, slug }`
-  (`status` here also accepts `owned`, but `borrowed` is rejected with
-  `400 { "error": "Lending is managed through the app's loan actions" }`) → the
+  (`status` here also accepts `owned`; `borrowed` is rejected with
+  `400 { "error": "Lending is managed through the app's loan actions" }`, and
+  `reading`/`watching` are rejected as `400 { "error": "Invalid body" }` since
+  they are no longer valid `status` values at all) → the
   updated row. `404` if the id is unknown, `409` if the edition already exists
   on the shelf.
 - `DELETE /api/items/:id` → `{ "ok": true }`, or `404`.
