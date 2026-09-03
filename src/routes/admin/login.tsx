@@ -9,7 +9,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { getLoginMode, login } from "@/server/items"
+import { getLoginMode, login } from "@/server/session"
 
 export const Route = createFileRoute("/admin/login")({
   loader: () => getLoginMode(),

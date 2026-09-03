@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 import { ItemForm } from "@/components/item-form"
-import { getSignedInStatus } from "@/server/items"
+import { getSignedInStatus } from "@/server/session"
 
 export const Route = createFileRoute("/admin/new")({
   validateSearch: z.object({

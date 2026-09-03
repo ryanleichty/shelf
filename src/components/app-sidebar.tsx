@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
-import { logout } from "@/server/items"
+import { logout } from "@/server/session"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Collapsible,

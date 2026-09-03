@@ -68,7 +68,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getSignedInStatus } from "@/server/items"
+import { getSignedInStatus } from "@/server/session"
 import { ListsSettings } from "@/components/lists-settings"
 import { PeopleSettings } from "@/components/people-settings"
 import { getCatalogPlacementOptions, getListPlacements } from "@/server/lists"

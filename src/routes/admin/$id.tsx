@@ -1,6 +1,7 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router"
 import { ItemForm } from "@/components/item-form"
-import { getItemById, getSignedInStatus } from "@/server/items"
+import { getItemById } from "@/server/items"
+import { getSignedInStatus } from "@/server/session"
 
 export const Route = createFileRoute("/admin/$id")({
   beforeLoad: async () => {
