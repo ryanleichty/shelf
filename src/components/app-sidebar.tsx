@@ -6,6 +6,7 @@ import {
   ChevronsUpDownIcon,
   ChevronRightIcon,
   FilmIcon,
+  HeartIcon,
   HouseIcon,
   LogInIcon,
   LogOutIcon,
@@ -168,6 +169,16 @@ export function AppSidebar({
                   >
                     <HouseIcon />
                     <span>Home</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={location.pathname === "/wishlist"}
+                    render={<Link to="/wishlist" />}
+                    tooltip="Wishlist"
+                  >
+                    <HeartIcon />
+                    <span>Wishlist</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
