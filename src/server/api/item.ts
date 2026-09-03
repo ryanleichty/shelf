@@ -32,6 +32,11 @@ export const handlers = {
     const data = patch.safeParse(await request.json())
     if (!data.success)
       return Response.json({ error: "Invalid body" }, { status: 400 })
+    if (data.data.status === "borrowed")
+      return Response.json(
+        { error: "Lending is managed through the app's loan actions" },
+        { status: 400 }
+      )
     const parsedId = idParam.safeParse(params.id)
     if (!parsedId.success)
       return Response.json({ error: "Invalid id" }, { status: 400 })
