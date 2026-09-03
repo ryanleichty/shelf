@@ -2,7 +2,7 @@ import { displayListName } from "@/lib/system-lists"
 
 export const itemTypes = ["book", "movie", "tv"] as const
 export type ItemType = (typeof itemTypes)[number]
-export const itemStatuses = ["owned", "borrowed"] as const
+export const itemStatuses = ["owned", "borrowed", "wanted"] as const
 export type ItemStatus = (typeof itemStatuses)[number]
 export const itemProgressStates = ["reading", "watching"] as const
 export type ItemProgressState = (typeof itemProgressStates)[number]
@@ -141,10 +141,8 @@ export function systemListSlug(type: ItemType) {
   return type === "book" ? "reading-list" : "watchlist"
 }
 
-// Signature kept even though the only non-owned status left is "borrowed" —
-// cover-tile.tsx and out-now.tsx call this and don't need to change shape.
-export function statusLabel(_status: Exclude<ItemStatus, "owned">) {
-  return "Borrowed"
+export function statusLabel(status: Exclude<ItemStatus, "owned">) {
+  return status === "borrowed" ? "Borrowed" : "Wishlist"
 }
 
 const byTitle = (left: CatalogItem, right: CatalogItem) =>

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { statusLabel, type CatalogItem, type ItemStatus } from "@/lib/catalog"
+import { statusLabel, type CatalogItem } from "@/lib/catalog"
 
 export function OutNow({
   items,
@@ -11,8 +11,8 @@ export function OutNow({
   fromAll?: boolean
 }) {
   const out = items.filter(
-    (item): item is CatalogItem & { status: Exclude<ItemStatus, "owned"> } =>
-      item.status !== "owned"
+    (item): item is CatalogItem & { status: "borrowed" } =>
+      item.status === "borrowed"
   )
   if (!out.length) return null
   const now = new Date()

@@ -7,7 +7,7 @@ import { normalizeOpenLibraryWorkKey } from "@/server/openlibrary"
 import { getCollectionResultById, lookupCollection } from "@/server/providers"
 import { slugify } from "@/lib/catalog"
 import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
-import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"
+import { items, itemEditions, itemTypes } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -62,19 +62,7 @@ export const handlers = {
               query: z.string().min(1),
               format: z.string().optional(),
               edition: z.enum(itemEditions).optional().or(z.literal("")),
-              status: z
-                .enum(
-                  itemStatuses.filter(
-                    (
-                      status
-                    ): status is Exclude<
-                      (typeof itemStatuses)[number],
-                      "borrowed"
-                    > => status !== "borrowed"
-                  )
-                )
-                .or(z.literal(""))
-                .optional(),
+              status: z.enum(["owned"]).or(z.literal("")).optional(),
               year: z.number().optional(),
               tmdbId: z.string().regex(/^\d+$/).optional(),
               openLibraryKey: z.string().max(120).optional(),

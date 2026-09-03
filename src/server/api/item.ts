@@ -6,7 +6,7 @@ import { storeCover } from "@/server/covers"
 import { itemFormats } from "@/lib/catalog"
 import { itemExists, uniqueSlug } from "@/server/items"
 import { replaceItemCreators } from "@/server/item-joins"
-import { items, itemEditions, itemStatuses } from "@/server/schema"
+import { items, itemEditions } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -16,7 +16,7 @@ const patch = z.object({
   year: z.number().int().min(0).max(3000).optional(),
   format: z.enum(itemFormats).nullable().optional(),
   edition: z.enum(itemEditions).nullable().optional(),
-  status: z.enum(itemStatuses).optional(),
+  status: z.enum(["owned", "borrowed"]).optional(),
   coverImageUrl: z.string().url().max(2000).nullable().optional(),
   slug: z.string().min(1).max(120).optional(),
 })
