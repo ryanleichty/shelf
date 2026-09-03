@@ -15,7 +15,10 @@ export const Route = createFileRoute("/check")({
 })
 
 function Check() {
-  const [result, setResult] = useState<CheckResult | null>(null)
+  const [checked, setChecked] = useState<{
+    result: CheckResult
+    code: string
+  } | null>(null)
 
   return (
     <main className="container mx-auto max-w-md px-4 py-6 sm:py-10">
@@ -29,14 +32,14 @@ function Check() {
 
       <div className="mt-6 flex flex-col gap-5">
         <CheckBarcodeForm
-          onCheckStart={() => setResult(null)}
-          onResult={setResult}
+          onCheckStart={() => setChecked(null)}
+          onResult={(result, code) => setChecked({ result, code })}
         />
       </div>
 
-      {result && (
+      {checked && (
         <div className="mt-6">
-          <CheckBarcodeResult result={result} />
+          <CheckBarcodeResult code={checked.code} result={checked.result} />
         </div>
       )}
     </main>

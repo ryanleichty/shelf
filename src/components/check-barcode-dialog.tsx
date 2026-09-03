@@ -20,12 +20,15 @@ export function CheckBarcodeDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const [result, setResult] = useState<CheckResult | null>(null)
+  const [checked, setChecked] = useState<{
+    result: CheckResult
+    code: string
+  } | null>(null)
 
   const handleOpenChange = (nextOpen: boolean) => {
     onOpenChange(nextOpen)
     if (!nextOpen) {
-      setResult(null)
+      setChecked(null)
     }
   }
 
@@ -38,11 +41,13 @@ export function CheckBarcodeDialog({
         {open && (
           <CheckBarcodeForm
             active={open}
-            onCheckStart={() => setResult(null)}
-            onResult={setResult}
+            onCheckStart={() => setChecked(null)}
+            onResult={(result, code) => setChecked({ result, code })}
           />
         )}
-        {result && <CheckBarcodeResult result={result} />}
+        {checked && (
+          <CheckBarcodeResult code={checked.code} result={checked.result} />
+        )}
       </DialogContent>
     </Dialog>
   )
