@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm"
+import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
 import type { Catalog, CatalogItem } from "@/lib/catalog"
 import { systemListSlug } from "@/lib/catalog"
 import type { CurrentUser } from "./auth"
 import { db } from "./db"
+import type { ItemProgressState } from "@/lib/catalog"
 import {
   actors,
   authors,
@@ -19,7 +20,9 @@ import {
   listItems,
   listPlacements,
   lists,
+  loans,
   sessions,
+  userItems,
   users,
 } from "./schema"
 
@@ -52,7 +55,6 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     certification: items.certification,
     runtime: items.runtime,
     pageCount: items.pageCount,
-    borrower: items.borrower,
     tagline: items.tagline,
     logoImageUrl: items.logoImageUrl,
     trailerKey: items.trailerKey,
@@ -72,6 +74,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     placementRows,
     actorRows,
     adminRows,
+    openLoanRows,
   ] = await db.batch([
     db
       .select({
@@ -168,6 +171,14 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
       .from(users)
       .where(eq(users.role, "admin"))
       .limit(1),
+    db
+      .select({
+        itemId: loans.itemId,
+        borrowerName: loans.borrowerName,
+        dueAt: loans.dueAt,
+      })
+      .from(loans)
+      .where(isNull(loans.returnedAt)),
   ])
 
   const genreNames = groupNames(genreRows)
@@ -175,6 +186,9 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
   const directorNames = groupNames(directorRows)
   const collectionByItem = new Map(
     itemCollectionRows.map((row) => [row.itemId, row.collectionId])
+  )
+  const openLoanByItem = new Map(
+    openLoanRows.map(({ itemId, ...loan }) => [itemId, loan])
   )
   const systemListIds = new Map(
     listRows.filter((list) => list.system).map((list) => [list.slug, list.id])
@@ -184,6 +198,19 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
   )
   const actorItems: Record<string, number[]> = {}
   for (const row of actorRows) (actorItems[row.slug] ??= []).push(row.itemId)
+
+  const currentUser: CurrentUser | null = sessionRows[0] ?? null
+  // A separate query, issued only for a signed-in viewer: the user id is not
+  // known until the batch above resolves, and only their own states are ever
+  // sent — no other member's, and none at all for an anonymous visitor.
+  const viewerStates: Record<number, ItemProgressState> = {}
+  if (currentUser) {
+    const stateRows = await db
+      .select({ itemId: userItems.itemId, state: userItems.state })
+      .from(userItems)
+      .where(eq(userItems.userId, currentUser.id))
+    for (const row of stateRows) viewerStates[row.itemId] = row.state
+  }
 
   const catalog: Catalog = {
     items: itemRows.map((row): CatalogItem => ({
@@ -195,15 +222,17 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
       isInSystemList: membershipKeys.has(
         `${systemListIds.get(systemListSlug(row.type))}:${row.id}`
       ),
+      borrower: openLoanByItem.get(row.id)?.borrowerName ?? null,
+      loanDueAt: openLoanByItem.get(row.id)?.dueAt ?? null,
     })),
     lists: listRows,
     memberships: membershipRows,
     placements: placementRows,
     collections: collectionRows,
     actorItems,
+    viewerStates,
   }
 
-  const currentUser: CurrentUser | null = sessionRows[0] ?? null
   const bootstrap =
     !currentUser && !adminRows.length ? await isBootstrapSession() : false
   return { currentUser, signedIn: Boolean(currentUser) || bootstrap, catalog }

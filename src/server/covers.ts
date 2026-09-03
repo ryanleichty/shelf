@@ -1,11 +1,12 @@
 import { put } from "@vercel/blob"
-import { fetchRemoteImage, isBlobUrl } from "./remote-image"
 
 const MAX_COVER_BYTES = 10 * 1024 * 1024
 
 export async function storeCover(remoteUrl: string, slug: string) {
   if (!remoteUrl || !process.env.BLOB_READ_WRITE_TOKEN) return remoteUrl
   try {
+    // Imported here so node:net never reaches the client bundle.
+    const { fetchRemoteImage, isBlobUrl } = await import("./remote-image")
     const source = new URL(remoteUrl)
     if (isBlobUrl(source)) return remoteUrl
     const image = await fetchRemoteImage(remoteUrl, {

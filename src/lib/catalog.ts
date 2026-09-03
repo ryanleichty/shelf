@@ -2,13 +2,10 @@ import { displayListName } from "@/lib/system-lists"
 
 export const itemTypes = ["book", "movie", "tv"] as const
 export type ItemType = (typeof itemTypes)[number]
-export const itemStatuses = [
-  "owned",
-  "borrowed",
-  "reading",
-  "watching",
-] as const
+export const itemStatuses = ["owned", "borrowed"] as const
 export type ItemStatus = (typeof itemStatuses)[number]
+export const itemProgressStates = ["reading", "watching"] as const
+export type ItemProgressState = (typeof itemProgressStates)[number]
 export const itemEditions = ["theatrical", "extended", "director-cut"] as const
 export type ItemEdition = (typeof itemEditions)[number]
 export const itemFormats = [
@@ -51,6 +48,7 @@ export type CatalogItem = {
   runtime: number | null
   pageCount: number | null
   borrower: string | null
+  loanDueAt: string | null
   tagline: string | null
   logoImageUrl: string | null
   trailerKey: string | null
@@ -98,6 +96,9 @@ export type Catalog = {
   collections: CatalogCollection[]
   // actor slug → item ids, only for actors that have a catalog placement
   actorItems: Record<string, number[]>
+  // The signed-in viewer's own in-progress items, item id → state. Empty for
+  // anonymous visitors; other members' states are never sent.
+  viewerStates: Record<number, ItemProgressState>
 }
 
 export type HomeRow =
@@ -140,12 +141,10 @@ export function systemListSlug(type: ItemType) {
   return type === "book" ? "reading-list" : "watchlist"
 }
 
-export function statusLabel(status: Exclude<ItemStatus, "owned">) {
-  return status === "reading"
-    ? "Reading"
-    : status === "watching"
-      ? "Watching"
-      : "Borrowed"
+// Signature kept even though the only non-owned status left is "borrowed" —
+// cover-tile.tsx and out-now.tsx call this and don't need to change shape.
+export function statusLabel(_status: Exclude<ItemStatus, "owned">) {
+  return "Borrowed"
 }
 
 const byTitle = (left: CatalogItem, right: CatalogItem) =>

@@ -12,7 +12,6 @@ import {
   startUserSession,
 } from "./auth"
 import { db } from "./db"
-import { fetchRemoteImage, isBlobUrl, RemoteImageError } from "./remote-image"
 import { sessions, users, userRoles } from "./schema"
 
 const profileInput = z.object({
@@ -71,6 +70,9 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
       fileName = image.name
       contentType = image.type
     } else if (typeof image === "string") {
+      // Imported here so node:net never reaches the client bundle.
+      const { fetchRemoteImage, RemoteImageError } =
+        await import("./remote-image")
       try {
         const remote = await fetchRemoteImage(image, {
           maxBytes: 5 * 1024 * 1024,
@@ -101,6 +103,7 @@ export const uploadProfilePhoto = createServerFn({ method: "POST" })
       .set({ avatarUrl: blob.url, updatedAt: new Date().toISOString() })
       .where(eq(users.id, currentUser.id))
 
+    const { isBlobUrl } = await import("./remote-image")
     if (currentUser.avatarUrl && isBlobUrl(new URL(currentUser.avatarUrl))) {
       await del(currentUser.avatarUrl).catch(() => undefined)
     }

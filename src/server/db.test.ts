@@ -1,8 +1,8 @@
 import { createClient } from "@libsql/client"
 import { drizzle } from "drizzle-orm/libsql"
 import { describe, expect, test } from "vitest"
-import { seedSampleItems } from "./db"
 import { runMigrations } from "./migrate"
+import { seedSampleItems } from "./seed-samples"
 import { sampleItems } from "./sample-items"
 import * as schema from "./schema"
 

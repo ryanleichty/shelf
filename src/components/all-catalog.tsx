@@ -3,8 +3,10 @@
 import { Link } from "@tanstack/react-router"
 import { PlusIcon } from "lucide-react"
 import { Catalog } from "@/components/catalog"
+import { InProgress } from "@/components/in-progress"
 import { OutNow } from "@/components/out-now"
 import { Button } from "@/components/ui/button"
+import { useCatalog } from "@/lib/use-catalog"
 import type { CatalogItem } from "@/lib/catalog"
 
 export function AllCatalog({
@@ -24,6 +26,7 @@ export function AllCatalog({
   query?: string
   onQueryChange: (query: string) => void
 }) {
+  const { viewerStates } = useCatalog()
   return (
     <main className="container mx-auto max-w-6xl px-4 py-10">
       <section className="mb-8 flex items-end justify-between gap-4">
@@ -39,6 +42,7 @@ export function AllCatalog({
         </Button>
       </section>
       <OutNow fromAll items={items} />
+      <InProgress fromAll items={items} viewerStates={viewerStates} />
       <Catalog
         fromAll
         items={items}

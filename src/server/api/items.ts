@@ -62,7 +62,19 @@ export const handlers = {
               query: z.string().min(1),
               format: z.string().optional(),
               edition: z.enum(itemEditions).optional().or(z.literal("")),
-              status: z.enum(itemStatuses).or(z.literal("")).optional(),
+              status: z
+                .enum(
+                  itemStatuses.filter(
+                    (
+                      status
+                    ): status is Exclude<
+                      (typeof itemStatuses)[number],
+                      "borrowed"
+                    > => status !== "borrowed"
+                  )
+                )
+                .or(z.literal(""))
+                .optional(),
               year: z.number().optional(),
               tmdbId: z.string().regex(/^\d+$/).optional(),
               openLibraryKey: z.string().max(120).optional(),

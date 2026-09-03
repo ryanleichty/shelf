@@ -1,10 +1,5 @@
 import { z } from "zod"
-import {
-  itemEditions,
-  itemFormats,
-  itemStatuses,
-  itemTypes,
-} from "@/lib/catalog"
+import { itemEditions, itemFormats, itemTypes } from "@/lib/catalog"
 
 export const bookGenreOptions = [
   "Fiction",
@@ -44,7 +39,6 @@ export const itemInput = z
     id: z.number().int().optional(),
     slug: z.string().min(1).max(120),
     type: z.enum(itemTypes),
-    status: z.enum(itemStatuses).default("owned"),
     title: z.string().min(1).max(240),
     creator: z.string().max(240).optional().default(""),
     authors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
@@ -55,8 +49,6 @@ export const itemInput = z
     openLibraryKey: z.string().max(120).optional().or(z.literal("")),
     tmdbId: z.string().max(40).optional().or(z.literal("")),
     barcode: z.string().max(80).optional().or(z.literal("")),
-    borrower: z.string().max(120).optional().or(z.literal("")),
-    loanedAt: z.string().date().optional().or(z.literal("")),
     format: z.enum(itemFormats).optional().or(z.literal("")),
     edition: z.enum(itemEditions).optional().or(z.literal("")),
     genres: z.array(z.string().max(60)).max(20).default([]),
@@ -69,27 +61,6 @@ export const itemInput = z
         code: "custom",
         message: `Add at least one ${item.type === "book" ? "author" : "director"}.`,
         path: [item.type === "book" ? "authors" : "directors"],
-      })
-    }
-    if (item.type !== "book" && item.status === "reading") {
-      context.addIssue({
-        code: "custom",
-        message: "Only books can have Reading status.",
-        path: ["status"],
-      })
-    }
-    if (item.status === "borrowed" && !item.borrower?.trim()) {
-      context.addIssue({
-        code: "custom",
-        message: "Borrowed items need a borrower.",
-        path: ["borrower"],
-      })
-    }
-    if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
-      context.addIssue({
-        code: "custom",
-        message: "Loan details only apply to borrowed items.",
-        path: ["status"],
       })
     }
     if (
