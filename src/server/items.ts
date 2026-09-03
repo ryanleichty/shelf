@@ -32,6 +32,7 @@ import {
   replaceItemCreators,
   replaceItemTags,
   samePeople,
+  type Database,
   type ProviderPerson,
 } from "./item-joins"
 import { storeCover } from "./covers"
@@ -221,47 +222,58 @@ export async function createItemFromProvider(input: ProviderImportInput) {
     result.coverImageUrl || input.fallbackCoverImageUrl || ""
   const slug = await uniqueSlug(slugify(result.title), input.edition)
   const now = new Date().toISOString()
-  const [created] = await db
-    .insert(items)
-    .values({
-      slug,
-      type: input.type,
-      status: input.status || "owned",
-      title: result.title,
-      creator,
-      year: result.year ?? 0,
-      format: input.format || null,
-      edition: normalizeEdition(input.edition),
-      description: result.description || null,
-      certification: result.certification ?? null,
-      runtime: result.runtime ?? null,
-      coverImageUrl: (await storeCover(coverImageUrl, slug)) || null,
-      backdropImageUrl: result.backdropImageUrl || null,
-      tmdbId: input.type === "book" ? null : input.providerId,
-      openLibraryKey: input.type === "book" ? input.providerId : null,
-      notes: "",
-      acquiredAt: null,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning({ id: items.id, title: items.title, slug: items.slug })
-  await replaceItemTags(created.id, {
-    genres: result.genres,
-    keywords: result.keywords ?? [],
-  })
-  await replaceItemCreators(
-    created.id,
-    input.type,
-    result.creatorPeople ?? creator
-  )
-  if (input.type !== "book" && result.cast !== undefined)
-    await replaceItemCast(
+  // All network work happens before the transaction opens: a stalled fetch
+  // must not hold a write transaction (or leave a half-written item behind).
+  const collection = result.collection ?? null
+  const storedCover = (await storeCover(coverImageUrl, slug)) || null
+  const partIds =
+    input.type === "movie" ? await collectionPartIdsFor(collection) : null
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(items)
+      .values({
+        slug,
+        type: input.type,
+        status: input.status || "owned",
+        title: result.title,
+        creator,
+        year: result.year ?? 0,
+        format: input.format || null,
+        edition: normalizeEdition(input.edition),
+        description: result.description || null,
+        certification: result.certification ?? null,
+        runtime: result.runtime ?? null,
+        coverImageUrl: storedCover,
+        backdropImageUrl: result.backdropImageUrl || null,
+        tmdbId: input.type === "book" ? null : input.providerId,
+        openLibraryKey: input.type === "book" ? input.providerId : null,
+        notes: "",
+        acquiredAt: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({ id: items.id, title: items.title, slug: items.slug })
+    await replaceItemTags(
       created.id,
-      result.castPeople ?? result.cast.map((name) => ({ name }))
+      { genres: result.genres, keywords: result.keywords ?? [] },
+      tx
     )
-  if (input.type === "movie")
-    await replaceItemCollection(created.id, result.collection ?? null)
-  return created
+    await replaceItemCreators(
+      created.id,
+      input.type,
+      result.creatorPeople ?? creator,
+      tx
+    )
+    if (input.type !== "book" && result.cast !== undefined)
+      await replaceItemCast(
+        created.id,
+        result.castPeople ?? result.cast.map((name) => ({ name })),
+        tx
+      )
+    if (input.type === "movie")
+      await replaceItemCollection(created.id, collection, partIds, tx)
+    return created
+  })
 }
 
 export type LookupResult = {
@@ -492,14 +504,25 @@ export const getCoverOptions = createServerFn({ method: "GET" })
     return []
   })
 
+// Network work that must happen before the write transaction opens.
+async function collectionPartIdsFor(collection: CollectionInput | null) {
+  return collection?.tmdbCollectionId
+    ? await fetchTmdbCollectionPartIds(collection.tmdbCollectionId)
+    : null
+}
+
 export async function replaceItemCollection(
   itemId: number,
-  collection: CollectionInput | null
+  collection: CollectionInput | null,
+  partIds: string[] | null,
+  database: Database = db
 ) {
-  await db.delete(itemCollections).where(eq(itemCollections.itemId, itemId))
+  await database
+    .delete(itemCollections)
+    .where(eq(itemCollections.itemId, itemId))
   if (!collection) return
 
-  const [existing] = await db
+  const [existing] = await database
     .select({ id: collections.id, partIds: collections.partIds })
     .from(collections)
     .where(
@@ -511,10 +534,10 @@ export async function replaceItemCollection(
   const collectionId =
     existing?.id ??
     (
-      await db
+      await database
         .insert(collections)
         .values({
-          slug: await uniqueCollectionSlug(collection.name),
+          slug: await uniqueCollectionSlug(collection.name, database),
           name: collection.name,
           tmdbCollectionId: collection.tmdbCollectionId ?? null,
           overview: collection.overview || null,
@@ -522,27 +545,22 @@ export async function replaceItemCollection(
         .returning({ id: collections.id })
     )[0].id
 
-  await db
+  await database
     .insert(itemCollections)
     .values({ itemId, collectionId })
     .onConflictDoNothing()
-  if (collection.tmdbCollectionId && !existing?.partIds?.length) {
-    const partIds = await fetchTmdbCollectionPartIds(
-      collection.tmdbCollectionId
-    )
-    if (partIds.length)
-      await db
-        .update(collections)
-        .set({ partIds })
-        .where(eq(collections.id, collectionId))
-  }
+  if (partIds?.length && !existing?.partIds?.length)
+    await database
+      .update(collections)
+      .set({ partIds })
+      .where(eq(collections.id, collectionId))
 }
 
-async function uniqueCollectionSlug(name: string) {
+async function uniqueCollectionSlug(name: string, database: Database = db) {
   const baseSlug = slugify(name)
   for (let suffix = 1; ; suffix++) {
     const slug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`
-    const [existing] = await db
+    const [existing] = await database
       .select({ id: collections.id })
       .from(collections)
       .where(eq(collections.slug, slug))
@@ -1410,7 +1428,11 @@ export async function syncItemFromProvider(
       (syncedItem.type === "movie" || syncedItem.type === "book") &&
       nextCollection !== undefined
     )
-      await replaceItemCollection(syncedItem.id, nextCollection)
+      await replaceItemCollection(
+        syncedItem.id,
+        nextCollection,
+        await collectionPartIdsFor(nextCollection)
+      )
     await replaceItemCreators(
       syncedItem.id,
       syncedItem.type,
@@ -2235,18 +2257,21 @@ export const saveItem = createServerFn({ method: "POST" })
       throw new Error("This edition is already on your shelf.")
     }
     values.slug = await uniqueSlug(data.slug, data.edition)
-    const [item] = await db
-      .insert(items)
-      .values({ ...values, createdAt: now })
-      .returning({ id: items.id, slug: items.slug })
-    await replaceItemTags(item.id, { genres: data.genres })
-    await replaceItemCreators(item.id, data.type, primaryPeople)
-    if (data.type !== "book")
-      await replaceItemCast(
-        item.id,
-        data.actors.map((name) => ({ name }))
-      )
-    return item
+    return db.transaction(async (tx) => {
+      const [item] = await tx
+        .insert(items)
+        .values({ ...values, createdAt: now })
+        .returning({ id: items.id, slug: items.slug })
+      await replaceItemTags(item.id, { genres: data.genres }, tx)
+      await replaceItemCreators(item.id, data.type, primaryPeople, tx)
+      if (data.type !== "book")
+        await replaceItemCast(
+          item.id,
+          data.actors.map((name) => ({ name })),
+          tx
+        )
+      return item
+    })
   })
 
 export const deleteItem = createServerFn({ method: "POST" })
