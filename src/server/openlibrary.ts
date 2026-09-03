@@ -95,6 +95,29 @@ export async function lookupBooks(query: string): Promise<LookupResult[]> {
   )
 }
 
+// Work records often omit first_publish_date, so fall back to the search
+// index, which is where the year in our own search results comes from.
+async function openLibraryFirstPublishYear(
+  workKey: string,
+  firstPublishDate?: string
+) {
+  const fromWork = yearFromDate(firstPublishDate)
+  if (fromWork !== null) return fromWork
+  const url = new URL("https://openlibrary.org/search.json")
+  url.searchParams.set("q", `key:${workKey}`)
+  url.searchParams.set("fields", "first_publish_year")
+  url.searchParams.set("limit", "1")
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
+    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
+  })
+  if (!response.ok) return null
+  const body = (await response.json()) as {
+    docs?: Array<{ first_publish_year?: number }>
+  }
+  return body.docs?.[0]?.first_publish_year ?? null
+}
+
 export async function getBookResultById(
   key: string
 ): Promise<LookupResult & { slug: string }> {
@@ -121,7 +144,7 @@ export async function getBookResultById(
     title,
     creator: authorPeople[0]?.name ?? "Unknown author",
     creatorPeople: authorPeople,
-    year: yearFromDate(book.first_publish_date),
+    year: await openLibraryFirstPublishYear(id, book.first_publish_date),
     coverImageUrl: "",
     genres: curatedBookGenres(book.subjects),
     description: openLibraryDescription(book.description),
@@ -193,7 +216,10 @@ export async function getBookSyncMetadata(
     authors?: Array<{ author?: { key?: string }; name?: string }>
   }
   const authorPeople = await openLibraryAuthors(book.authors)
-  const year = yearFromDate(book.first_publish_date)
+  const year = await openLibraryFirstPublishYear(
+    openLibraryKey,
+    book.first_publish_date
+  )
   const edition = await openLibraryEditionForCopy(
     openLibraryKey,
     coverImageUrl,
