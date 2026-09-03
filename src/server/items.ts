@@ -2180,6 +2180,21 @@ export const getLoginMode = createServerFn({ method: "GET" }).handler(
   }
 )
 
+async function assertBarcodeFree(barcode: string | null, excludeId?: number) {
+  if (!barcode) return
+  const [taken] = await db
+    .select({ id: items.id })
+    .from(items)
+    .where(
+      and(
+        eq(items.barcode, barcode),
+        excludeId ? ne(items.id, excludeId) : undefined
+      )
+    )
+    .limit(1)
+  if (taken) throw new Error("That barcode belongs to another item.")
+}
+
 export const saveItem = createServerFn({ method: "POST" })
   .inputValidator(itemInput)
   .handler(async ({ data }) => {
@@ -2235,7 +2250,10 @@ export const saveItem = createServerFn({ method: "POST" })
       ) {
         throw new Error("This edition is already on your shelf.")
       }
-      await db.update(items).set(values).where(eq(items.id, data.id))
+      await assertBarcodeFree(values.barcode, data.id)
+      values.slug = await uniqueSlug(data.slug, data.edition, data.id)
+      const { notes: _notes, acquiredAt: _acquiredAt, ...updateValues } = values
+      await db.update(items).set(updateValues).where(eq(items.id, data.id))
       await replaceItemTags(data.id, { genres: data.genres })
       await replaceItemCreators(data.id, data.type, primaryPeople)
       if (data.type !== "book")
@@ -2243,7 +2261,7 @@ export const saveItem = createServerFn({ method: "POST" })
           data.id,
           data.actors.map((name) => ({ name }))
         )
-      return { id: data.id, slug: data.slug }
+      return { id: data.id, slug: values.slug }
     }
     if (
       await itemExists({
@@ -2256,6 +2274,7 @@ export const saveItem = createServerFn({ method: "POST" })
     ) {
       throw new Error("This edition is already on your shelf.")
     }
+    await assertBarcodeFree(values.barcode)
     values.slug = await uniqueSlug(data.slug, data.edition)
     return db.transaction(async (tx) => {
       const [item] = await tx
