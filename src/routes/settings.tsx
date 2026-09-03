@@ -341,6 +341,21 @@ function Settings() {
               </FieldGroup>
             </form>
           </Card>
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Your data</CardTitle>
+              <CardDescription>
+                Download the whole catalog as JSON — items, lists and list
+                order.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                render={<a href="/api/export">Download export</a>}
+                variant="outline"
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="lists">
           <ListsSettings

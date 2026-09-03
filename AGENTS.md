@@ -137,6 +137,11 @@ live in `src/server/api/{items,item,sync}.ts`.
 - `POST /api/items/sync` — body `{ dryRun?, ids?, type? }`, `ids` max 40 and
   the selection is capped at 40 rows either way. Re-fetches provider metadata.
   → `{ updated, skipped, failed }`.
+- `GET /api/export` — unlike the other endpoints above, this one also accepts
+  a signed-in session cookie in place of the agent bearer token. Returns
+  `{ version, exportedAt, items, lists, listItems }`: items with their joins
+  (genres, keywords, authors, directors, actors, collection), the lists, and
+  list membership, all keyed by `slug` rather than database id.
 
 ## Plans
 

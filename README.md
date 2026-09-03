@@ -45,6 +45,8 @@ The admin’s book search uses Open Library and requires no key. Movie and TV se
 
 When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the admin is fetched server-side and persisted to Vercel Blob. Without it, Shelf keeps the original remote URL for local development.
 
+A full JSON export of the catalog — items with their joins, lists, and list order — is available at `/api/export` and linked from Settings. It is the backup path when running on the ephemeral `/tmp` database.
+
 ## Deploying to Vercel
 
 1. Create a Turso database and apply the schema using `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` with `pnpm db:migrate`.
