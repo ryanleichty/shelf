@@ -2,14 +2,9 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
-import {
-  createItemFromProvider,
-  getCollectionResultById,
-  itemExists,
-  lookupCollection,
-  normalizeOpenLibraryWorkKey,
-  uniqueSlug,
-} from "@/server/items"
+import { createItemFromProvider, itemExists, uniqueSlug } from "@/server/items"
+import { normalizeOpenLibraryWorkKey } from "@/server/openlibrary"
+import { getCollectionResultById, lookupCollection } from "@/server/providers"
 import { slugify } from "@/lib/catalog"
 import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
 import { items, itemEditions, itemStatuses, itemTypes } from "@/server/schema"

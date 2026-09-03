@@ -53,18 +53,20 @@ import {
   ComboboxValue,
 } from "@/components/ui/combobox"
 import {
-  getCollectionResult,
-  getCoverOptions,
   getPersonOptions,
   saveItem,
-  searchCollection,
   bookGenreOptions,
   screenGenreOptions,
   type ItemInput,
-  type LookupResult,
   type PersonOptions,
 } from "@/server/items"
 import { resolveBarcode } from "@/server/barcode"
+import {
+  getCollectionResult,
+  getCoverOptions,
+  searchCollection,
+  type LookupResult,
+} from "@/server/providers"
 import { parseCreatorNames } from "@/lib/catalog"
 import type { Item } from "@/server/schema"
 

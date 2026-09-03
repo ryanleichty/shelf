@@ -1,19 +1,20 @@
 import { and, eq, or } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { normalizeTitle } from "@/lib/catalog"
+import { normalizeTitle, yearFromDate } from "@/lib/catalog"
 import { type ItemInput } from "@/lib/item-input"
 import { db } from "./db"
 import { requireAdmin, requireSignedIn } from "./auth"
 import {
-  getCollectionResultById,
-  lookupCollection,
   lookupOpenLibraryAuthor,
   normalizeOpenLibraryAuthorKey,
   normalizeOpenLibraryWorkKey,
-  yearFromDate,
+} from "./openlibrary"
+import {
+  getCollectionResultById,
+  lookupCollection,
   type LookupResult,
-} from "./items"
+} from "./providers"
 import { items, itemTypes, type Item, type ItemRecord } from "./schema"
 
 const barcodeInput = z
