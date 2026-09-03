@@ -112,6 +112,16 @@ All of these are server-only and never reach the browser. See `.env.example`.
 | `TURSO_DATABASE_URL`    | libSQL/Turso URL; unset means the ephemeral `/tmp` database |
 | `TURSO_AUTH_TOKEN`      | Token for that database                                     |
 
+## Bulk import
+
+`/admin/import` accepts a Goodreads or Letterboxd CSV export in addition to
+its one-title-per-line textarea. `src/lib/csv.ts` parses the file and
+`src/lib/import-csv.ts` detects which export it is (by header names, not
+column position) and maps rows to `{ query }` entries. The page sends them to
+`importItems` in sequential chunks of 25 rows, since each row costs a
+provider lookup. Goodreads rows on the `to-read` shelf are skipped rather
+than imported, since Shelf only records items you own.
+
 ## Agent JSON API
 
 Every endpoint requires `Authorization: Bearer $SHELF_AGENT_TOKEN` (the bare
