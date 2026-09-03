@@ -37,6 +37,10 @@ export const handlers = {
         { error: "Lending is managed through the app's loan actions" },
         { status: 400 }
       )
+    // Reading/watching are per-member state (src/server/user-items.ts), not a
+    // property of the item — narrowing itemStatuses already makes them
+    // unrepresentable here, so `patch.safeParse` above rejects them with the
+    // generic "Invalid body" 400 before this line runs.
     const parsedId = idParam.safeParse(params.id)
     if (!parsedId.success)
       return Response.json({ error: "Invalid id" }, { status: 400 })

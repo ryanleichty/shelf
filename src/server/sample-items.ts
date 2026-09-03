@@ -14,7 +14,7 @@ export const sampleItems: Array<{
   {
     slug: "the-left-hand-of-darkness",
     type: "book",
-    status: "reading",
+    status: "owned",
     title: "The Left Hand of Darkness",
     creator: "Ursula K. Le Guin",
     year: 1969,
