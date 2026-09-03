@@ -55,8 +55,6 @@ export const itemInput = z
     openLibraryKey: z.string().max(120).optional().or(z.literal("")),
     tmdbId: z.string().max(40).optional().or(z.literal("")),
     barcode: z.string().max(80).optional().or(z.literal("")),
-    borrower: z.string().max(120).optional().or(z.literal("")),
-    loanedAt: z.string().date().optional().or(z.literal("")),
     format: z.enum(itemFormats).optional().or(z.literal("")),
     edition: z.enum(itemEditions).optional().or(z.literal("")),
     genres: z.array(z.string().max(60)).max(20).default([]),
@@ -75,20 +73,6 @@ export const itemInput = z
       context.addIssue({
         code: "custom",
         message: "Only books can have Reading status.",
-        path: ["status"],
-      })
-    }
-    if (item.status === "borrowed" && !item.borrower?.trim()) {
-      context.addIssue({
-        code: "custom",
-        message: "Borrowed items need a borrower.",
-        path: ["borrower"],
-      })
-    }
-    if (item.status !== "borrowed" && (item.borrower || item.loanedAt)) {
-      context.addIssue({
-        code: "custom",
-        message: "Loan details only apply to borrowed items.",
         path: ["status"],
       })
     }

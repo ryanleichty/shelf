@@ -74,7 +74,6 @@ const itemFormFields = [
   "directors",
   "authors",
   "status",
-  "borrower",
   "format",
   "edition",
   "title",
@@ -163,11 +162,9 @@ export function ItemForm({
   const isTypeControlled = onTypeChange !== undefined
   const type = isTypeControlled ? (controlledType ?? "book") : internalType
   const [status, setStatus] = useState<
-    "unspecified" | "borrowed" | "reading" | "watching"
+    "unspecified" | "reading" | "watching"
   >(
-    item?.status === "reading" ||
-      item?.status === "borrowed" ||
-      item?.status === "watching"
+    item?.status === "reading" || item?.status === "watching"
       ? item.status
       : "unspecified"
   )
@@ -213,8 +210,6 @@ export function ItemForm({
     coverImageUrl: item?.coverImageUrl ?? "",
     openLibraryKey: item?.openLibraryKey ?? "",
     tmdbId: item?.tmdbId ?? "",
-    borrower: item?.borrower ?? "",
-    loanedAt: item?.loanedAt ?? "",
     format: item?.format ?? "",
     edition: item?.edition ?? "",
     genres: item?.genres ?? [],
@@ -435,8 +430,6 @@ export function ItemForm({
           openLibraryKey: values.openLibraryKey,
           tmdbId: values.tmdbId,
           barcode: values.barcode,
-          borrower: values.borrower,
-          loanedAt: values.loanedAt,
           format: values.format as ItemInput["format"],
           edition: values.edition as ItemInput["edition"],
           genres: values.genres,
@@ -787,16 +780,7 @@ export function ItemForm({
         <Field data-invalid={Boolean(fieldErrors.status?.length)}>
           <FieldLabel htmlFor="status">Status</FieldLabel>
           <Select
-            onValueChange={(value) => {
-              const nextStatus = value ?? "unspecified"
-              setStatus(nextStatus)
-              if (nextStatus !== "borrowed")
-                setValues((current) => ({
-                  ...current,
-                  borrower: "",
-                  loanedAt: "",
-                }))
-            }}
+            onValueChange={(value) => setStatus(value ?? "unspecified")}
             value={status}
           >
             <SelectTrigger
@@ -814,9 +798,11 @@ export function ItemForm({
               {type === "tv" && (
                 <SelectItem value="watching">Watching</SelectItem>
               )}
-              <SelectItem value="borrowed">Borrowed</SelectItem>
             </SelectContent>
           </Select>
+          <FieldDescription>
+            Lending is managed from the item page, not here.
+          </FieldDescription>
           <FieldError errors={fieldErrors.status} />
         </Field>
         <Field data-invalid={Boolean(fieldErrors.year?.length)}>
@@ -1023,36 +1009,6 @@ export function ItemForm({
             />
             <FieldDescription>Stored for future refreshes.</FieldDescription>
           </Field>
-        )}
-        {status === "borrowed" && (
-          <>
-            <Field data-invalid={Boolean(fieldErrors.borrower?.length)}>
-              <FieldLabel htmlFor="borrower">With whom</FieldLabel>
-              <Input
-                aria-invalid={Boolean(fieldErrors.borrower?.length)}
-                id="borrower"
-                name="borrower"
-                onChange={(event) =>
-                  updateValue("borrower", event.target.value)
-                }
-                required
-                value={values.borrower}
-              />
-              <FieldError errors={fieldErrors.borrower} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="loanedAt">Loaned out</FieldLabel>
-              <Input
-                id="loanedAt"
-                name="loanedAt"
-                onChange={(event) =>
-                  updateValue("loanedAt", event.target.value)
-                }
-                type="date"
-                value={values.loanedAt}
-              />
-            </Field>
-          </>
         )}
       </FieldGroup>
       <FieldError errors={error} />
