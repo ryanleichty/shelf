@@ -139,9 +139,12 @@ live in `src/server/api/{items,item,sync}.ts`.
   → `{ updated, skipped, failed }`.
 - `GET /api/export` — unlike the other endpoints above, this one also accepts
   a signed-in session cookie in place of the agent bearer token. Returns
-  `{ version, exportedAt, items, lists, listItems }`: items with their joins
-  (genres, keywords, authors, directors, actors, collection), the lists, and
-  list membership, all keyed by `slug` rather than database id.
+  `{ version, exportedAt, items, lists, listItems, loans }` (version 2: items
+  no longer carry `borrower`/`loanedAt` — lending is a top-level `loans`
+  section instead): items with their joins (genres, keywords, authors,
+  directors, actors, collection), the lists, list membership, and loan history
+  (`itemSlug`, `borrowerName`, `lentAt`, `dueAt`, `returnedAt` — no user ids or
+  row ids), all keyed by `slug` rather than database id.
 
 ## Plans
 

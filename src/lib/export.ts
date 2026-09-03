@@ -1,12 +1,21 @@
 import type { Item } from "@/server/schema"
 
 // Bumped when the payload shape changes incompatibly.
-export const EXPORT_VERSION = 1
+// v2: dropped items.borrower/loanedAt (now lending history) in favor of a
+// top-level `loans` section.
+export const EXPORT_VERSION = 2
 
 export function buildExport(input: {
   items: Item[]
   lists: Array<{ id: number; slug: string; name: string; system: boolean }>
   listItems: Array<{ listSlug: string; itemSlug: string; position: number }>
+  loans: Array<{
+    itemSlug: string
+    borrowerName: string
+    lentAt: string
+    dueAt: string | null
+    returnedAt: string | null
+  }>
   exportedAt: string
 }) {
   return {
@@ -22,8 +31,6 @@ export function buildExport(input: {
       format: item.format,
       edition: item.edition,
       barcode: item.barcode,
-      borrower: item.borrower,
-      loanedAt: item.loanedAt,
       coverImageUrl: item.coverImageUrl,
       backdropImageUrl: item.backdropImageUrl,
       logoImageUrl: item.logoImageUrl,
@@ -62,6 +69,13 @@ export function buildExport(input: {
       listSlug: listItem.listSlug,
       itemSlug: listItem.itemSlug,
       position: listItem.position,
+    })),
+    loans: input.loans.map((loan) => ({
+      itemSlug: loan.itemSlug,
+      borrowerName: loan.borrowerName,
+      lentAt: loan.lentAt,
+      dueAt: loan.dueAt,
+      returnedAt: loan.returnedAt,
     })),
   }
 }

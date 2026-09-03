@@ -3,7 +3,7 @@ import { buildExport } from "@/lib/export"
 import { isAgentRequest, isSignedIn } from "@/server/auth"
 import { db } from "@/server/db"
 import { enrichItems } from "@/server/items"
-import { items, listItems, lists } from "@/server/schema"
+import { items, listItems, lists, loans } from "@/server/schema"
 
 type ApiContext = { request: Request; params: Record<string, string> }
 
@@ -14,7 +14,7 @@ export const handlers = {
     if (!isAgentRequest(request) && !(await isSignedIn()))
       return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-    const [itemRecords, listRows, membershipRows] = await db.batch([
+    const [itemRecords, listRows, membershipRows, loanRows] = await db.batch([
       db.select().from(items).orderBy(asc(items.slug)),
       db
         .select({
@@ -35,12 +35,24 @@ export const handlers = {
         .innerJoin(lists, eq(listItems.listId, lists.id))
         .innerJoin(items, eq(listItems.itemId, items.id))
         .orderBy(asc(lists.slug), asc(listItems.position)),
+      db
+        .select({
+          itemSlug: items.slug,
+          borrowerName: loans.borrowerName,
+          lentAt: loans.lentAt,
+          dueAt: loans.dueAt,
+          returnedAt: loans.returnedAt,
+        })
+        .from(loans)
+        .innerJoin(items, eq(loans.itemId, items.id))
+        .orderBy(asc(items.slug), asc(loans.lentAt)),
     ])
 
     const payload = buildExport({
       items: await enrichItems(itemRecords),
       lists: listRows,
       listItems: membershipRows,
+      loans: loanRows,
       exportedAt: new Date().toISOString(),
     })
 

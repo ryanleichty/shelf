@@ -16,7 +16,7 @@ const item = (id: number, overrides: Partial<Item> = {}): Item => ({
   tmdbId: null,
   barcode: null,
   borrower: null,
-  loanedAt: null,
+  loanDueAt: null,
   format: null,
   edition: null,
   description: null,
@@ -48,6 +48,7 @@ describe("buildExport", () => {
       items: [item(1), item(2)],
       lists: [{ id: 10, slug: "watchlist", name: "Watchlist", system: true }],
       listItems: [{ listSlug: "watchlist", itemSlug: "item-1", position: 0 }],
+      loans: [],
       exportedAt: "2026-09-02T00:00:00.000Z",
     })
 
@@ -63,6 +64,7 @@ describe("buildExport", () => {
       items: [item(1, { notes: "private", acquiredAt: "2020-01-01" })],
       lists: [],
       listItems: [],
+      loans: [],
       exportedAt: "2026-09-02T00:00:00.000Z",
     })
 
@@ -76,6 +78,7 @@ describe("buildExport", () => {
       items: [item(1)],
       lists: [],
       listItems: [],
+      loans: [],
       exportedAt: "2026-09-02T00:00:00.000Z",
     })
 
@@ -87,6 +90,7 @@ describe("buildExport", () => {
       items: [item(1)],
       lists: [],
       listItems: [],
+      loans: [],
       exportedAt: "2026-09-02T00:00:00.000Z",
     })
 
@@ -95,5 +99,33 @@ describe("buildExport", () => {
     expect(payload.items[0].authors).toEqual([])
     expect(payload.items[0].directors).toEqual([])
     expect(payload.items[0].actors).toEqual([])
+  })
+
+  test("a returned loan appears in the top-level loans section", () => {
+    const payload = buildExport({
+      items: [item(1)],
+      lists: [],
+      listItems: [],
+      loans: [
+        {
+          itemSlug: "item-1",
+          borrowerName: "Dana",
+          lentAt: "2026-01-01",
+          dueAt: "2026-01-15",
+          returnedAt: "2026-01-10",
+        },
+      ],
+      exportedAt: "2026-09-02T00:00:00.000Z",
+    })
+
+    expect(payload.loans).toEqual([
+      {
+        itemSlug: "item-1",
+        borrowerName: "Dana",
+        lentAt: "2026-01-01",
+        dueAt: "2026-01-15",
+        returnedAt: "2026-01-10",
+      },
+    ])
   })
 })
