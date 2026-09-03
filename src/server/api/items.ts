@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { and, eq, ne } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
@@ -47,7 +47,12 @@ export const handlers = {
       await db
         .select(output)
         .from(items)
-        .where(type ? eq(items.type, type as "book" | "movie") : undefined)
+        .where(
+          and(
+            ne(items.status, "wanted"),
+            type ? eq(items.type, type as "book" | "movie") : undefined
+          )
+        )
     )
   },
   POST: async ({ request }: ApiContext) => {
