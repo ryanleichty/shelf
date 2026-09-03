@@ -69,4 +69,13 @@ export const sampleItems: Array<{
     coverImageUrl:
       "https://upload.wikimedia.org/wikipedia/en/d/db/Paris%2C_Texas_%281984_film_poster%29.png",
   },
+  {
+    slug: "the-word-for-world-is-forest",
+    type: "book",
+    status: "wanted",
+    title: "The Word for World Is Forest",
+    creator: "Ursula K. Le Guin",
+    year: 1972,
+    coverImageUrl: "https://covers.openlibrary.org/b/id/8412144-L.jpg",
+  },
 ]
