@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest"
 import {
   homeRows,
+  itemStatuses,
   listPage,
   matchesQuery,
   parseCreatorNames,
@@ -141,6 +142,13 @@ describe("catalog derivations", () => {
 describe("statusLabel", () => {
   test("names every non-owned status", () => {
     expect(statusLabel("borrowed")).toBe("Borrowed")
+    expect(statusLabel("wanted")).toBe("Wishlist")
+  })
+})
+
+describe("itemStatuses", () => {
+  test("has exactly the three statuses this app understands", () => {
+    expect(itemStatuses).toEqual(["owned", "borrowed", "wanted"])
   })
 })
 
