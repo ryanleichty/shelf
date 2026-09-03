@@ -209,8 +209,3 @@ live in `src/server/api/{items,item,sync}.ts`.
   directors, actors, collection), the lists, list membership, and loan history
   (`itemSlug`, `borrowerName`, `lentAt`, `dueAt`, `returnedAt` — no user ids or
   row ids), all keyed by `slug` rather than database id.
-
-## Plans
-
-`plans/README.md` tracks advisor-generated implementation plans and their
-status.
