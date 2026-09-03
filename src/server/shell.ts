@@ -4,6 +4,7 @@ import type { Catalog, CatalogItem } from "@/lib/catalog"
 import { systemListSlug } from "@/lib/catalog"
 import type { CurrentUser } from "./auth"
 import { db } from "./db"
+import type { ItemProgressState } from "@/lib/catalog"
 import {
   actors,
   authors,
@@ -21,6 +22,7 @@ import {
   lists,
   loans,
   sessions,
+  userItems,
   users,
 } from "./schema"
 
@@ -197,6 +199,19 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
   const actorItems: Record<string, number[]> = {}
   for (const row of actorRows) (actorItems[row.slug] ??= []).push(row.itemId)
 
+  const currentUser: CurrentUser | null = sessionRows[0] ?? null
+  // A separate query, issued only for a signed-in viewer: the user id is not
+  // known until the batch above resolves, and only their own states are ever
+  // sent — no other member's, and none at all for an anonymous visitor.
+  const viewerStates: Record<number, ItemProgressState> = {}
+  if (currentUser) {
+    const stateRows = await db
+      .select({ itemId: userItems.itemId, state: userItems.state })
+      .from(userItems)
+      .where(eq(userItems.userId, currentUser.id))
+    for (const row of stateRows) viewerStates[row.itemId] = row.state
+  }
+
   const catalog: Catalog = {
     items: itemRows.map((row): CatalogItem => ({
       ...row,
@@ -215,9 +230,9 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     placements: placementRows,
     collections: collectionRows,
     actorItems,
+    viewerStates,
   }
 
-  const currentUser: CurrentUser | null = sessionRows[0] ?? null
   const bootstrap =
     !currentUser && !adminRows.length ? await isBootstrapSession() : false
   return { currentUser, signedIn: Boolean(currentUser) || bootstrap, catalog }
