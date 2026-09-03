@@ -71,7 +71,7 @@ export const getCoverOptions = createServerFn({ method: "GET" })
     z.object({
       type: z.enum(itemTypes),
       openLibraryKey: z.string().optional(),
-      tmdbId: z.string().regex(/^\d+$/).optional(),
+      tmdbId: z.string().regex(/^\d+$/).optional().or(z.literal("")),
     })
   )
   .handler(async ({ data }): Promise<string[]> => {
