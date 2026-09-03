@@ -9,10 +9,12 @@ import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
 import { ItemLoanActions } from "@/components/item-loan-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
+import { ItemStateToggle } from "@/components/item-state-toggle"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { TrailerDialog } from "@/components/trailer-dialog"
 import { slugify } from "@/lib/catalog"
 import { coverPlateBackground } from "@/lib/cover-plate"
+import { useCatalog } from "@/lib/use-catalog"
 import { getItemPage } from "@/server/items"
 
 export const Route = createFileRoute("/item/$slug")({
@@ -59,6 +61,8 @@ function ItemDetail() {
     loans,
   } = Route.useLoaderData()
   const { signedIn } = useSignedInStatus()
+  const { viewerStates } = useCatalog()
+  const viewerState = viewerStates[item.id] ?? null
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
   const openLoan = loans.find((loan) => loan.returnedAt === null) ?? null
@@ -110,6 +114,12 @@ function ItemDetail() {
                 : "movies"}
           </Link>
           <div className="flex gap-2">
+            <ItemStateToggle
+              itemId={item.id}
+              signedIn={signedIn}
+              state={viewerState}
+              type={item.type}
+            />
             <ItemLoanActions
               hasOpenLoan={openLoan !== null}
               itemId={item.id}
@@ -163,13 +173,14 @@ function ItemDetail() {
               )}
               {item.status !== "owned" && (
                 <Badge variant="outline">
-                  {item.status === "reading"
-                    ? "Reading"
-                    : item.status === "watching"
-                      ? "Watching"
-                      : openLoan
-                        ? `With ${openLoan.borrowerName} since ${formatLoanDate(openLoan.lentAt)}`
-                        : "Borrowed"}
+                  {openLoan
+                    ? `With ${openLoan.borrowerName} since ${formatLoanDate(openLoan.lentAt)}`
+                    : "Borrowed"}
+                </Badge>
+              )}
+              {viewerState && (
+                <Badge variant="outline">
+                  {viewerState === "reading" ? "Reading" : "Watching"}
                 </Badge>
               )}
               {item.status === "borrowed" && isOverdue && (
