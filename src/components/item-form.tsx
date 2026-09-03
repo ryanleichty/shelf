@@ -410,6 +410,7 @@ export function ItemForm({
           ? cause.message
           : "Could not look up that barcode. You can still complete the form manually."
       )
+      setValues((current) => ({ ...current, barcode: code }))
     } finally {
       setResolvingBarcode(false)
     }
