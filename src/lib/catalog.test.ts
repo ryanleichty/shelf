@@ -104,6 +104,7 @@ const catalog: Catalog = {
   ],
   collections: [],
   actorItems: {},
+  viewerStates: {},
 }
 
 describe("catalog derivations", () => {
@@ -138,8 +139,6 @@ describe("catalog derivations", () => {
 
 describe("statusLabel", () => {
   test("names every non-owned status", () => {
-    expect(statusLabel("reading")).toBe("Reading")
-    expect(statusLabel("watching")).toBe("Watching")
     expect(statusLabel("borrowed")).toBe("Borrowed")
   })
 })

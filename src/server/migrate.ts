@@ -269,6 +269,23 @@ export async function runMigrations(client: Client) {
     if (itemColumnsAfterLoans.rows.some((row) => row.name === column))
       await client.execute(`ALTER TABLE items DROP COLUMN ${column}`)
   }
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS user_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+      state TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+  await client.execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS user_items_user_id_item_id_unique ON user_items(user_id, item_id)"
+  )
+  await client.execute(
+    "CREATE INDEX IF NOT EXISTS user_items_item_id_idx ON user_items(item_id)"
+  )
+  await migrateLegacyProgress(client)
   await migrateLegacyGenres(client)
   await migrateLegacyCreators(client)
   await client.execute(`
@@ -494,6 +511,32 @@ async function migrateLegacyLoans(client: Client) {
         WHERE loans.item_id = items.id AND loans.returned_at IS NULL
       )
   `)
+}
+
+// 'reading'/'watching' used to live on items.status, which meant only one
+// person could be reading anything. Existing rows belong to the shelf's
+// first admin; on a database with no admin yet (bootstrap flow, no stored
+// user), there is nobody to own the state, so those rows simply return to
+// 'owned' and the state is dropped. The UPDATE runs unconditionally, so
+// re-running this once no reading/watching rows remain is a no-op.
+async function migrateLegacyProgress(client: Client) {
+  const now = new Date().toISOString()
+  await client.execute({
+    sql: `
+      INSERT INTO user_items (user_id, item_id, state, started_at, updated_at)
+      SELECT
+        (SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1),
+        items.id, items.status, ?, ?
+      FROM items
+      WHERE items.status IN ('reading', 'watching')
+        AND EXISTS (SELECT 1 FROM users WHERE role = 'admin')
+      ON CONFLICT(user_id, item_id) DO NOTHING
+    `,
+    args: [now, now],
+  })
+  await client.execute(
+    "UPDATE items SET status = 'owned' WHERE status IN ('reading', 'watching')"
+  )
 }
 
 async function migrateLegacyGenres(client: Client) {

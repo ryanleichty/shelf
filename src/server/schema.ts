@@ -6,6 +6,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core"
 import {
+  itemProgressStates,
   itemStatuses,
   itemTypes,
   placementKinds,
@@ -14,10 +15,12 @@ import {
 
 export {
   itemEditions,
+  itemProgressStates,
   itemStatuses,
   itemTypes,
   userRoles,
   type ItemEdition,
+  type ItemProgressState,
   type ItemStatus,
   type ItemType,
   type UserRole,
@@ -97,6 +100,31 @@ export const items = /* #__PURE__ */ sqliteTable("items", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
+
+// A row means "a member is reading or watching this right now" — no history,
+// no rating, no progress. Finishing removes the row (see AGENTS.md).
+export const userItems = /* #__PURE__ */ sqliteTable(
+  "user_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    state: text("state", { enum: itemProgressStates }).notNull(),
+    startedAt: text("started_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_items_user_id_item_id_unique").on(
+      table.userId,
+      table.itemId
+    ),
+    index("user_items_item_id_idx").on(table.itemId),
+  ]
+)
 
 // The unique partial index enforcing one open loan per item (WHERE
 // returned_at IS NULL) cannot be expressed in Drizzle's builder, so it is
