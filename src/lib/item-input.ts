@@ -1,10 +1,5 @@
 import { z } from "zod"
-import {
-  itemEditions,
-  itemFormats,
-  itemStatuses,
-  itemTypes,
-} from "@/lib/catalog"
+import { itemEditions, itemFormats, itemTypes } from "@/lib/catalog"
 
 export const bookGenreOptions = [
   "Fiction",
@@ -44,7 +39,6 @@ export const itemInput = z
     id: z.number().int().optional(),
     slug: z.string().min(1).max(120),
     type: z.enum(itemTypes),
-    status: z.enum(itemStatuses).default("owned"),
     title: z.string().min(1).max(240),
     creator: z.string().max(240).optional().default(""),
     authors: z.array(z.string().trim().min(1).max(240)).max(20).default([]),
@@ -67,13 +61,6 @@ export const itemInput = z
         code: "custom",
         message: `Add at least one ${item.type === "book" ? "author" : "director"}.`,
         path: [item.type === "book" ? "authors" : "directors"],
-      })
-    }
-    if (item.type !== "book" && item.status === "reading") {
-      context.addIssue({
-        code: "custom",
-        message: "Only books can have Reading status.",
-        path: ["status"],
       })
     }
     if (

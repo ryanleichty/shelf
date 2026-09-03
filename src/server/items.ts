@@ -895,7 +895,6 @@ export const saveItem = createServerFn({ method: "POST" })
     const values = {
       slug: data.slug,
       type: data.type,
-      status: data.status,
       title: data.title,
       creator,
       ...(data.type !== "book" && data.tmdbId
@@ -955,7 +954,7 @@ export const saveItem = createServerFn({ method: "POST" })
     return db.transaction(async (tx) => {
       const [item] = await tx
         .insert(items)
-        .values({ ...values, createdAt: now })
+        .values({ ...values, status: "owned", createdAt: now })
         .returning({ id: items.id, slug: items.slug })
       await replaceItemTags(item.id, { genres: data.genres }, tx)
       await replaceItemCreators(item.id, data.type, primaryPeople, tx)

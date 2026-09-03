@@ -73,7 +73,6 @@ import type { Item } from "@/server/schema"
 const itemFormFields = [
   "directors",
   "authors",
-  "status",
   "format",
   "edition",
   "title",
@@ -161,11 +160,6 @@ export function ItemForm({
   )
   const isTypeControlled = onTypeChange !== undefined
   const type = isTypeControlled ? (controlledType ?? "book") : internalType
-  const [status, setStatus] = useState<"unspecified" | "reading" | "watching">(
-    item?.status === "reading" || item?.status === "watching"
-      ? item.status
-      : "unspecified"
-  )
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<LookupResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -295,7 +289,7 @@ export function ItemForm({
     setValues((current) => ({ ...current, [field]: value }))
     if (field === "slug") setSlugWasAutoFilled(false)
   }
-  const resetTypeFields = useCallback((nextType: "book" | "movie" | "tv") => {
+  const resetTypeFields = useCallback(() => {
     setQuery("")
     setResults([])
     setSearchError("")
@@ -306,14 +300,9 @@ export function ItemForm({
       format: "",
       edition: "",
     }))
-    setStatus((current) =>
-      (nextType === "movie" || nextType === "tv") && current === "reading"
-        ? "unspecified"
-        : current
-    )
   }, [])
   useEffect(() => {
-    if (isTypeControlled) resetTypeFields(type)
+    if (isTypeControlled) resetTypeFields()
   }, [isTypeControlled, resetTypeFields, type])
   function changeType(nextType: "book" | "movie" | "tv") {
     if (nextType === type) return
@@ -322,7 +311,7 @@ export function ItemForm({
       return
     }
     setInternalType(nextType)
-    resetTypeFields(nextType)
+    resetTypeFields()
   }
 
   async function choose(
@@ -417,7 +406,6 @@ export function ItemForm({
           title: values.title,
           slug: values.slug,
           type,
-          status: status === "unspecified" ? "owned" : status,
           creator:
             (type === "book" ? values.authors : values.directors)[0] ?? "",
           authors: values.authors,
@@ -774,34 +762,6 @@ export function ItemForm({
             Lowercase words separated by hyphens.
           </FieldDescription>
           <FieldError errors={fieldErrors.slug} />
-        </Field>
-        <Field data-invalid={Boolean(fieldErrors.status?.length)}>
-          <FieldLabel htmlFor="status">Status</FieldLabel>
-          <Select
-            onValueChange={(value) => setStatus(value ?? "unspecified")}
-            value={status}
-          >
-            <SelectTrigger
-              aria-invalid={Boolean(fieldErrors.status?.length)}
-              id="status"
-              name="status"
-            >
-              <SelectValue placeholder="Unspecified" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unspecified">Unspecified</SelectItem>
-              {type === "book" && (
-                <SelectItem value="reading">Reading</SelectItem>
-              )}
-              {type === "tv" && (
-                <SelectItem value="watching">Watching</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          <FieldDescription>
-            Lending is managed from the item page, not here.
-          </FieldDescription>
-          <FieldError errors={fieldErrors.status} />
         </Field>
         <Field data-invalid={Boolean(fieldErrors.year?.length)}>
           <FieldLabel htmlFor="year">Year</FieldLabel>
