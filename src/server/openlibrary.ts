@@ -2,7 +2,7 @@ import { slugify, yearFromDate } from "@/lib/catalog"
 import { bookGenreOptions } from "@/lib/item-input"
 import type { ProviderPerson } from "./item-joins"
 import type { LookupResult } from "./providers"
-import type { SyncedFields } from "./items"
+import type { SyncedFields } from "./item-sync"
 
 export function normalizeOpenLibraryWorkKey(key: string) {
   const workId = key

@@ -1,7 +1,7 @@
 import { slugify, yearFromDate } from "@/lib/catalog"
 import type { ProviderPerson } from "./item-joins"
 import type { CollectionInput, LookupResult } from "./providers"
-import type { SyncedFields } from "./items"
+import type { SyncedFields } from "./item-sync"
 
 // TMDB extras that never change once an item is saved: stored on the row at
 // save/sync time so the home billboard and item page need no runtime fetch.

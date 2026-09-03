@@ -2,7 +2,10 @@ import { eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
-import { syncItemFromProvider, type ProviderSyncResult } from "@/server/items"
+import {
+  syncItemFromProvider,
+  type ProviderSyncResult,
+} from "@/server/item-sync"
 import { items, itemTypes } from "@/server/schema"
 
 const input = z.object({
