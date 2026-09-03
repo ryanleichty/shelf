@@ -52,6 +52,7 @@ import {
   listItems,
   listPlacements,
   lists,
+  loans,
   type Item,
   type ItemRecord,
   type Collection,
@@ -343,6 +344,7 @@ export async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     actorRows,
     collectionRows,
     systemListMembershipRows,
+    openLoanRows,
   ] = await db.batch([
     db
       .select({ itemId: itemGenres.itemId, name: genres.name })
@@ -392,6 +394,14 @@ export async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
       .from(listItems)
       .innerJoin(lists, eq(listItems.listId, lists.id))
       .where(and(inArray(listItems.itemId, itemIds), eq(lists.system, true))),
+    db
+      .select({
+        itemId: loans.itemId,
+        borrowerName: loans.borrowerName,
+        dueAt: loans.dueAt,
+      })
+      .from(loans)
+      .where(and(inArray(loans.itemId, itemIds), isNull(loans.returnedAt))),
   ])
   const namesById = (rows: Array<{ itemId: number; name: string }>) => {
     const grouped = new Map<number, Array<{ itemId: number; name: string }>>()
@@ -406,6 +416,9 @@ export async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
   const actorNames = namesById(actorRows)
   const collectionsByItem = new Map<number, Collection>(
     collectionRows.map(({ itemId, ...collection }) => [itemId, collection])
+  )
+  const openLoanByItem = new Map(
+    openLoanRows.map(({ itemId, ...loan }) => [itemId, loan])
   )
   const itemTypesById = new Map(records.map((item) => [item.id, item.type]))
   const systemListItemIds = new Set(
@@ -427,6 +440,8 @@ export async function enrichItems(records: ItemRecord[]): Promise<Item[]> {
     directors: (directorNames.get(item.id) ?? []).map((person) => person.name),
     actors: (actorNames.get(item.id) ?? []).map((person) => person.name),
     isInSystemList: systemListItemIds.has(item.id),
+    borrower: openLoanByItem.get(item.id)?.borrowerName ?? null,
+    loanDueAt: openLoanByItem.get(item.id)?.dueAt ?? null,
     ...(collectionsByItem.has(item.id)
       ? { collection: collectionsByItem.get(item.id) }
       : {}),
@@ -600,7 +615,8 @@ export function toCatalogItem(item: Item): CatalogItem {
     certification: item.certification,
     runtime: item.runtime,
     pageCount: item.pageCount,
-    borrower: item.borrower,
+    borrower: item.borrower ?? null,
+    loanDueAt: item.loanDueAt ?? null,
     tagline: item.tagline,
     logoImageUrl: item.logoImageUrl,
     trailerKey: item.trailerKey,
@@ -721,7 +737,7 @@ export const getItemPage = createServerFn({ method: "GET" })
       where candidate.item_id = ${items.id} and source.item_id = ${record.id}
     )`
 
-    const [customLists, systemLists, similarRecords, collectionRows] =
+    const [customLists, systemLists, similarRecords, collectionRows, loanRows] =
       await db.batch([
         db
           .select({ slug: lists.slug, name: lists.name, containsItem })
@@ -768,7 +784,24 @@ export const getItemPage = createServerFn({ method: "GET" })
               ne(items.id, record.id)
             )
           ),
+        db
+          .select({
+            borrowerName: loans.borrowerName,
+            borrowerUserId: loans.borrowerUserId,
+            lentAt: loans.lentAt,
+            dueAt: loans.dueAt,
+            returnedAt: loans.returnedAt,
+          })
+          .from(loans)
+          .where(eq(loans.itemId, record.id))
+          .orderBy(desc(loans.lentAt)),
       ])
+
+    const { isSignedIn } = await import("./auth")
+    const signedIn = await isSignedIn()
+    const itemLoans = signedIn
+      ? loanRows
+      : loanRows.filter((loan) => loan.returnedAt === null)
 
     const collectionRecords = collectionRows.map((row) => row.item)
     const [item, ...related] = await enrichItems([
@@ -811,6 +844,7 @@ export const getItemPage = createServerFn({ method: "GET" })
         ),
       collectionPart: collectionPart >= 0 ? collectionPart : null,
       collectionPartCount: partIds?.length ?? 0,
+      loans: itemLoans,
     }
   })
 
@@ -872,8 +906,6 @@ export const saveItem = createServerFn({ method: "POST" })
       openLibraryKey: data.openLibraryKey || null,
       tmdbId: data.tmdbId || null,
       barcode: data.barcode || null,
-      borrower: data.borrower?.trim() || null,
-      loanedAt: data.loanedAt || null,
       format: data.format?.trim() || null,
       edition: normalizeEdition(data.edition),
       notes: "",

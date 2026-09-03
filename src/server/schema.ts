@@ -337,4 +337,6 @@ export type Item = ItemRecord & {
   actors: string[]
   isInSystemList: boolean
   collection?: Collection
+  borrower?: string | null
+  loanDueAt?: string | null
 }
