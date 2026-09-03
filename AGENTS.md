@@ -64,7 +64,7 @@ level of anything a client component can reach. Two rules keep that true:
 - `src/routes/api/*.tsx` declare `const api = () => import("@/server/api/…")`
   and await it inside each handler, so the route module itself pulls in no
   database, auth or provider code.
-- `src/server/shell.ts` and `src/server/items.ts` use `await import("./auth")`
+- `src/server/shell.ts` and `src/server/session.ts` use `await import("./auth")`
   _inside_ handler bodies to keep `node:crypto` out of client bundles.
 
 CI runs an SSR smoke test and greps the server log for `createSsrRpc`

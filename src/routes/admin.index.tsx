@@ -7,7 +7,8 @@ import {
 import { LogOut, Pencil, Plus, Trash2, UploadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCatalog } from "@/lib/use-catalog"
-import { deleteItem, getSignedInStatus, logout } from "@/server/items"
+import { deleteItem } from "@/server/items"
+import { getSignedInStatus, logout } from "@/server/session"
 
 export const Route = createFileRoute("/admin/")({
   beforeLoad: async () => {

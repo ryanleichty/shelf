@@ -21,7 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteItem, syncItem } from "@/server/items"
+import { deleteItem } from "@/server/items"
+import { syncItem } from "@/server/item-sync"
 
 export function ItemAdminActions({
   id,

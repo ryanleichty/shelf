@@ -8,7 +8,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { importItems, getSignedInStatus } from "@/server/items"
+import { importItems } from "@/server/items"
+import { getSignedInStatus } from "@/server/session"
 
 export const Route = createFileRoute("/admin/import")({
   beforeLoad: async () => {

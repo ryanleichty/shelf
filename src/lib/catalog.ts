@@ -124,6 +124,11 @@ export const normalizeTitle = (value: string) =>
 export const normalizeEdition = (edition?: string | null) =>
   edition?.trim() || null
 
+export function yearFromDate(value?: string) {
+  const match = value?.match(/\b(\d{4})\b/)
+  return match ? Number(match[1]) : null
+}
+
 export function parseCreatorNames(creator: string) {
   return creator
     .split(/,|\s+and\s+|\s+&\s+/i)

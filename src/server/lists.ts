@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { displayListName } from "@/lib/system-lists"
+import { slugify } from "@/lib/catalog"
 import { requireSignedIn } from "./auth"
 import { db } from "./db"
 import {
@@ -39,15 +40,6 @@ const catalogPlacementInput = z.object({
   kind: z.enum(catalogPlacementKinds),
   slugs: z.array(z.string().min(1).max(120)).min(1).max(100),
 })
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-}
 
 async function uniqueListSlug(name: string) {
   const base = slugify(name) || "list"

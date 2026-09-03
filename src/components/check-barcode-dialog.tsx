@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { checkBarcode } from "@/server/items"
+import type { checkBarcode } from "@/server/barcode"
 
 type CheckResult = Awaited<ReturnType<typeof checkBarcode>>
 
