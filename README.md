@@ -45,9 +45,11 @@ The admin’s book search uses Open Library and requires no key. Movie and TV se
 
 When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the admin is fetched server-side and persisted to Vercel Blob. Without it, Shelf keeps the original remote URL for local development.
 
-A full JSON export of the catalog — items with their joins, lists, and list order — is available at `/api/export` and linked from Settings. It is the backup path when running on the ephemeral `/tmp` database.
+A full JSON export of the catalog — items with their joins, lists, and list order — is available at `/api/export` and linked from Settings. It is the backup path when running on the ephemeral `/tmp` database. Wishlist items are included in the export with `status: "wanted"`, and the export version is unchanged.
 
 Lending is recorded in a `loans` table with full history and optional due dates, rather than as fields on the item itself. A loan links to a user account when the borrower is a shelf member, and still works when they are not.
+
+The Wishlist holds things you don't own yet — it lives at `/wishlist` and is kept out of every other browse surface. Add an entry from the Wishlist page's header button, or from a barcode check at `/check` that comes back "Not on the shelf." "Mark as owned" on a wishlist item's page moves it to the shelf in one click.
 
 ## Deploying to Vercel
 

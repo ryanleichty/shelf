@@ -65,10 +65,22 @@ writes in one transaction — a reviewer should grep for any other
 `update(items).set({ status: "borrowed" })`. A loan links to a `users` row
 when the borrower has an account, but `borrower_name` is always stored as a
 point-in-time snapshot so a loan still reads correctly after the account is
-renamed or deleted. `items.status` means only where the object is —
-`"owned"` or `"borrowed"` — and only the loan actions above ever change it;
-the form no longer offers a status field, and `saveItem`'s update path never
-touches `status`.
+renamed or deleted. `items.status` is `"wanted"` for something you don't own
+yet, `"owned"` for something on the shelf, and `"borrowed"` for an owned item
+that is currently out on loan. A `"wanted"` item can never have an open loan
+and can never carry a reading/watching state — `lendItem` and `setItemState`
+both guard against it. Only `lendItem` and `returnLoan` change `"borrowed"`,
+and `markItemOwned` (`src/server/items.ts`) is the only other writer of
+`status`, flipping a wanted item to `"owned"`; the form no longer offers a
+status field, and `saveItem`'s update path never touches `status` (its insert
+path sets `"wanted"` or `"owned"` from a `wanted` flag).
+
+`getShell` (`src/server/shell.ts`) partitions wanted rows out of
+`catalog.items` into a separate `catalog.wishlist` array — that single
+partition is why no browse surface (search, genre/author/year pages, the home
+carousels) needs its own status filter to keep wishlist items out. A new
+browse surface must read `catalog.items` (never query `items` directly), or
+it will silently count wishlist entries as owned.
 
 Reading and watching are per-member state, not a property of the item: a
 `user_items` row (`user_id`, `item_id`, `state`, `started_at`, `updated_at`,
@@ -156,23 +168,25 @@ token without the `Bearer` prefix is also accepted). Failures are
 `dryRun: true` resolves and reports everything without writing. Live schemas
 live in `src/server/api/{items,item,sync}.ts`.
 
-- `GET /api/items?type=book|movie|tv` → array of items. An unknown `type` is
-  `400 { "error": "Invalid type" }`.
+- `GET /api/items?type=book|movie|tv` → array of items, excluding wishlist
+  (`status = "wanted"`) rows — this endpoint answers "what is on the shelf".
+  An unknown `type` is `400 { "error": "Invalid type" }`.
 - `POST /api/items` — body
   `{ dryRun?, items: [{ type? (default "movie"), query, format?, edition?, status?, year?, tmdbId?, openLibraryKey? }] }`,
   max 40 entries. `query` may carry a trailing year (`"Dune (1984)"`).
   `tmdbId` is digits; `edition` is `theatrical|extended|director-cut` and is
-  movie/TV only; `status` is `""|owned` — `borrowed`, and reading/watching
-  (now per-member, not an item field — see the database section above), fall
-  into the `400 { "error": "Invalid body" }` case. →
+  movie/TV only; `status` is `""|owned` — `borrowed`, `wanted`, and
+  reading/watching (now per-member, not an item field — see the database
+  section above), fall into the `400 { "error": "Invalid body" }` case; agents
+  cannot create wishlist rows. →
   `{ added, skipped, failed, needsReview }`, where `needsReview` carries up to
   5 candidates for an ambiguous `query`.
 - `PATCH /api/items/:id` — partial
   `{ title, creator, year, format, edition, status, coverImageUrl, slug }`
   (`status` here also accepts `owned`; `borrowed` is rejected with
   `400 { "error": "Lending is managed through the app's loan actions" }`, and
-  `reading`/`watching` are rejected as `400 { "error": "Invalid body" }` since
-  they are no longer valid `status` values at all) → the
+  `wanted`/`reading`/`watching` are rejected as `400 { "error": "Invalid body" }`
+  since they are not valid `status` values here) → the
   updated row. `404` if the id is unknown, `409` if the edition already exists
   on the shelf.
 - `DELETE /api/items/:id` → `{ "ok": true }`, or `404`.
