@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createClient } from "@libsql/client"
 import { drizzle } from "drizzle-orm/libsql"
 import { beforeEach, describe, expect, test } from "vitest"
@@ -122,5 +125,36 @@ describe("samePeople", () => {
     expect(
       samePeople(current, [{ name: "A", providerId: "2" }, { name: "B" }])
     ).toBe(false)
+  })
+})
+
+describe("transactions", () => {
+  // A file-backed database, not `:memory:`: rolling back a transaction on an
+  // in-memory libsql client discards the schema along with the data.
+  test("a failing join write rolls back the item insert", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "item-joins-"))
+    const fileClient = createClient({ url: `file:${join(dir, "test.db")}` })
+    await runMigrations(fileClient)
+    const fileDatabase = drizzle({ client: fileClient, schema })
+    const now = new Date().toISOString()
+    await expect(
+      fileDatabase.transaction(async (tx) => {
+        await tx.insert(schema.items).values({
+          slug: "atomic",
+          type: "movie",
+          title: "Atomic",
+          creator: "X",
+          year: 2000,
+          createdAt: now,
+          updatedAt: now,
+        })
+        await upsertTags(9999, "genre", ["Drama"], tx) // FK violation: no item 9999
+      })
+    ).rejects.toThrow()
+    const rows = await fileClient.execute(
+      "SELECT COUNT(*) AS n FROM items WHERE slug = 'atomic'"
+    )
+    expect(Number(rows.rows[0]?.n)).toBe(0)
+    rmSync(dir, { recursive: true, force: true })
   })
 })
