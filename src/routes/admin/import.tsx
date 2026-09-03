@@ -187,9 +187,15 @@ function Import() {
           value={type}
         >
           <TabsList>
-            <TabsTrigger value="book">Books</TabsTrigger>
-            <TabsTrigger value="movie">Movies</TabsTrigger>
-            <TabsTrigger value="tv">TV</TabsTrigger>
+            <TabsTrigger disabled={!!plan} value="book">
+              Books
+            </TabsTrigger>
+            <TabsTrigger disabled={!!plan} value="movie">
+              Movies
+            </TabsTrigger>
+            <TabsTrigger disabled={!!plan} value="tv">
+              TV
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         <label className="grid gap-2 text-sm font-medium">
@@ -245,6 +251,9 @@ function Import() {
               Detected <strong>{plan.source}</strong> export —{" "}
               {plan.entries.length} row
               {plan.entries.length === 1 ? "" : "s"} to import.
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              Type is set by the CSV; clear the file to change it.
             </p>
             {plan.skipped.length > 0 && (
               <details className="mt-2">

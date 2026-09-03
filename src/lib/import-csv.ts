@@ -24,8 +24,9 @@ function plausibleYear(raw: string, now: Date): number | undefined {
 }
 
 function buildQuery(title: string, year: number | undefined): string {
-  const query = year ? `${title} (${year})` : title
-  return query.trim().slice(0, 200)
+  const suffix = year ? ` (${year})` : ""
+  const trimmedTitle = title.trim().slice(0, 200 - suffix.length)
+  return `${trimmedTitle}${suffix}`.trim()
 }
 
 function headerSet(headerRow: string[]): Set<string> {

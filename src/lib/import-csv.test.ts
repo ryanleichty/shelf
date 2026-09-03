@@ -107,6 +107,27 @@ describe("planCsvImport — Goodreads", () => {
     ].join("\n")
     expect(planCsvImport(csv, now).entries).toEqual([{ query: "Dune" }])
   })
+
+  test("does not truncate a short title's query", () => {
+    const csv = [
+      goodreadsHeader,
+      goodreadsRow({ title: "Dune", originalYear: "1965" }),
+    ].join("\n")
+    expect(planCsvImport(csv, now).entries).toEqual([{ query: "Dune (1965)" }])
+  })
+
+  test("truncates a long title so the year suffix still fits", () => {
+    const longTitle = "A".repeat(250)
+    const csv = [
+      goodreadsHeader,
+      goodreadsRow({ title: longTitle, originalYear: "1965" }),
+    ].join("\n")
+    const plan = planCsvImport(csv, now)
+    expect(plan.entries).toHaveLength(1)
+    const query = plan.entries[0].query
+    expect(query.length).toBeLessThanOrEqual(200)
+    expect(query.endsWith("(1965)")).toBe(true)
+  })
 })
 
 describe("planCsvImport — Letterboxd", () => {
