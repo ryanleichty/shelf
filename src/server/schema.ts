@@ -95,8 +95,6 @@ export const items = /* #__PURE__ */ sqliteTable("items", {
   tagline: text("tagline"),
   logoImageUrl: text("logo_image_url"),
   trailerKey: text("trailer_key"),
-  notes: text("notes").notNull().default(""),
-  acquiredAt: text("acquired_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })

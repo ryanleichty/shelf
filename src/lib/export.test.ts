@@ -29,8 +29,6 @@ const item = (id: number, overrides: Partial<Item> = {}): Item => ({
   tagline: null,
   logoImageUrl: null,
   trailerKey: null,
-  notes: "",
-  acquiredAt: null,
   createdAt: `2026-01-0${id}`,
   updatedAt: `2026-01-0${id}`,
   genres: [],
@@ -57,20 +55,6 @@ describe("buildExport", () => {
     expect(payload.listItems).toEqual([
       { listSlug: "watchlist", itemSlug: "item-1", position: 0 },
     ])
-  })
-
-  test("notes and acquiredAt never appear in an export entry", () => {
-    const payload = buildExport({
-      items: [item(1, { notes: "private", acquiredAt: "2020-01-01" })],
-      lists: [],
-      listItems: [],
-      loans: [],
-      exportedAt: "2026-09-02T00:00:00.000Z",
-    })
-
-    const [entry] = payload.items
-    expect("notes" in entry).toBe(false)
-    expect("acquiredAt" in entry).toBe(false)
   })
 
   test("an item with no collection exports collection: null", () => {

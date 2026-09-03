@@ -239,8 +239,6 @@ export async function createItemFromProvider(input: ProviderImportInput) {
         backdropImageUrl: result.backdropImageUrl || null,
         tmdbId: input.type === "book" ? null : input.providerId,
         openLibraryKey: input.type === "book" ? input.providerId : null,
-        notes: "",
-        acquiredAt: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -907,8 +905,6 @@ export const saveItem = createServerFn({ method: "POST" })
       barcode: data.barcode || null,
       format: data.format?.trim() || null,
       edition: normalizeEdition(data.edition),
-      notes: "",
-      acquiredAt: null,
       updatedAt: now,
       description: data.description?.trim() || null,
     }
@@ -927,8 +923,7 @@ export const saveItem = createServerFn({ method: "POST" })
       }
       await assertBarcodeFree(values.barcode, data.id)
       values.slug = await uniqueSlug(data.slug, data.edition, data.id)
-      const { notes: _notes, acquiredAt: _acquiredAt, ...updateValues } = values
-      await db.update(items).set(updateValues).where(eq(items.id, data.id))
+      await db.update(items).set(values).where(eq(items.id, data.id))
       await replaceItemTags(data.id, { genres: data.genres })
       await replaceItemCreators(data.id, data.type, primaryPeople)
       if (data.type !== "book")

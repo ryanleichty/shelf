@@ -188,4 +188,32 @@ describe("runMigrations", () => {
     const progress = await client.execute("SELECT id FROM user_items")
     expect(progress.rows).toHaveLength(0)
   })
+
+  test("drops the legacy notes and acquired_at columns", async () => {
+    const client = createClient({ url: ":memory:" })
+    await runMigrations(client)
+
+    const freshColumns = await client.execute("PRAGMA table_info(items)")
+    const freshNames = freshColumns.rows.map((row) => row.name)
+    expect(freshNames).not.toContain("notes")
+    expect(freshNames).not.toContain("acquired_at")
+
+    await client.execute(
+      "ALTER TABLE items ADD COLUMN notes TEXT NOT NULL DEFAULT ''"
+    )
+    await client.execute("ALTER TABLE items ADD COLUMN acquired_at TEXT")
+    await client.execute(
+      "INSERT INTO items (id, slug, type, status, title, creator, year, notes, acquired_at, created_at, updated_at) VALUES (1, 'legacy-item', 'book', 'owned', 'Legacy Item', 'Someone', 2000, 'private', '2020-01-01', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')"
+    )
+
+    await runMigrations(client)
+
+    const columns = await client.execute("PRAGMA table_info(items)")
+    const names = columns.rows.map((row) => row.name)
+    expect(names).not.toContain("notes")
+    expect(names).not.toContain("acquired_at")
+
+    const item = await client.execute("SELECT slug FROM items WHERE id = 1")
+    expect(item.rows[0]?.slug).toBe("legacy-item")
+  })
 })
