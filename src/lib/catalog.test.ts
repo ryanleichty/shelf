@@ -31,6 +31,7 @@ const item = (
   runtime: null,
   pageCount: null,
   borrower: null,
+  loanDueAt: null,
   tagline: null,
   logoImageUrl: null,
   trailerKey: null,

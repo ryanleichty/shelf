@@ -51,6 +51,7 @@ export type CatalogItem = {
   runtime: number | null
   pageCount: number | null
   borrower: string | null
+  loanDueAt: string | null
   tagline: string | null
   logoImageUrl: string | null
   trailerKey: string | null

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm"
+import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
 import type { Catalog, CatalogItem } from "@/lib/catalog"
 import { systemListSlug } from "@/lib/catalog"
 import type { CurrentUser } from "./auth"
@@ -19,6 +19,7 @@ import {
   listItems,
   listPlacements,
   lists,
+  loans,
   sessions,
   users,
 } from "./schema"
@@ -52,7 +53,6 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     certification: items.certification,
     runtime: items.runtime,
     pageCount: items.pageCount,
-    borrower: items.borrower,
     tagline: items.tagline,
     logoImageUrl: items.logoImageUrl,
     trailerKey: items.trailerKey,
@@ -72,6 +72,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     placementRows,
     actorRows,
     adminRows,
+    openLoanRows,
   ] = await db.batch([
     db
       .select({
@@ -168,6 +169,14 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
       .from(users)
       .where(eq(users.role, "admin"))
       .limit(1),
+    db
+      .select({
+        itemId: loans.itemId,
+        borrowerName: loans.borrowerName,
+        dueAt: loans.dueAt,
+      })
+      .from(loans)
+      .where(isNull(loans.returnedAt)),
   ])
 
   const genreNames = groupNames(genreRows)
@@ -175,6 +184,9 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
   const directorNames = groupNames(directorRows)
   const collectionByItem = new Map(
     itemCollectionRows.map((row) => [row.itemId, row.collectionId])
+  )
+  const openLoanByItem = new Map(
+    openLoanRows.map(({ itemId, ...loan }) => [itemId, loan])
   )
   const systemListIds = new Map(
     listRows.filter((list) => list.system).map((list) => [list.slug, list.id])
@@ -195,6 +207,8 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
       isInSystemList: membershipKeys.has(
         `${systemListIds.get(systemListSlug(row.type))}:${row.id}`
       ),
+      borrower: openLoanByItem.get(row.id)?.borrowerName ?? null,
+      loanDueAt: openLoanByItem.get(row.id)?.dueAt ?? null,
     })),
     lists: listRows,
     memberships: membershipRows,
