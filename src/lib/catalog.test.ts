@@ -51,6 +51,7 @@ const catalog: Catalog = {
     item(2, { genres: ["Drama"] }),
     item(3, { type: "book", directors: [], authors: ["John Piper"] }),
   ],
+  wishlist: [],
   lists: [{ id: 10, slug: "watchlist", name: "Watchlist", system: true }],
   memberships: [
     { listId: 10, itemId: 2, position: 1 },

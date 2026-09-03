@@ -90,6 +90,9 @@ export type CatalogCollection = {
 
 export type Catalog = {
   items: CatalogItem[]
+  // Items you don't own yet (items.status === "wanted"). Kept out of
+  // `items` so no browse surface, search or carousel counts them as owned.
+  wishlist: CatalogItem[]
   lists: CatalogList[]
   memberships: Array<{ listId: number; itemId: number; position: number }>
   placements: CatalogPlacement[]

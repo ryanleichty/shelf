@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm"
+import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm"
 import type { Catalog, CatalogItem } from "@/lib/catalog"
 import { systemListSlug } from "@/lib/catalog"
 import type { CurrentUser } from "./auth"
@@ -75,6 +75,7 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     actorRows,
     adminRows,
     openLoanRows,
+    wantedRows,
   ] = await db.batch([
     db
       .select({
@@ -94,7 +95,11 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
         )
       )
       .limit(1),
-    db.select(catalogColumns).from(items).orderBy(asc(items.title)),
+    db
+      .select(catalogColumns)
+      .from(items)
+      .where(ne(items.status, "wanted"))
+      .orderBy(asc(items.title)),
     db
       .select({ itemId: itemGenres.itemId, name: genres.name })
       .from(itemGenres)
@@ -179,6 +184,11 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
       })
       .from(loans)
       .where(isNull(loans.returnedAt)),
+    db
+      .select(catalogColumns)
+      .from(items)
+      .where(eq(items.status, "wanted"))
+      .orderBy(asc(items.title)),
   ])
 
   const genreNames = groupNames(genreRows)
@@ -212,19 +222,22 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
     for (const row of stateRows) viewerStates[row.itemId] = row.state
   }
 
+  const toCatalogItem = (row: (typeof itemRows)[number]): CatalogItem => ({
+    ...row,
+    genres: genreNames.get(row.id) ?? [],
+    authors: authorNames.get(row.id) ?? [],
+    directors: directorNames.get(row.id) ?? [],
+    collectionId: collectionByItem.get(row.id) ?? null,
+    isInSystemList: membershipKeys.has(
+      `${systemListIds.get(systemListSlug(row.type))}:${row.id}`
+    ),
+    borrower: openLoanByItem.get(row.id)?.borrowerName ?? null,
+    loanDueAt: openLoanByItem.get(row.id)?.dueAt ?? null,
+  })
+
   const catalog: Catalog = {
-    items: itemRows.map((row): CatalogItem => ({
-      ...row,
-      genres: genreNames.get(row.id) ?? [],
-      authors: authorNames.get(row.id) ?? [],
-      directors: directorNames.get(row.id) ?? [],
-      collectionId: collectionByItem.get(row.id) ?? null,
-      isInSystemList: membershipKeys.has(
-        `${systemListIds.get(systemListSlug(row.type))}:${row.id}`
-      ),
-      borrower: openLoanByItem.get(row.id)?.borrowerName ?? null,
-      loanDueAt: openLoanByItem.get(row.id)?.dueAt ?? null,
-    })),
+    items: itemRows.map(toCatalogItem),
+    wishlist: wantedRows.map(toCatalogItem),
     lists: listRows,
     memberships: membershipRows,
     placements: placementRows,
