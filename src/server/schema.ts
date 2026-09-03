@@ -80,8 +80,6 @@ export const items = /* #__PURE__ */ sqliteTable("items", {
   openLibraryKey: text("open_library_key"),
   tmdbId: text("tmdb_id"),
   barcode: text("barcode").unique(),
-  borrower: text("borrower"),
-  loanedAt: text("loaned_at"),
   format: text("format"),
   edition: text("edition"),
   description: text("description"),
@@ -99,6 +97,28 @@ export const items = /* #__PURE__ */ sqliteTable("items", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 })
+
+// The unique partial index enforcing one open loan per item (WHERE
+// returned_at IS NULL) cannot be expressed in Drizzle's builder, so it is
+// created as raw SQL in runMigrations instead.
+export const loans = /* #__PURE__ */ sqliteTable(
+  "loans",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    borrowerUserId: integer("borrower_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    borrowerName: text("borrower_name").notNull(),
+    lentAt: text("lent_at").notNull(),
+    dueAt: text("due_at"),
+    returnedAt: text("returned_at"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("loans_item_id_idx").on(table.itemId)]
+)
 
 export const genres = /* #__PURE__ */ sqliteTable("genres", {
   id: integer("id").primaryKey({ autoIncrement: true }),
