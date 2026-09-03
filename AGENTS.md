@@ -82,6 +82,14 @@ carousels) needs its own status filter to keep wishlist items out. A new
 browse surface must read `catalog.items` (never query `items` directly), or
 it will silently count wishlist entries as owned.
 
+A wishlist entry is deliberately a real `items` row rather than a row in a
+separate `wishlist` table. That choice buys the item page, provider metadata
+sync, the genre and people joins, and `itemExists` deduplication against a
+copy you already own, and it makes buying something a one-field status flip
+instead of a create-then-delete. The separate table was considered and
+rejected; do not refactor wanted rows back out of `items` without re-reading
+the partition rule above.
+
 Reading and watching are per-member state, not a property of the item: a
 `user_items` row (`user_id`, `item_id`, `state`, `started_at`, `updated_at`,
 unique on `(user_id, item_id)`, both foreign keys `ON DELETE CASCADE`) exists
