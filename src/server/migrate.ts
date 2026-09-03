@@ -468,9 +468,9 @@ async function replaceGenreJoins(
   itemId: number,
   names: string[]
 ) {
-  for (const name of [
-    ...new Set(names.map((value) => value.trim()).filter(Boolean)),
-  ]) {
+  for (const name of new Set(
+    names.map((value) => value.trim()).filter(Boolean)
+  )) {
     const slug = slugify(name)
     if (!slug) continue
     await client.execute({
@@ -564,7 +564,7 @@ async function replaceCreatorJoins(
   const table = kind === "author" ? "authors" : "directors"
   const joinTable = kind === "author" ? "item_authors" : "item_directors"
   const personColumn = kind === "author" ? "author_id" : "director_id"
-  for (const name of [...new Set(names)]) {
+  for (const name of new Set(names)) {
     const slug = slugify(name)
     if (!slug) continue
     await client.execute({
