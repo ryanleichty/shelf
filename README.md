@@ -47,6 +47,8 @@ When `BLOB_READ_WRITE_TOKEN` is configured, a remote cover URL saved through the
 
 A full JSON export of the catalog — items with their joins, lists, and list order — is available at `/api/export` and linked from Settings. It is the backup path when running on the ephemeral `/tmp` database.
 
+Lending is recorded in a `loans` table with full history and optional due dates, rather than as fields on the item itself. A loan links to a user account when the borrower is a shelf member, and still works when they are not.
+
 ## Deploying to Vercel
 
 1. Create a Turso database and apply the schema using `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` with `pnpm db:migrate`.

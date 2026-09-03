@@ -56,6 +56,17 @@ and auto-seeds the sample items on first query. Note that the `db:migrate`,
 `db:seed` and `db:reset` scripts run under `tsx`, which does not load `.env`,
 while `pnpm dev` (Nitro) does — the two can target different databases.
 
+Lending is recorded in a `loans` table, not on `items` directly:
+`items.status === "borrowed"` if and only if the item has an open `loans` row
+(`returned_at IS NULL`), enforced by a unique partial index
+(`loans_open_item_unique`). Only `lendItem` and `returnLoan`
+(`src/server/loans.ts`) may set or clear `"borrowed"` status, each doing both
+writes in one transaction — a reviewer should grep for any other
+`update(items).set({ status: "borrowed" })`. A loan links to a `users` row
+when the borrower has an account, but `borrower_name` is always stored as a
+point-in-time snapshot so a loan still reads correctly after the account is
+renamed or deleted.
+
 ## Bundle hygiene
 
 Never import `@/server/db`, `@/server/auth`, or any `node:` module at the top
@@ -126,13 +137,17 @@ live in `src/server/api/{items,item,sync}.ts`.
   `{ dryRun?, items: [{ type? (default "movie"), query, format?, edition?, status?, year?, tmdbId?, openLibraryKey? }] }`,
   max 40 entries. `query` may carry a trailing year (`"Dune (1984)"`).
   `tmdbId` is digits; `edition` is `theatrical|extended|director-cut` and is
-  movie/TV only; `status` is `""|reading|watching|borrowed` and defaults to
-  `owned`. → `{ added, skipped, failed, needsReview }`, where `needsReview`
+  movie/TV only; `status` is `""|owned|reading|watching` and defaults to
+  `owned` — `borrowed` is rejected (lending is managed through the app's loan
+  actions, not this API) and falls into the `400 { "error": "Invalid body" }`
+  case. → `{ added, skipped, failed, needsReview }`, where `needsReview`
   carries up to 5 candidates for an ambiguous `query`.
 - `PATCH /api/items/:id` — partial
   `{ title, creator, year, format, edition, status, coverImageUrl, slug }`
-  (`status` here also accepts `owned`) → the updated row. `404` if the id is
-  unknown, `409` if the edition already exists on the shelf.
+  (`status` here also accepts `owned`, but `borrowed` is rejected with
+  `400 { "error": "Lending is managed through the app's loan actions" }`) → the
+  updated row. `404` if the id is unknown, `409` if the edition already exists
+  on the shelf.
 - `DELETE /api/items/:id` → `{ "ok": true }`, or `404`.
 - `POST /api/items/sync` — body `{ dryRun?, ids?, type? }`, `ids` max 40 and
   the selection is capped at 40 rows either way. Re-fetches provider metadata.

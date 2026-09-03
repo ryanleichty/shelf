@@ -1,8 +1,8 @@
 import type { Item } from "@/server/schema"
 
 // Bumped when the payload shape changes incompatibly.
-// v2: dropped items.borrower/loanedAt (now lending history) in favor of a
-// top-level `loans` section.
+// v2: removed the two per-item lending fields in favor of a top-level
+// `loans` section with full history.
 export const EXPORT_VERSION = 2
 
 export function buildExport(input: {
