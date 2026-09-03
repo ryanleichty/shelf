@@ -161,9 +161,7 @@ export function ItemForm({
   )
   const isTypeControlled = onTypeChange !== undefined
   const type = isTypeControlled ? (controlledType ?? "book") : internalType
-  const [status, setStatus] = useState<
-    "unspecified" | "reading" | "watching"
-  >(
+  const [status, setStatus] = useState<"unspecified" | "reading" | "watching">(
     item?.status === "reading" || item?.status === "watching"
       ? item.status
       : "unspecified"

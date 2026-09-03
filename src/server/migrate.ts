@@ -264,9 +264,7 @@ export async function runMigrations(client: Client) {
   )
   await migrateLegacyLoans(client)
   // Read a fresh PRAGMA: the `columns` snapshot above predates the backfill.
-  const itemColumnsAfterLoans = await client.execute(
-    "PRAGMA table_info(items)"
-  )
+  const itemColumnsAfterLoans = await client.execute("PRAGMA table_info(items)")
   for (const column of ["borrower", "loaned_at"]) {
     if (itemColumnsAfterLoans.rows.some((row) => row.name === column))
       await client.execute(`ALTER TABLE items DROP COLUMN ${column}`)

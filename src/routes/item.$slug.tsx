@@ -7,6 +7,7 @@ import { HomeCarousel } from "@/components/home-carousel"
 import { Badge } from "@/components/ui/badge"
 import { BluRayIcon, DvdIcon } from "@/components/format-icons"
 import { ItemAdminActions } from "@/components/item-admin-actions"
+import { ItemLoanActions } from "@/components/item-loan-actions"
 import { ItemListMenu } from "@/components/item-list-menu"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { TrailerDialog } from "@/components/trailer-dialog"
@@ -55,10 +56,16 @@ function ItemDetail() {
     collectionItems,
     collectionPart,
     collectionPartCount,
+    loans,
   } = Route.useLoaderData()
   const { signedIn } = useSignedInStatus()
   const search = Route.useSearch()
   const [lastCatalogQuery, setLastCatalogQuery] = useState<string>()
+  const openLoan = loans.find((loan) => loan.returnedAt === null) ?? null
+  const isOverdue = Boolean(
+    openLoan?.dueAt && new Date(`${openLoan.dueAt}T12:00:00`) < new Date()
+  )
+  const pastLoans = loans.filter((loan) => loan.returnedAt !== null)
 
   useEffect(() => {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
@@ -102,15 +109,22 @@ function ItemDetail() {
                 ? "TV"
                 : "movies"}
           </Link>
-          <ItemAdminActions
-            id={item.id}
-            providerId={
-              item.type === "book" ? item.openLibraryKey : item.tmdbId
-            }
-            signedIn={signedIn}
-            title={item.title}
-            type={item.type}
-          />
+          <div className="flex gap-2">
+            <ItemLoanActions
+              hasOpenLoan={openLoan !== null}
+              itemId={item.id}
+              signedIn={signedIn}
+            />
+            <ItemAdminActions
+              id={item.id}
+              providerId={
+                item.type === "book" ? item.openLibraryKey : item.tmdbId
+              }
+              signedIn={signedIn}
+              title={item.title}
+              type={item.type}
+            />
+          </div>
         </div>
         <article className="mt-8 grid gap-8 md:grid-cols-[minmax(220px,320px)_1fr]">
           <div className="relative aspect-2/3 overflow-hidden rounded-lg bg-muted after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-black/10">
@@ -153,8 +167,13 @@ function ItemDetail() {
                     ? "Reading"
                     : item.status === "watching"
                       ? "Watching"
-                      : "Borrowed"}
+                      : openLoan
+                        ? `With ${openLoan.borrowerName} since ${formatLoanDate(openLoan.lentAt)}`
+                        : "Borrowed"}
                 </Badge>
+              )}
+              {item.status === "borrowed" && isOverdue && (
+                <Badge variant="destructive">Overdue</Badge>
               )}
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -293,15 +312,21 @@ function ItemDetail() {
               {item.type === "book" && item.isbn13?.trim() && (
                 <p>ISBN-13: {item.isbn13.trim()}</p>
               )}
-              {item.status === "borrowed" && item.borrower && (
-                <p>
-                  With {item.borrower}
-                  {item.loanedAt
-                    ? ` · out since ${new Date(`${item.loanedAt}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" })}`
-                    : ""}
-                </p>
-              )}
             </div>
+            {signedIn && loans.length > 1 && (
+              <div className="mt-6">
+                <h2 className="text-sm font-medium">Loan history</h2>
+                <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
+                  {pastLoans.map((loan, index) => (
+                    <li key={index}>
+                      {loan.borrowerName}, {formatLoanDate(loan.lentAt)}
+                      {" → "}
+                      {loan.returnedAt ? formatLoanDate(loan.returnedAt) : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </article>
       </div>
@@ -346,6 +371,14 @@ function ItemDetail() {
       )}
     </main>
   )
+}
+
+function formatLoanDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
 }
 
 function formatLabel(format: string) {

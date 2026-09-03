@@ -65,7 +65,9 @@ export const handlers = {
               status: z
                 .enum(
                   itemStatuses.filter(
-                    (status): status is Exclude<
+                    (
+                      status
+                    ): status is Exclude<
                       (typeof itemStatuses)[number],
                       "borrowed"
                     > => status !== "borrowed"
