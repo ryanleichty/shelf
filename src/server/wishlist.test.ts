@@ -73,3 +73,37 @@ describe("a wanted item carries no loan", () => {
     expect(loans.rows).toHaveLength(0)
   })
 })
+
+describe("the person page join predicate", () => {
+  test("an author is only found through items the catalog can show", async () => {
+    const client = createClient({ url: ":memory:" })
+    await runMigrations(client)
+    await insertItem(client, "owned-book", "owned")
+    await insertItem(client, "wanted-book", "wanted")
+    await client.execute(
+      "INSERT INTO authors (slug, name) VALUES ('kept', 'Kept'), ('wishlist-only', 'Wishlist Only')"
+    )
+    await client.execute(`
+      INSERT INTO item_authors (item_id, author_id)
+      SELECT i.id, a.id FROM items i, authors a
+      WHERE (i.slug = 'owned-book' AND a.slug = 'kept')
+         OR (i.slug = 'wanted-book' AND a.slug = 'wishlist-only')
+    `)
+
+    const rowsFor = async (slug: string) =>
+      (
+        await client.execute({
+          sql: `
+            SELECT ia.item_id FROM authors a
+            JOIN item_authors ia ON ia.author_id = a.id
+            JOIN items i ON i.id = ia.item_id AND i.status != 'wanted'
+            WHERE a.slug = ?
+          `,
+          args: [slug],
+        })
+      ).rows
+
+    expect(await rowsFor("kept")).toHaveLength(1)
+    expect(await rowsFor("wishlist-only")).toHaveLength(0)
+  })
+})

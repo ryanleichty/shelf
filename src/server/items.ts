@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm"
+import { type SQLiteColumn } from "drizzle-orm/sqlite-core"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequestHeader } from "@tanstack/react-start/server"
 import { z } from "zod"
@@ -628,6 +629,14 @@ export function toCatalogItem(item: Item): CatalogItem {
   }
 }
 
+// Person and tag pages resolve their tiles from `catalog.items`, which has no
+// wishlist rows, so the join has to drop them here too: a name whose only
+// titles are wanted (or whose join rows are orphaned) must 404, not render an
+// empty grid.
+function browsableItem(itemId: SQLiteColumn) {
+  return and(eq(items.id, itemId), ne(items.status, "wanted"))
+}
+
 function tagResult(rows: Array<{ name: string; itemId: number | null }>) {
   const [first] = rows
   if (!first) return null
@@ -648,12 +657,14 @@ export const getItemsByTag = createServerFn({ method: "GET" })
         ? await db
             .select({ name: genres.name, itemId: itemGenres.itemId })
             .from(genres)
-            .leftJoin(itemGenres, eq(itemGenres.genreId, genres.id))
+            .innerJoin(itemGenres, eq(itemGenres.genreId, genres.id))
+            .innerJoin(items, browsableItem(itemGenres.itemId))
             .where(eq(genres.slug, data.slug))
         : await db
             .select({ name: keywords.name, itemId: itemKeywords.itemId })
             .from(keywords)
-            .leftJoin(itemKeywords, eq(itemKeywords.keywordId, keywords.id))
+            .innerJoin(itemKeywords, eq(itemKeywords.keywordId, keywords.id))
+            .innerJoin(items, browsableItem(itemKeywords.itemId))
             .where(eq(keywords.slug, data.slug))
     )
   )
@@ -671,21 +682,24 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
         ? await db
             .select({ name: authors.name, itemId: itemAuthors.itemId })
             .from(authors)
-            .leftJoin(itemAuthors, eq(itemAuthors.authorId, authors.id))
+            .innerJoin(itemAuthors, eq(itemAuthors.authorId, authors.id))
+            .innerJoin(items, browsableItem(itemAuthors.itemId))
             .where(eq(authors.slug, data.slug))
         : data.kind === "director"
           ? await db
               .select({ name: directors.name, itemId: itemDirectors.itemId })
               .from(directors)
-              .leftJoin(
+              .innerJoin(
                 itemDirectors,
                 eq(itemDirectors.directorId, directors.id)
               )
+              .innerJoin(items, browsableItem(itemDirectors.itemId))
               .where(eq(directors.slug, data.slug))
           : await db
               .select({ name: actors.name, itemId: itemActors.itemId })
               .from(actors)
-              .leftJoin(itemActors, eq(itemActors.actorId, actors.id))
+              .innerJoin(itemActors, eq(itemActors.actorId, actors.id))
+              .innerJoin(items, browsableItem(itemActors.itemId))
               .where(eq(actors.slug, data.slug))
     )
   )
