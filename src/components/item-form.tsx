@@ -593,7 +593,11 @@ export function ItemForm({
           </form>
           {barcodeResult && (
             <Field>
-              <FieldDescription>Already on Shelf</FieldDescription>
+              <FieldDescription>
+                {barcodeResult.item.status === "wanted"
+                  ? "Already on your wishlist"
+                  : "Already on Shelf"}
+              </FieldDescription>
               <Link
                 className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                 params={{ slug: barcodeResult.item.slug }}
