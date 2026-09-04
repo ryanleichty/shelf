@@ -18,8 +18,8 @@ lookup, Settings and user management. A token-guarded JSON API under
 | `pnpm lint`            | oxlint                                                        |
 | `pnpm format`          | oxfmt, writing changes                                        |
 | `pnpm check`           | oxfmt in `--check` mode (what CI runs)                        |
-| `pnpm typecheck`       | Generates the route tree if missing, then `tsc --noEmit`      |
-| `pnpm routes:generate` | Writes `src/routeTree.gen.ts` only when it is absent          |
+| `pnpm typecheck`       | Regenerates the route tree, then `tsc --noEmit`               |
+| `pnpm routes:generate` | Rewrites `src/routeTree.gen.ts` from the route files          |
 | `pnpm bundle:check`    | Client bundle size budget (`scripts/check-bundle-budget.mjs`) |
 | `pnpm db:migrate`      | Applies `runMigrations` ahead of time                         |
 | `pnpm db:seed`         | Inserts the sample classics                                   |
@@ -33,9 +33,10 @@ pnpm lint && pnpm check && pnpm typecheck && pnpm test && pnpm build && pnpm bun
 
 ## Fresh clone
 
-`src/routeTree.gen.ts` is generated and gitignored. `pnpm typecheck` generates
-it when missing; `pnpm dev` and `pnpm build` keep it current. A bare `tsc` in a
-fresh clone will fail on the missing file — run `pnpm typecheck` instead.
+`src/routeTree.gen.ts` is generated and gitignored. `pnpm typecheck` rewrites
+it every run, and `pnpm dev` and `pnpm build` keep it current. A bare `tsc`
+will fail on the missing file in a fresh clone, and read a stale one after a
+route is added — run `pnpm typecheck` instead.
 
 ## Database and migrations
 

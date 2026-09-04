@@ -16,7 +16,7 @@
     "check": "oxfmt --check",
     "bundle:check": "node scripts/check-bundle-budget.mjs",
     "typecheck": "pnpm routes:generate && tsc --noEmit",
-    "routes:generate": "test -f src/routeTree.gen.ts || tsr generate",
+    "routes:generate": "tsr generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "rm -f /tmp/shelf.db && pnpm db:migrate && pnpm db:seed"
