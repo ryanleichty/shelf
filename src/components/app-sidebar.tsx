@@ -49,6 +49,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 const CatalogCommand = lazy(() => import("@/components/catalog-command"))
@@ -84,6 +85,7 @@ export function AppSidebar({
   const router = useRouter()
   const { currentUser, signedIn, setCurrentUser, setSignedIn } =
     useSignedInStatus()
+  const { isMobile, setOpenMobile } = useSidebar()
   const [openNavigation, setOpenNavigation] = useState<Record<string, boolean>>(
     {}
   )
@@ -187,7 +189,16 @@ export function AppSidebar({
     )
   }
 
+  // The user dropdown keeps the mobile sidebar open so the menu survives the
+  // tap that opens it, so choosing an item has to close the sidebar itself.
+  function closeMobileSidebar() {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
   async function signOut() {
+    closeMobileSidebar()
     await logout()
     await router.invalidate()
     setCurrentUser(null)
@@ -322,7 +333,10 @@ export function AppSidebar({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="top">
                     <DropdownMenuGroup>
-                      <DropdownMenuItem render={<Link to="/settings" />}>
+                      <DropdownMenuItem
+                        onClick={closeMobileSidebar}
+                        render={<Link to="/settings" />}
+                      >
                         <SettingsIcon /> Settings
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={signOut}>

@@ -511,6 +511,10 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
+function isPopupTrigger(haspopup: React.AriaAttributes["aria-haspopup"]) {
+  return haspopup != null && haspopup !== false && haspopup !== "false"
+}
+
 function SidebarMenuButton({
   render,
   isActive = false,
@@ -525,13 +529,18 @@ function SidebarMenuButton({
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, setOpenMobile, state } = useSidebar()
+  // A button that opens a popup (a dropdown menu, say) anchors that popup to
+  // itself, so closing the mobile sidebar on click would unmount the popup
+  // before it could be used. Such a button leaves the sidebar open and lets
+  // the popup close it once something in it is chosen.
+  const opensPopup = isPopupTrigger(props["aria-haspopup"])
   const comp = useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(
       {
         className: cn(sidebarMenuButtonVariants({ variant, size }), className),
         onClick: () => {
-          if (isMobile) {
+          if (isMobile && !opensPopup) {
             setOpenMobile(false)
           }
         },
