@@ -100,7 +100,7 @@
   @apply text-xs text-muted-foreground;
 }
 .lookup-results {
-  @apply mt-2 divide-y rounded-md border;
+  @apply mt-2 max-h-80 divide-y overflow-y-auto rounded-md border;
 }
 .lookup-results button {
   @apply flex w-full items-center gap-3 p-2 text-left hover:bg-accent;

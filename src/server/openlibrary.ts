@@ -45,7 +45,7 @@ export async function lookupBooks(query: string): Promise<LookupResult[]> {
     "fields",
     "key,title,author_name,author_key,first_publish_year,cover_i"
   )
-  url.searchParams.set("limit", "6")
+  url.searchParams.set("limit", "20")
   const response = await fetch(url, {
     signal: AbortSignal.timeout(10_000),
     headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
