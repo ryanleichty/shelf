@@ -26,7 +26,9 @@ function NewItem() {
       </h1>
       <ItemForm
         initialBarcode={barcode}
-        onTypeChange={(type) => navigate({ search: { type } })}
+        onTypeChange={(type) =>
+          navigate({ search: (current) => ({ ...current, type }) })
+        }
         type={selectedType}
         wanted={wanted}
       />

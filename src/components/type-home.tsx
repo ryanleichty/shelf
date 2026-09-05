@@ -6,7 +6,8 @@ import type { ReactNode } from "react"
 import { HomeCarousel } from "@/components/home-carousel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import type { CatalogItem, HomeRow } from "@/lib/catalog"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { formatRuntime, type CatalogItem, type HomeRow } from "@/lib/catalog"
 
 export function TypeHome({
   addLabel,
@@ -108,9 +109,11 @@ export function TypeHome({
         </div>
       ) : (
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="font-medium">The shelf is empty.</p>
-          </div>
+          <Empty className="border p-12">
+            <EmptyHeader>
+              <EmptyTitle>The shelf is empty.</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         </div>
       )}
     </main>
@@ -174,10 +177,4 @@ function validPageCount(pageCount: number | null): pageCount is number {
     Number.isInteger(pageCount) &&
     pageCount > 0
   )
-}
-
-function formatRuntime(runtime: number) {
-  const hours = Math.floor(runtime / 60)
-  const minutes = runtime % 60
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }

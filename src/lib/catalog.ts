@@ -140,12 +140,35 @@ export function parseCreatorNames(creator: string) {
     .filter(Boolean)
 }
 
+// URL segment for each type: /books, /wishlist/books, ...
+export const typeSegments = {
+  book: "books",
+  movie: "movies",
+  tv: "tv",
+} as const
+export type TypeSegment = (typeof typeSegments)[ItemType]
+export const typeLabels = { book: "Books", movie: "Movies", tv: "TV" } as const
+
 export function systemListSlug(type: ItemType) {
   return type === "book" ? "reading-list" : "watchlist"
 }
 
 export function statusLabel(status: Exclude<ItemStatus, "owned">) {
   return status === "borrowed" ? "Borrowed" : "Wishlist"
+}
+
+export function formatRuntime(runtime: number) {
+  const hours = Math.floor(runtime / 60)
+  const minutes = runtime % 60
+  if (!hours) return `${minutes}m`
+  if (!minutes) return `${hours}h`
+  return `${hours}h ${minutes}m`
+}
+
+export function editionLabel(edition: string) {
+  return edition === "director-cut"
+    ? "Director's Cut"
+    : edition[0].toUpperCase() + edition.slice(1)
 }
 
 const byTitle = (left: CatalogItem, right: CatalogItem) =>

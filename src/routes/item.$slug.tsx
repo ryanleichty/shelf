@@ -18,7 +18,13 @@ import { ItemListMenu } from "@/components/item-list-menu"
 import { ItemStateToggle } from "@/components/item-state-toggle"
 import { useSignedInStatus } from "@/components/signed-in-status"
 import { TrailerDialog } from "@/components/trailer-dialog"
-import { slugify, statusLabel } from "@/lib/catalog"
+import {
+  editionLabel,
+  formatRuntime,
+  slugify,
+  statusLabel,
+  typeSegments,
+} from "@/lib/catalog"
 import { coverPlateBackground } from "@/lib/cover-plate"
 import { useCatalog } from "@/lib/use-catalog"
 import { getItemPage, markItemOwned } from "@/server/items"
@@ -99,6 +105,8 @@ function ItemDetail() {
     setLastCatalogQuery(getLastCatalogQuery(item.type))
   }, [item.type])
 
+  const wanted = item.status === "wanted"
+
   return (
     <main>
       {item.type !== "book" && item.backdropImageUrl && (
@@ -113,33 +121,43 @@ function ItemDetail() {
       )}
       <div className="container mx-auto max-w-5xl px-4 py-10">
         <div className="flex items-start justify-between gap-4">
-          <Link
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            search={{ query: lastCatalogQuery }}
-            to={
-              search.from === "all"
-                ? item.type === "book"
-                  ? "/books/all"
-                  : item.type === "tv"
-                    ? "/tv/all"
-                    : "/movies/all"
-                : item.type === "book"
-                  ? "/books"
-                  : item.type === "tv"
-                    ? "/tv"
-                    : "/movies"
-            }
-          >
-            <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
-            {item.type === "book"
-              ? "books"
-              : item.type === "tv"
-                ? "TV"
-                : "movies"}
-          </Link>
+          {wanted ? (
+            <Link
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              params={{ section: typeSegments[item.type] }}
+              to="/wishlist/$section"
+            >
+              <ArrowLeft aria-hidden="true" size={15} /> Back to wishlist
+            </Link>
+          ) : (
+            <Link
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              search={{ query: lastCatalogQuery }}
+              to={
+                search.from === "all"
+                  ? item.type === "book"
+                    ? "/books/all"
+                    : item.type === "tv"
+                      ? "/tv/all"
+                      : "/movies/all"
+                  : item.type === "book"
+                    ? "/books"
+                    : item.type === "tv"
+                      ? "/tv"
+                      : "/movies"
+              }
+            >
+              <ArrowLeft aria-hidden="true" size={15} /> Back to{" "}
+              {item.type === "book"
+                ? "books"
+                : item.type === "tv"
+                  ? "TV"
+                  : "movies"}
+            </Link>
+          )}
           <div className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
-              {item.status === "wanted" ? (
+              {wanted ? (
                 signedIn && (
                   <Button disabled={markingOwned} onClick={markOwned}>
                     Mark as owned
@@ -213,7 +231,7 @@ function ItemDetail() {
                 <span>{item.pageCount} pages</span>
               )}
               {item.status !== "owned" && (
-                <Badge variant="outline">
+                <Badge variant={wanted ? "default" : "outline"}>
                   {openLoan
                     ? `With ${openLoan.borrowerName} since ${formatLoanDate(openLoan.lentAt)}`
                     : statusLabel(item.status)}
@@ -272,9 +290,9 @@ function ItemDetail() {
             <ItemListMenu
               itemId={item.id}
               itemType={item.type}
-              lists={item.customLists}
+              lists={wanted ? [] : item.customLists}
               signedIn={signedIn}
-              systemList={item.systemList}
+              systemList={wanted ? null : item.systemList}
               trailer={
                 item.trailerKey ? (
                   <TrailerDialog
@@ -413,7 +431,7 @@ function ItemDetail() {
             className="container mx-auto mb-4 max-w-5xl px-4 text-xl font-semibold tracking-tight"
             id="also-on-the-shelf"
           >
-            Also on the shelf
+            {wanted ? "Also on the wishlist" : "Also on the shelf"}
           </h2>
           <HomeCarousel
             id={`also-on-the-shelf-${item.id}`}
@@ -451,18 +469,6 @@ function validPageCount(pageCount: number | null): pageCount is number {
     Number.isInteger(pageCount) &&
     pageCount > 0
   )
-}
-
-function formatRuntime(runtime: number) {
-  const hours = Math.floor(runtime / 60)
-  const minutes = runtime % 60
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
-}
-
-function editionLabel(edition: string) {
-  return edition === "director-cut"
-    ? "Director's Cut"
-    : edition[0].toUpperCase() + edition.slice(1)
 }
 
 function titleCase(value: string) {

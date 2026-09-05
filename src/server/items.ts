@@ -768,13 +768,22 @@ export const getItemPage = createServerFn({ method: "GET" })
           .select()
           .from(items)
           .where(
-            and(
-              eq(items.type, record.type),
-              eq(items.status, "owned"),
-              ne(items.id, record.id),
-              outsideSourceCollection,
-              or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
-            )
+            // A wishlist item's carousel is the rest of the wishlist (it is
+            // small, so no similarity filter); an owned item's is similar
+            // owned titles.
+            record.status === "wanted"
+              ? and(
+                  eq(items.type, record.type),
+                  eq(items.status, "wanted"),
+                  ne(items.id, record.id)
+                )
+              : and(
+                  eq(items.type, record.type),
+                  eq(items.status, "owned"),
+                  ne(items.id, record.id),
+                  outsideSourceCollection,
+                  or(sql`${sharesPrimaryPerson} = 1`, sql`${sharesGenre} = 1`)
+                )
           )
           .orderBy(
             desc(sharesPrimaryPerson),

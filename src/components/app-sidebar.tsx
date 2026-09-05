@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { useSignedInStatus } from "@/components/signed-in-status"
+import { itemTypes, typeLabels, typeSegments } from "@/lib/catalog"
 import { logout } from "@/server/session"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -100,21 +101,90 @@ export function AppSidebar({
     document.addEventListener("keydown", keydown)
     return () => document.removeEventListener("keydown", keydown)
   }, [])
+  const wishlistNavigation = {
+    title: "Wishlist",
+    to: "/wishlist",
+    icon: HeartIcon,
+    subItems: itemTypes.map((type) => ({
+      title: typeLabels[type],
+      to: `/wishlist/${typeSegments[type]}`,
+    })),
+  }
+  const catalogGroups = catalogNavigation.map((item) => ({
+    ...item,
+    subItems: [
+      { title: "All", to: `${item.to}/all` },
+      ...lists
+        .filter((placement) => placement.type === item.type)
+        .map((placement) => ({
+          title: placement.name,
+          to: `${item.to}/list/${placement.slug}`,
+        })),
+    ],
+  }))
+  const navigation = [wishlistNavigation, ...catalogGroups]
   useEffect(() => {
-    const currentParent = catalogNavigation.find(
-      (item) =>
-        location.pathname === `${item.to}/all` ||
-        lists
-          .filter((placement) => placement.type === item.type)
-          .some(
-            (placement) =>
-              location.pathname === `${item.to}/list/${placement.slug}`
-          )
+    const currentParent = navigation.find((item) =>
+      item.subItems.some((subItem) => location.pathname === subItem.to)
     )
     if (currentParent) {
       setOpenNavigation((open) => ({ ...open, [currentParent.to]: true }))
     }
   }, [location.pathname, lists])
+
+  function renderNavigation(item: (typeof navigation)[number]) {
+    const isOnSubpage = item.subItems.some(
+      (subItem) => location.pathname === subItem.to
+    )
+    return (
+      <Collapsible
+        className="group/collapsible"
+        key={item.to}
+        onOpenChange={(open) =>
+          setOpenNavigation((navigation) => ({
+            ...navigation,
+            [item.to]: open,
+          }))
+        }
+        open={openNavigation[item.to] ?? isOnSubpage}
+      >
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            isActive={location.pathname === item.to}
+            render={<Link to={item.to} />}
+            tooltip={item.title}
+          >
+            <item.icon />
+            <span>{item.title}</span>
+          </SidebarMenuButton>
+          <CollapsibleTrigger
+            render={
+              <SidebarMenuAction
+                aria-label={`Toggle ${item.title} navigation`}
+                className="rounded-full transition-transform duration-200 data-panel-open:rotate-90"
+              />
+            }
+          >
+            <ChevronRightIcon />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <SidebarMenuSub>
+              {item.subItems.map((subItem) => (
+                <SidebarMenuSubItem key={subItem.to}>
+                  <SidebarMenuSubButton
+                    isActive={location.pathname === subItem.to}
+                    render={<Link to={subItem.to} />}
+                  >
+                    <span>{subItem.title}</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              ))}
+            </SidebarMenuSub>
+          </CollapsibleContent>
+        </SidebarMenuItem>
+      </Collapsible>
+    )
+  }
 
   async function signOut() {
     await logout()
@@ -171,89 +241,14 @@ export function AppSidebar({
                     <span>Home</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={location.pathname === "/wishlist"}
-                    render={<Link to="/wishlist" />}
-                    tooltip="Wishlist"
-                  >
-                    <HeartIcon />
-                    <span>Wishlist</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {renderNavigation(wishlistNavigation)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
             <SidebarGroupLabel>Catalog</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {catalogNavigation.map((item) => {
-                  const subItems = [
-                    { title: "All", to: `${item.to}/all` },
-                    ...lists
-                      .filter((placement) => placement.type === item.type)
-                      .map((placement) => ({
-                        title: placement.name,
-                        to: `${item.to}/list/${placement.slug}`,
-                      })),
-                  ]
-                  const isOnSubpage = subItems.some(
-                    (subItem) => location.pathname === subItem.to
-                  )
-                  return (
-                    <Collapsible
-                      className="group/collapsible"
-                      key={item.to}
-                      onOpenChange={(open) =>
-                        setOpenNavigation((navigation) => ({
-                          ...navigation,
-                          [item.to]: open,
-                        }))
-                      }
-                      open={openNavigation[item.to] ?? isOnSubpage}
-                    >
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          isActive={location.pathname === item.to}
-                          render={<Link to={item.to} />}
-                          tooltip={item.title}
-                        >
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </SidebarMenuButton>
-                        <CollapsibleTrigger
-                          render={
-                            <SidebarMenuAction
-                              aria-label={`Toggle ${item.title} navigation`}
-                              className="rounded-full transition-transform duration-200 data-panel-open:rotate-90"
-                            />
-                          }
-                        >
-                          <ChevronRightIcon />
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {subItems.map((subItem) => {
-                              const path = subItem.to
-                              return (
-                                <SidebarMenuSubItem key={path}>
-                                  <SidebarMenuSubButton
-                                    isActive={location.pathname === path}
-                                    render={<Link to={path} />}
-                                  >
-                                    <span>{subItem.title}</span>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              )
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
-                  )
-                })}
-              </SidebarMenu>
+              <SidebarMenu>{catalogGroups.map(renderNavigation)}</SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
           {signedIn && (

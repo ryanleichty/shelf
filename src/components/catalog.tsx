@@ -2,6 +2,12 @@ import { SearchIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { rememberCatalogQuery } from "@/components/catalog-search"
 import { CoverTile } from "@/components/cover-tile"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import {
   InputGroup,
@@ -210,12 +216,12 @@ export function Catalog({
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="font-medium">Nothing found.</p>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            {emptyDescription}
-          </span>
-        </div>
+        <Empty className="border p-12">
+          <EmptyHeader>
+            <EmptyTitle>Nothing found.</EmptyTitle>
+            <EmptyDescription>{emptyDescription}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
     </>
   )

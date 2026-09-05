@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { useMemo } from "react"
 import { HomeBillboard, type Billboard } from "@/components/home-billboard"
 import { HomeCarousel } from "@/components/home-carousel"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { itemsOfType, recentItems } from "@/lib/catalog"
 import { useCatalog } from "@/lib/use-catalog"
 
@@ -53,9 +54,11 @@ function Home() {
         </div>
       ) : (
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="font-medium">The shelf is empty.</p>
-          </div>
+          <Empty className="border p-12">
+            <EmptyHeader>
+              <EmptyTitle>The shelf is empty.</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         </div>
       )}
     </main>

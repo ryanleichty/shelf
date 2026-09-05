@@ -353,6 +353,13 @@ export const addItemToList = createServerFn({ method: "POST" })
       .where(eq(lists.slug, data.listSlug))
       .limit(1)
     if (!list) throw new Error("List not found.")
+    const [item] = await db
+      .select({ status: items.status })
+      .from(items)
+      .where(eq(items.id, data.itemId))
+      .limit(1)
+    if (!item) throw new Error("Item not found.")
+    if (item.status === "wanted") throw new Error("You don't own that yet.")
     await db
       .insert(listItems)
       .values({

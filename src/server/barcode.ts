@@ -8,7 +8,6 @@ import { requireAdmin, requireSignedIn } from "./auth"
 import {
   lookupOpenLibraryAuthor,
   normalizeOpenLibraryAuthorKey,
-  normalizeOpenLibraryWorkKey,
 } from "./openlibrary"
 import {
   getCollectionResultById,
@@ -26,79 +25,75 @@ const barcodeInput = z
     "Enter an EAN-13, UPC-A, ISBN-10, or ISBN-13 code."
   )
 
-type CheckResult =
-  | { status: "owned"; item: ItemRecord }
-  | { status: "not-owned"; title?: string; year?: number; format?: string }
-
-type BarcodeResolution =
+// One resolver for both the check page and the item form: what a barcode
+// means for this shelf. `unmatched` covers an unknown barcode and one whose
+// disc title never matched the catalog.
+type Resolution =
   | { status: "owned"; item: ItemRecord }
   | {
       status: "resolved"
       result: LookupResult
       format: ItemInput["format"]
     }
+  | {
+      status: "unmatched"
+      title?: string
+      year?: number
+      format?: ItemInput["format"]
+    }
 
 export const checkBarcode = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: barcodeInput }))
-  .handler(async ({ data }): Promise<CheckResult> => {
+  .handler(async ({ data }): Promise<Resolution> => {
     await requireAdmin()
-
-    const stored = await itemForBarcode(data.code)
-    if (stored) return { status: "owned", item: stored }
-
-    const book = await itemForIsbn(data.code)
-    if (book) {
-      await saveBarcode(book.id, data.code)
-      return { status: "owned", item: book }
-    }
-
-    const disc = await lookupDiscBarcode(data.code)
-    if (!disc) return { status: "not-owned" }
-
-    const catalogItem = await itemForDisc(disc.title, disc.year)
-    if (!catalogItem)
-      return {
-        status: "not-owned",
-        title: disc.title,
-        year: disc.year,
-        format: disc.format,
-      }
-
-    await saveBarcode(catalogItem.id, data.code)
-    return { status: "owned", item: catalogItem }
+    const resolution = await resolveCode(data.code)
+    // Remember the barcode so the next scan is a single indexed lookup.
+    if (resolution.status === "owned" && resolution.item.barcode !== data.code)
+      await saveBarcode(resolution.item.id, data.code)
+    return resolution
   })
 
 export const resolveBarcode = createServerFn({ method: "POST" })
   .inputValidator(z.object({ code: barcodeInput, type: z.enum(itemTypes) }))
-  .handler(async ({ data }): Promise<BarcodeResolution> => {
-    await requireSignedIn()
-
-    const stored = await itemForBarcode(data.code)
-    if (stored) return { status: "owned", item: stored }
-
-    const book = await lookupBookBarcode(data.code)
-    if (book) {
-      const owned = await itemForBookWork(book.id)
-      if (owned) return { status: "owned", item: owned }
-      return { status: "resolved", result: book, format: "" }
+  .handler(
+    async ({ data }): Promise<Exclude<Resolution, { status: "unmatched" }>> => {
+      await requireSignedIn()
+      const resolution = await resolveCode(data.code, data.type)
+      if (resolution.status !== "unmatched") return resolution
+      throw new Error(
+        resolution.title
+          ? "We found the barcode but couldn't match it in the catalog. You can still complete the form manually."
+          : "We couldn't look up that barcode. You can still complete the form manually."
+      )
     }
+  )
 
-    const disc = await lookupDiscBarcode(data.code)
-    if (!disc)
-      throw new Error(
-        "We couldn't look up that barcode. You can still complete the form manually."
-      )
+async function resolveCode(
+  code: string,
+  type?: Item["type"]
+): Promise<Resolution> {
+  const stored = await itemForBarcode(code)
+  if (stored) return { status: "owned", item: stored }
 
-    const owned = await itemForDisc(disc.title, disc.year)
+  const book = await lookupBookBarcode(code)
+  if (book) {
+    const owned = await itemForBookWork(book.id)
     if (owned) return { status: "owned", item: owned }
+    return { status: "resolved", result: book, format: "" }
+  }
 
-    const result = await lookupDiscResult(disc, data.type)
-    if (!result)
-      throw new Error(
-        "We found the barcode but couldn't match it in the catalog. You can still complete the form manually."
-      )
-    return { status: "resolved", result, format: discFormat(disc.format) }
-  })
+  const disc = await lookupDiscBarcode(code)
+  if (!disc) return { status: "unmatched" }
+
+  const owned = await itemForDisc(disc.title, disc.year)
+  if (owned) return { status: "owned", item: owned }
+
+  const format = discFormat(disc.format)
+  const result = await lookupDiscResult(disc, type)
+  if (!result)
+    return { status: "unmatched", title: disc.title, year: disc.year, format }
+  return { status: "resolved", result, format }
+}
 
 async function itemForBarcode(barcode: string) {
   const [item] = await db
@@ -107,22 +102,6 @@ async function itemForBarcode(barcode: string) {
     .where(eq(items.barcode, barcode))
     .limit(1)
   return item
-}
-
-async function itemForIsbn(isbn: string) {
-  const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
-    signal: AbortSignal.timeout(10_000),
-    headers: { "User-Agent": "Shelf (https://github.com/ryanleichty/shelf)" },
-  })
-  if (response.status === 404) return null
-  if (!response.ok) throw new Error("Open Library could not look up that ISBN.")
-  const edition = (await response.json()) as {
-    works?: Array<{ key?: string }>
-  }
-  const key = edition.works?.[0]?.key
-  if (!key) return null
-  const workKey = normalizeOpenLibraryWorkKey(key)
-  return itemForBookWork(workKey)
 }
 
 async function itemForBookWork(workKey: string) {
@@ -194,7 +173,7 @@ async function lookupDiscBarcode(barcode: string) {
 
 async function lookupDiscResult(
   disc: { title: string; year: number },
-  currentType: Item["type"]
+  currentType?: Item["type"]
 ) {
   const types =
     currentType === "movie" || currentType === "tv"

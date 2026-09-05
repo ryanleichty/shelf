@@ -8,7 +8,7 @@ import { SystemListToggle } from "@/components/system-list-toggle"
 import { coverPlateBackground } from "@/lib/cover-plate"
 import { READLIST_NAME, READLIST_SLUG } from "@/lib/system-lists"
 import { cn } from "@/lib/utils"
-import { statusLabel, type CatalogItem } from "@/lib/catalog"
+import { editionLabel, statusLabel, type CatalogItem } from "@/lib/catalog"
 
 export function CoverTile({
   children,
@@ -102,7 +102,7 @@ export function CoverTile({
         </div>
         {children}
       </Link>
-      {signedIn && (
+      {signedIn && item.status !== "wanted" && (
         <SystemListToggle
           className="pointer-events-none absolute top-2 right-2 origin-top-right border-transparent bg-background/90 opacity-0 ring-1 ring-black/10 transition-[opacity,scale] group-focus-within:pointer-events-auto group-focus-within:scale-105 group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100 motion-reduce:transition-none motion-reduce:group-focus-within:scale-100 motion-reduce:group-hover:scale-100"
           itemId={item.id}
@@ -114,10 +114,4 @@ export function CoverTile({
       )}
     </div>
   )
-}
-
-function editionLabel(edition: string) {
-  return edition === "director-cut"
-    ? "Director's Cut"
-    : edition[0].toUpperCase() + edition.slice(1)
 }

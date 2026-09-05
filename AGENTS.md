@@ -91,6 +91,15 @@ instead of a create-then-delete. The separate table was considered and
 rejected; do not refactor wanted rows back out of `items` without re-reading
 the partition rule above.
 
+The wishlist browses like the shelf, one level down: `/wishlist` shows one
+carousel per type and `/wishlist/$section` (`books`, `movies`, `tv` — the
+`typeSegments` map in `src/lib/catalog.ts`) is the searchable grid. Both read
+`catalog.wishlist`. A wanted item cannot join a list — `addItemToList`
+rejects it, as `setItemState` and `lendItem` do — and the item page hides the
+readlist/watchlist toggle and the list menu for it, links back to its
+wishlist section, and fills its "also on" carousel from the rest of the
+wishlist rather than from owned titles.
+
 Reading and watching are per-member state, not a property of the item: a
 `user_items` row (`user_id`, `item_id`, `state`, `started_at`, `updated_at`,
 unique on `(user_id, item_id)`, both foreign keys `ON DELETE CASCADE`) exists

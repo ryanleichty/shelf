@@ -5,7 +5,7 @@ import { seedSampleItems } from "./seed-samples"
 import * as schema from "./schema"
 
 const isEphemeral = !process.env.TURSO_DATABASE_URL
-const url = process.env.TURSO_DATABASE_URL ?? "file:/tmp/shelf.db"
+const url = process.env.TURSO_DATABASE_URL || "file:/tmp/shelf.db"
 
 const rawClient = import.meta.env.SSR
   ? createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN })

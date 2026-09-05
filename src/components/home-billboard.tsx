@@ -7,7 +7,7 @@ import { SystemListToggle } from "@/components/system-list-toggle"
 import { TrailerDialog } from "@/components/trailer-dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { CatalogItem } from "@/lib/catalog"
+import { formatRuntime, type CatalogItem } from "@/lib/catalog"
 
 export type Billboard = CatalogItem & {
   type: "movie" | "tv"
@@ -187,12 +187,4 @@ export function HomeBillboard({ billboards }: { billboards: Billboard[] }) {
       )}
     </section>
   )
-}
-
-function formatRuntime(runtime: number) {
-  const hours = Math.floor(runtime / 60)
-  const minutes = runtime % 60
-  if (!hours) return `${minutes}m`
-  if (!minutes) return `${hours}h`
-  return `${hours}h ${minutes}m`
 }
