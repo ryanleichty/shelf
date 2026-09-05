@@ -1,7 +1,13 @@
 "use client"
 
 import { Link } from "@tanstack/react-router"
-import { ArrowRightIcon, PlusIcon } from "lucide-react"
+import {
+  ArrowRightIcon,
+  BookmarkIcon,
+  CircleCheckIcon,
+  CircleDashedIcon,
+  PlusIcon,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,13 +67,21 @@ export function CheckBarcodeResult({
         ? "On your wishlist"
         : item.status === "borrowed"
           ? shelfItem?.borrower
-            ? `On the shelf · lent to ${shelfItem.borrower}`
-            : "On the shelf · lent out"
+            ? `On the shelf, lent to ${shelfItem.borrower}`
+            : "On the shelf, lent out"
           : "On the shelf"
     return (
       <Card>
         <CardHeader>
-          <CardDescription>{verdict}</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            {item.status === "wanted" ? (
+              <BookmarkIcon className="size-4 shrink-0" />
+            ) : (
+              <CircleCheckIcon className="size-4 shrink-0 text-primary" />
+            )}
+            {verdict}
+          </CardTitle>
+          <CardDescription>Barcode {code}</CardDescription>
         </CardHeader>
         <CardContent>
           <ItemPreview preview={{ ...item, genres: shelfItem?.genres ?? [] }} />
@@ -92,7 +106,11 @@ export function CheckBarcodeResult({
   return (
     <Card>
       <CardHeader>
-        <CardDescription>Not on the shelf</CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <CircleDashedIcon className="size-4 shrink-0 text-muted-foreground" />
+          Not on the shelf
+        </CardTitle>
+        <CardDescription>Barcode {code}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {result.status === "resolved" ? (
@@ -112,8 +130,7 @@ export function CheckBarcodeResult({
           </p>
         ) : (
           <p className="text-muted-foreground">
-            Nothing is known about barcode {code}. Try searching by title
-            instead.
+            No catalog knows this barcode. Try searching by title instead.
           </p>
         )}
         {similar.length > 0 && (

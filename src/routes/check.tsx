@@ -18,6 +18,7 @@ import { FieldError } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { matchesQuery, typeLabels } from "@/lib/catalog"
 import { useCatalog } from "@/lib/use-catalog"
+import { cn } from "@/lib/utils"
 import { checkBarcode } from "@/server/barcode"
 import { getAdminStatus } from "@/server/session"
 
@@ -96,7 +97,10 @@ function Check() {
           }}
           stopSignal={scannerReset}
         />
-        <Command className="rounded-lg border" shouldFilter={false}>
+        <Command
+          className="gap-2 overflow-visible bg-transparent p-0 [&_[data-slot=command-input-wrapper]]:p-0"
+          shouldFilter={false}
+        >
           <CommandInput
             aria-label="Barcode or title"
             autoComplete="off"
@@ -105,7 +109,12 @@ function Check() {
             placeholder="Type a barcode or search by title, person, genre…"
             value={query}
           />
-          <CommandList className="max-h-80">
+          <CommandList
+            className={cn(
+              "max-h-80 rounded-lg border bg-popover p-1",
+              !query.trim() && "hidden"
+            )}
+          >
             {query.trim() && !isCode && (
               <CommandEmpty>Nothing on the shelf matches.</CommandEmpty>
             )}
