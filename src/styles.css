@@ -89,38 +89,14 @@
 .form-grid {
   @apply grid items-start gap-4 sm:grid-cols-2;
 }
-.collection-search {
-  @apply rounded-lg border p-4;
-}
 .lookup-heading {
   @apply mb-3 flex items-center justify-between text-sm font-medium;
 }
-.lookup-heading small,
-.lookup-status {
-  @apply text-xs text-muted-foreground;
-}
-.lookup-results {
-  @apply mt-2 max-h-80 divide-y overflow-y-auto rounded-md border;
-}
-.lookup-results button {
-  @apply flex w-full items-center gap-3 p-2 text-left hover:bg-accent;
-}
-.lookup-results img,
-.tiny-cover {
-  @apply h-10 w-7 rounded-sm bg-muted object-cover;
-}
-.lookup-results strong,
-.lookup-results small {
-  @apply block text-sm;
-}
-.lookup-results small {
+.lookup-heading small {
   @apply text-xs text-muted-foreground;
 }
 .form-footer {
   @apply flex justify-end gap-2;
-}
-.form-error {
-  @apply text-sm text-destructive;
 }
 
 .home-carousel {

@@ -48,9 +48,11 @@ import {
   ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxValue,
+  useComboboxAnchor,
 } from "@/components/ui/combobox"
 import {
   getPersonOptions,
@@ -165,6 +167,7 @@ export function ItemForm({
   const isTypeControlled = onTypeChange !== undefined
   const type = isTypeControlled ? (controlledType ?? "book") : internalType
   const [query, setQuery] = useState("")
+  const searchAnchor = useComboboxAnchor()
   const [results, setResults] = useState<LookupResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
@@ -234,8 +237,8 @@ export function ItemForm({
       setSearchError("")
       return
     }
+    setSearching(true)
     const timer = window.setTimeout(async () => {
-      setSearching(true)
       setSearchError("")
       try {
         setResults(await searchCollection({ data: { query, type } }))
@@ -472,78 +475,93 @@ export function ItemForm({
         </TabsList>
       </Tabs>
       <Dialog onOpenChange={setScanOpen} open={scanOpen}>
-        <section className="collection-search">
-          <Field>
+        <section className="rounded-lg border p-4">
+          <Field data-invalid={Boolean(searchError)}>
             <FieldLabel htmlFor="collection-search">Find a {type}</FieldLabel>
             <FieldDescription>
               Search fills the form; review before saving.
             </FieldDescription>
-            <InputGroup>
-              <InputGroupInput
+            <Combobox<LookupResult>
+              filter={null}
+              inputValue={query}
+              items={results}
+              itemToStringLabel={(result) => result.title}
+              onInputValueChange={(value, details) => {
+                if (details.reason !== "input-change") return
+                setQuery(value)
+                setSelected(false)
+              }}
+              onValueChange={(result) => {
+                if (result) void choose(result)
+              }}
+              value={null}
+            >
+              <ComboboxInput
+                anchor={searchAnchor}
+                className="w-full"
                 id="collection-search"
-                onChange={(event) => {
-                  setQuery(event.target.value)
-                  setSelected(false)
-                }}
                 placeholder={
                   type === "book" ? "Search Open Library" : "Search TMDB"
                 }
-                value={query}
-              />
-              <InputGroupAddon align="inline-end">
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <DialogTrigger
-                        aria-label="Scan barcode"
-                        render={<InputGroupButton aria-label="Scan barcode" />}
-                      />
-                    }
-                  >
-                    <ScanLineIcon />
-                  </TooltipTrigger>
-                  <TooltipContent>Scan barcode</TooltipContent>
-                </Tooltip>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-          {searching && (
-            <p className="lookup-status">Looking through the stacks…</p>
-          )}
-          {searchError && (
-            <p className="form-error" role="alert">
-              {searchError}
-            </p>
-          )}
-          {results.length > 0 && (
-            <div className="lookup-results" role="listbox">
-              {results.map((result) => (
-                <button
-                  key={result.id}
-                  onClick={() => choose(result)}
-                  role="option"
-                  type="button"
-                >
-                  {result.coverImageUrl ? (
-                    <img alt="" src={result.coverImageUrl} />
-                  ) : (
-                    <span className="tiny-cover" />
+                showTrigger={false}
+              >
+                <InputGroupAddon align="inline-end">
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <DialogTrigger
+                          aria-label="Scan barcode"
+                          render={
+                            <InputGroupButton aria-label="Scan barcode" />
+                          }
+                        />
+                      }
+                    >
+                      <ScanLineIcon />
+                    </TooltipTrigger>
+                    <TooltipContent>Scan barcode</TooltipContent>
+                  </Tooltip>
+                </InputGroupAddon>
+              </ComboboxInput>
+              <ComboboxContent anchor={searchAnchor}>
+                <ComboboxEmpty>
+                  {searching
+                    ? "Looking through the stacks…"
+                    : "Nothing on the shelves."}
+                </ComboboxEmpty>
+                <ComboboxList>
+                  {(result: LookupResult) => (
+                    <ComboboxItem key={result.id} value={result}>
+                      {result.coverImageUrl ? (
+                        <img
+                          alt=""
+                          className="h-10 w-7 rounded-sm bg-muted object-cover"
+                          src={result.coverImageUrl}
+                        />
+                      ) : (
+                        <span className="h-10 w-7 rounded-sm bg-muted" />
+                      )}
+                      <span className="min-w-0">
+                        <strong className="block truncate font-medium">
+                          {result.title}
+                        </strong>
+                        <small className="block truncate text-xs text-muted-foreground">
+                          {result.creator}
+                          {result.year ? ` · ${result.year}` : ""}
+                        </small>
+                      </span>
+                    </ComboboxItem>
                   )}
-                  <span>
-                    <strong>{result.title}</strong>
-                    <small>
-                      {result.creator} {result.year ? `· ${result.year}` : ""}
-                    </small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-          {selected && (
-            <p className="lookup-status">
-              Details added below. Make them yours.
-            </p>
-          )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            {searchError && <FieldError>{searchError}</FieldError>}
+            {selected && (
+              <FieldDescription>
+                Details added below. Make them yours.
+              </FieldDescription>
+            )}
+          </Field>
         </section>
         <DialogContent>
           <DialogHeader>
