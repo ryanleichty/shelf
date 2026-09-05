@@ -10,6 +10,7 @@ import {
   HouseIcon,
   LogInIcon,
   LogOutIcon,
+  PlusIcon,
   ScanLineIcon,
   SearchIcon,
   SettingsIcon,
@@ -263,6 +264,15 @@ export function AppSidebar({
                     >
                       <BookOpenIcon />
                       <span>Admin</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link to="/admin/new" />}
+                      tooltip="Add item"
+                    >
+                      <PlusIcon />
+                      <span>Add item</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
