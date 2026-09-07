@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { ScanLineIcon } from "lucide-react"
+import { toast } from "sonner"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -126,6 +127,10 @@ function parseValidationIssues(message: string) {
   } catch {
     return null
   }
+}
+
+function isDuplicateItemError(message: string) {
+  return /already on (?:the|your) shelf\./i.test(message)
 }
 
 function peopleItems(options: string[], selected: string[], query: string) {
@@ -442,6 +447,18 @@ export function ItemForm({
         to: "/item/$slug",
         params: { slug: result.slug },
       })
+      if (!item) {
+        toast.success(wanted ? "Added to Wishlist" : "Added to Shelf", {
+          action: {
+            label: "Add another",
+            onClick: () =>
+              void router.navigate({
+                to: "/admin/new",
+                search: { type, ...(wanted ? { wanted: true } : {}) },
+              }),
+          },
+        })
+      }
     } catch (cause) {
       const message =
         cause instanceof Error ? cause.message : "Could not save this item."
@@ -450,6 +467,8 @@ export function ItemForm({
       if (validationIssues) {
         setFieldErrors(validationIssues.fieldErrors)
         setError(validationIssues.formErrors)
+      } else if (!item && isDuplicateItemError(message)) {
+        toast.error(message)
       } else {
         setError([{ message }])
       }
