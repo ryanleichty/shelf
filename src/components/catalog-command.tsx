@@ -176,7 +176,13 @@ export function CatalogCommand({
   }
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (!open || !signedIn || (!event.metaKey && !event.ctrlKey)) return
+      if (
+        !open ||
+        !signedIn ||
+        query.trim() ||
+        (!event.metaKey && !event.ctrlKey)
+      )
+        return
       if (event.key === "1") {
         event.preventDefault()
         openCheckBarcode()
@@ -193,7 +199,7 @@ export function CatalogCommand({
     }
     document.addEventListener("keydown", keydown)
     return () => document.removeEventListener("keydown", keydown)
-  }, [addItem, onOpenChange, open, openCheckBarcode, signedIn])
+  }, [addItem, onOpenChange, open, openCheckBarcode, query, signedIn])
   return (
     <>
       <CommandDialog
@@ -214,7 +220,7 @@ export function CatalogCommand({
                 ? "No results found."
                 : "Type to search titles, people and genres."}
             </CommandEmpty>
-            {signedIn && (
+            {signedIn && !query.trim() && (
               <CommandGroup heading="Actions">
                 <CommandItem
                   onSelect={openCheckBarcode}
