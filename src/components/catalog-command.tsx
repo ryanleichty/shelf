@@ -139,15 +139,22 @@ export function CatalogCommand({
     [items]
   )
   const tv = useMemo(() => items.filter((item) => item.type === "tv"), [items])
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setQuery("")
+      setFacets(emptySearchFacets)
+    }
+    onOpenChange(nextOpen)
+  }
   const select = (item: CatalogItem) => {
-    onOpenChange(false)
+    handleOpenChange(false)
     router.navigate({ to: "/item/$slug", params: { slug: item.slug } })
   }
   const selectFacet = (
     kind: "genre" | "director" | "actor" | "author",
     slug: string
   ) => {
-    onOpenChange(false)
+    handleOpenChange(false)
     if (kind === "genre")
       router.navigate({ to: "/genre/$slug", params: { slug } })
     else if (kind === "director")
@@ -157,15 +164,15 @@ export function CatalogCommand({
     else router.navigate({ to: "/author/$slug", params: { slug } })
   }
   const openCheckBarcode = () => {
-    onOpenChange(false)
+    handleOpenChange(false)
     setCheckBarcodeOpen(true)
   }
   const addItem = (type: "book" | "movie" | "tv") => {
-    onOpenChange(false)
+    handleOpenChange(false)
     router.navigate({ to: "/admin/new", search: { type } })
   }
   const seeAll = (type: "book" | "movie" | "tv") => {
-    onOpenChange(false)
+    handleOpenChange(false)
     const to =
       type === "book"
         ? "/books/all"
@@ -199,12 +206,12 @@ export function CatalogCommand({
     }
     document.addEventListener("keydown", keydown)
     return () => document.removeEventListener("keydown", keydown)
-  }, [addItem, onOpenChange, open, openCheckBarcode, query, signedIn])
+  }, [addItem, handleOpenChange, open, openCheckBarcode, query, signedIn])
   return (
     <>
       <CommandDialog
         className="sm:max-w-xl"
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         open={open}
         title="Search Shelf"
       >
