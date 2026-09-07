@@ -1029,9 +1029,14 @@ export function ItemForm({
       </FieldGroup>
       <FieldError errors={error} />
       <div className="form-footer">
-        <Button render={<Link to="/admin" />} variant="outline">
-          Cancel
-        </Button>
+        {item && (
+          <Button
+            render={<Link params={{ slug: item.slug }} to="/item/$slug" />}
+            variant="outline"
+          >
+            Cancel
+          </Button>
+        )}
         <Button disabled={saving} type="submit">
           {saving ? "Saving…" : item ? "Save changes" : "Add to shelf"}
         </Button>
