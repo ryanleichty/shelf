@@ -29,6 +29,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 
 export const Route = createRootRoute({
   loader: () => getShell(),
@@ -92,6 +93,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             <ShelfShell lists={sidebarLists(catalog)}>{children}</ShelfShell>
           </SignedInStatusProvider>
+          <Toaster />
         </TooltipProvider>
         <TanStackDevtools
           config={{
