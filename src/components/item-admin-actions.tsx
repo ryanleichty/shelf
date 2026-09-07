@@ -64,66 +64,67 @@ export function ItemAdminActions({
     }
   }
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex gap-2">
-        <Button
-          render={<Link params={{ id: String(id) }} to="/admin/$id" />}
-          variant="outline"
-        >
-          <PencilIcon /> Edit
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                aria-label="More item actions"
-                size="icon"
-                variant="outline"
-              >
-                <EllipsisIcon />
-              </Button>
-            }
-          />
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem disabled={!providerId || syncing} onClick={sync}>
-              {syncing
-                ? "Syncing…"
-                : `Sync from ${type === "book" ? "Open Library" : "TMDB"}`}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setIsDeleteDialogOpen(true)}
-              variant="destructive"
+    <>
+      <Button
+        render={<Link params={{ id: String(id) }} to="/admin/$id" />}
+        variant="outline"
+      >
+        <PencilIcon /> Edit
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-label="More item actions"
+              size="icon"
+              variant="outline"
             >
-              <Trash2Icon /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <AlertDialog
-          onOpenChange={setIsDeleteDialogOpen}
-          open={isDeleteDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove “{title}” from Shelf?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This item will no longer appear in the collection.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={remove} variant="destructive">
-                Delete item
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+              <EllipsisIcon />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem disabled={!providerId || syncing} onClick={sync}>
+            {syncing
+              ? "Syncing…"
+              : `Sync from ${type === "book" ? "Open Library" : "TMDB"}`}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setIsDeleteDialogOpen(true)}
+            variant="destructive"
+          >
+            <Trash2Icon /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog
+        onOpenChange={setIsDeleteDialogOpen}
+        open={isDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove “{title}” from Shelf?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This item will no longer appear in the collection.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} variant="destructive">
+              Delete item
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {syncError && (
-        <p className="text-right text-sm text-destructive" role="alert">
+        <p
+          className="basis-full text-right text-sm text-destructive"
+          role="alert"
+        >
           {syncError}
         </p>
       )}
-    </div>
+    </>
   )
 }

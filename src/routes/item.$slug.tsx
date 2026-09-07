@@ -120,7 +120,7 @@ function ItemDetail() {
         </div>
       )}
       <div className="container mx-auto max-w-5xl px-4 py-10">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           {wanted ? (
             <Link
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -156,7 +156,7 @@ function ItemDetail() {
             </Link>
           )}
           <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
+            <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
               {wanted ? (
                 signedIn && (
                   <Button disabled={markingOwned} onClick={markOwned}>
