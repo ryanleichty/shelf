@@ -4,13 +4,9 @@ import { z } from "zod"
 import { db } from "./db"
 import { requireSignedIn } from "./auth"
 import {
-  itemCast,
-  itemCreators,
   replaceItemCast,
   replaceItemCreators,
   replaceItemTags,
-  samePeople,
-  type ProviderPerson,
 } from "./item-joins"
 import {
   collectionPartIdsFor,
@@ -19,54 +15,27 @@ import {
 } from "./items"
 import { getBookSyncMetadata } from "./openlibrary"
 import { getTmdbSyncMetadata } from "./tmdb"
-import type { CollectionInput } from "./providers"
-import { items, type Collection, type Item, type ItemRecord } from "./schema"
+import { items, type Item, type ItemRecord } from "./schema"
+import {
+  changedFields,
+  type SyncChanges,
+  type SyncedFields,
+} from "@/lib/sync-fields"
 
-export type SyncedFields = {
-  title?: string
-  creator?: string
-  year?: number
-  genres?: string[]
-  description?: string
-  keywords?: string[]
-  cast?: string[]
-  castPeople?: ProviderPerson[]
-  creatorPeople?: ProviderPerson[]
-  collection?: CollectionInput | null
-  certification?: string | null
-  runtime?: number | null
-  backdropImageUrl?: string | null
-  subtitle?: string | null
-  pageCount?: number | null
-  publisher?: string | null
-  isbn13?: string | null
-  tagline?: string | null
-  logoImageUrl?: string | null
-  trailerKey?: string | null
-}
+export type { SyncedFields } from "@/lib/sync-fields"
 
 export type ProviderSyncResult = {
   itemId: number
   slug: string
   skipped?: string
-  changes?: Partial<
-    Record<
-      keyof SyncedFields,
-      {
-        before:
-          | string
-          | number
-          | string[]
-          | Collection
-          | CollectionInput
-          | null
-          | undefined
-        after: string | number | string[] | CollectionInput | null | undefined
-      }
-    >
-  >
+  changes?: SyncChanges
 }
 
+// On an existing item the sync fills blanks and never overwrites a value
+// already there (see `providerOwnedSyncFields` for the two exceptions). The
+// people joins follow their fields: authors/directors are rewritten only
+// when `creator` is being filled and actors only when `cast` is, so a
+// provider's co-author list never replaces the people a member chose.
 export async function syncItemFromProvider(
   item: Item | ItemRecord,
   dryRun = false
@@ -91,33 +60,12 @@ export async function syncItemFromProvider(
       : await getTmdbSyncMetadata(syncedItem.type, providerId)
 
   const changes = changedFields(syncedItem, metadata)
-  if (!Object.keys(changes).length) {
-    if (!dryRun) {
-      // Nothing changed, so only rewrite a join whose stored people differ.
-      if (
-        !samePeople(
-          await itemCreators(syncedItem.id, syncedItem.type),
-          metadata.creatorPeople
-        )
-      )
-        await replaceItemCreators(
-          syncedItem.id,
-          syncedItem.type,
-          metadata.creatorPeople ?? syncedItem.creator
-        )
-      if (
-        syncedItem.type !== "book" &&
-        metadata.castPeople &&
-        !samePeople(await itemCast(syncedItem.id), metadata.castPeople)
-      )
-        await replaceItemCast(syncedItem.id, metadata.castPeople)
-    }
+  if (!Object.keys(changes).length)
     return {
       itemId: syncedItem.id,
       slug: syncedItem.slug,
       skipped: "Already up to date.",
     }
-  }
   if (!dryRun) {
     const {
       genres: nextGenres,
@@ -153,11 +101,12 @@ export async function syncItemFromProvider(
         nextCollection,
         await collectionPartIdsFor(nextCollection)
       )
-    await replaceItemCreators(
-      syncedItem.id,
-      syncedItem.type,
-      metadata.creatorPeople ?? itemFields.creator ?? syncedItem.creator
-    )
+    if (itemFields.creator !== undefined)
+      await replaceItemCreators(
+        syncedItem.id,
+        syncedItem.type,
+        metadata.creatorPeople ?? itemFields.creator
+      )
   }
   return { itemId: syncedItem.id, slug: syncedItem.slug, changes }
 }
@@ -172,54 +121,3 @@ export const syncItem = createServerFn({ method: "POST" })
     if (!item) throw new Error("Item not found.")
     return syncItemFromProvider(item)
   })
-
-function changedFields(
-  item: Item,
-  metadata: SyncedFields
-): NonNullable<ProviderSyncResult["changes"]> {
-  const changes: NonNullable<ProviderSyncResult["changes"]> = {}
-  for (const field of [
-    "title",
-    "creator",
-    "year",
-    "genres",
-    "description",
-    "keywords",
-    "cast",
-    "collection",
-    "certification",
-    "runtime",
-    "backdropImageUrl",
-    "subtitle",
-    "pageCount",
-    "publisher",
-    "isbn13",
-    "tagline",
-    "logoImageUrl",
-    "trailerKey",
-  ] as const) {
-    if (field === "collection" && item.type !== "movie" && item.type !== "book")
-      continue
-    if (field === "cast" && item.type === "book") continue
-    if (
-      (field === "certification" ||
-        field === "runtime" ||
-        field === "tagline" ||
-        field === "logoImageUrl" ||
-        field === "trailerKey") &&
-      item.type === "book"
-    )
-      continue
-    const next = metadata[field]
-    if (next === undefined) continue
-    const previous =
-      field === "collection"
-        ? (item.collection ?? null)
-        : field === "cast"
-          ? item.actors
-          : item[field]
-    if (JSON.stringify(previous) !== JSON.stringify(next))
-      changes[field] = { before: previous, after: next }
-  }
-  return changes
-}

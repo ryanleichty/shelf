@@ -1,4 +1,4 @@
-import { and, eq, ne } from "drizzle-orm"
+import { and, asc, eq, ne } from "drizzle-orm"
 import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
@@ -7,7 +7,13 @@ import { normalizeOpenLibraryWorkKey } from "@/server/openlibrary"
 import { getCollectionResultById, lookupCollection } from "@/server/providers"
 import { slugify } from "@/lib/catalog"
 import { parseImportQuery, rankImportCandidates } from "@/lib/import-query"
-import { items, itemEditions, itemTypes } from "@/server/schema"
+import {
+  genres,
+  itemGenres,
+  items,
+  itemEditions,
+  itemTypes,
+} from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -43,16 +49,25 @@ export const handlers = {
     const type = new URL(request.url).searchParams.get("type")
     if (type && !itemTypes.includes(type as (typeof itemTypes)[number]))
       return Response.json({ error: "Invalid type" }, { status: 400 })
+    const listed = and(
+      ne(items.status, "wanted"),
+      type ? eq(items.type, type as "book" | "movie") : undefined
+    )
+    const [rows, genreRows] = await db.batch([
+      db.select(output).from(items).where(listed),
+      db
+        .select({ itemId: itemGenres.itemId, name: genres.name })
+        .from(itemGenres)
+        .innerJoin(genres, eq(itemGenres.genreId, genres.id))
+        .innerJoin(items, eq(items.id, itemGenres.itemId))
+        .where(listed)
+        .orderBy(asc(genres.name)),
+    ])
+    const genresByItem = new Map<number, string[]>()
+    for (const { itemId, name } of genreRows)
+      genresByItem.set(itemId, [...(genresByItem.get(itemId) ?? []), name])
     return Response.json(
-      await db
-        .select(output)
-        .from(items)
-        .where(
-          and(
-            ne(items.status, "wanted"),
-            type ? eq(items.type, type as "book" | "movie") : undefined
-          )
-        )
+      rows.map((row) => ({ ...row, genres: genresByItem.get(row.id) ?? [] }))
     )
   },
   POST: async ({ request }: ApiContext) => {

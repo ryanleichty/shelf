@@ -10,6 +10,7 @@ export const bookGenreOptions = [
   "Romance",
   "History",
   "Biography",
+  "Theology",
   "Young Adult",
   "Poetry",
   "Comics",
