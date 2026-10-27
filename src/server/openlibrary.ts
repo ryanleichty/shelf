@@ -1,8 +1,8 @@
 import { slugify, yearFromDate } from "@/lib/catalog"
-import { bookGenreOptions } from "@/lib/item-input"
+import { bookGenresFromSubjects } from "@/lib/book-genres"
 import type { ProviderPerson } from "./item-joins"
 import type { LookupResult } from "./providers"
-import type { SyncedFields } from "./item-sync"
+import type { SyncedFields } from "@/lib/sync-fields"
 
 export function normalizeOpenLibraryWorkKey(key: string) {
   const workId = key
@@ -88,7 +88,7 @@ export async function lookupBooks(query: string): Promise<LookupResult[]> {
             coverImageUrl: book.cover_i
               ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg`
               : "",
-            genres: curatedBookGenres(book.subject),
+            genres: bookGenresFromSubjects(book.subject),
           },
         ]
       : []
@@ -146,7 +146,7 @@ export async function getBookResultById(
     creatorPeople: authorPeople,
     year: await openLibraryFirstPublishYear(id, book.first_publish_date),
     coverImageUrl: "",
-    genres: curatedBookGenres(book.subjects),
+    genres: bookGenresFromSubjects(book.subjects),
     description: openLibraryDescription(book.description),
     slug: slugify(title),
   }
@@ -234,7 +234,7 @@ export async function getBookSyncMetadata(
         }
       : {}),
     ...(year !== null ? { year } : {}),
-    genres: curatedBookGenres(book.subjects),
+    genres: bookGenresFromSubjects(book.subjects),
     ...(openLibraryDescription(book.description) !== undefined
       ? { description: openLibraryDescription(book.description) }
       : {}),
@@ -372,15 +372,6 @@ async function openLibraryAuthors(
       })
     )
   ).flatMap((person) => (person ? [person] : []))
-}
-
-function curatedBookGenres(subjects?: string[]) {
-  const subjectSet = new Set(
-    (subjects ?? []).map((subject) => subject.toLocaleLowerCase())
-  )
-  return bookGenreOptions.filter((genre) =>
-    subjectSet.has(genre.toLocaleLowerCase())
-  )
 }
 
 function openLibraryDescription(
