@@ -21,7 +21,7 @@ export const getShelfMembers = createServerFn({ method: "GET" }).handler(
 )
 
 export const lendItem = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       itemId: z.number().int().positive(),
       borrowerUserId: z.number().int().positive().optional(),
@@ -80,7 +80,7 @@ export const lendItem = createServerFn({ method: "POST" })
   })
 
 export const returnLoan = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ itemId: z.number().int().positive() }))
+  .validator(z.object({ itemId: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [openLoan] = await db

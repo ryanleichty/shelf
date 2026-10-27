@@ -30,7 +30,7 @@ export const getLoginMode = createServerFn({ method: "GET" }).handler(
 )
 
 export const login = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       email: z.string().email().optional().or(z.literal("")),
       password: z.string().min(1),

@@ -67,7 +67,7 @@ export async function getCollectionResultById(data: {
 }
 
 export const getCoverOptions = createServerFn({ method: "GET" })
-  .inputValidator(
+  .validator(
     z.object({
       type: z.enum(itemTypes),
       openLibraryKey: z.string().optional(),
@@ -84,7 +84,7 @@ export const getCoverOptions = createServerFn({ method: "GET" })
   })
 
 export const searchCollection = createServerFn({ method: "GET" })
-  .inputValidator(lookupInput)
+  .validator(lookupInput)
   .handler(async ({ data }): Promise<LookupResult[]> => {
     if (!isAgentToken(getRequestHeader("authorization")))
       await requireSignedIn()
@@ -92,7 +92,7 @@ export const searchCollection = createServerFn({ method: "GET" })
   })
 
 export const getCollectionResult = createServerFn({ method: "GET" })
-  .inputValidator(
+  .validator(
     z.object({ id: z.string().min(1).max(120), type: z.enum(itemTypes) })
   )
   .handler(async ({ data }): Promise<LookupResult & { slug: string }> => {

@@ -72,7 +72,7 @@ export type PersonOptions = {
 }
 
 export const importItems = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       type: z.enum(itemTypes),
       format: z.enum(itemFormats).optional().or(z.literal("")),
@@ -533,7 +533,7 @@ function normalizeFacetQuery(value: string) {
 }
 
 export const getSearchFacets = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ query: z.string().max(100) }))
+  .validator(z.object({ query: z.string().max(100) }))
   .handler(async ({ data }): Promise<SearchFacets> => {
     const query = normalizeFacetQuery(data.query)
     if (!query) return { genres: [], directors: [], actors: [], authors: [] }
@@ -648,9 +648,7 @@ function tagResult(rows: Array<{ name: string; itemId: number | null }>) {
 
 // Person and tag pages return ids; the tiles come from the shared catalog.
 export const getItemsByTag = createServerFn({ method: "GET" })
-  .inputValidator(
-    z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() })
-  )
+  .validator(z.object({ kind: z.enum(["genre", "keyword"]), slug: z.string() }))
   .handler(async ({ data }) =>
     tagResult(
       data.kind === "genre"
@@ -670,7 +668,7 @@ export const getItemsByTag = createServerFn({ method: "GET" })
   )
 
 export const getItemsByPerson = createServerFn({ method: "GET" })
-  .inputValidator(
+  .validator(
     z.object({
       kind: z.enum(["author", "director", "actor"]),
       slug: z.string(),
@@ -707,7 +705,7 @@ export const getItemsByPerson = createServerFn({ method: "GET" })
 // Everything the item page needs in three round trips: the row, one batch
 // for lists + related rows, one batch to enrich them all.
 export const getItemPage = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ slug: z.string() }))
+  .validator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
     const [record] = await db
       .select()
@@ -870,7 +868,7 @@ export const getItemPage = createServerFn({ method: "GET" })
   })
 
 export const getItemById = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ id: z.number().int() }))
+  .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [item] = await enrichItems(
@@ -895,7 +893,7 @@ async function assertBarcodeFree(barcode: string | null, excludeId?: number) {
 }
 
 export const saveItem = createServerFn({ method: "POST" })
-  .inputValidator(itemInput)
+  .validator(itemInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     const now = new Date().toISOString()
@@ -991,7 +989,7 @@ export const saveItem = createServerFn({ method: "POST" })
   })
 
 export const markItemOwned = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.number().int().positive() }))
+  .validator(z.object({ id: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [item] = await db
@@ -1009,7 +1007,7 @@ export const markItemOwned = createServerFn({ method: "POST" })
   })
 
 export const deleteItem = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.number().int() }))
+  .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     await db.delete(listItems).where(eq(listItems.itemId, data.id))

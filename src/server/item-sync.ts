@@ -112,7 +112,7 @@ export async function syncItemFromProvider(
 }
 
 export const syncItem = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.number().int() }))
+  .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [item] = await enrichItems(
