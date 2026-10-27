@@ -24,10 +24,14 @@ export const handlers = {
       return Response.json(
         {
           error: "Invalid body",
-          issues: data.error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
+          issues: data.error.issues.map((issue) =>
+            issue.code === "unrecognized_keys"
+              ? {
+                  path: issue.keys.join(", "),
+                  message: `Unknown field: ${issue.keys.join(", ")}`,
+                }
+              : { path: issue.path.join("."), message: issue.message }
+          ),
         },
         { status: 400 }
       )

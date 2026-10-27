@@ -217,14 +217,18 @@ live in `src/server/api/{items,item,sync}.ts`.
 - `DELETE /api/items/:id` → `{ "ok": true }`, or `404`.
 - `POST /api/items/sync` — body `{ dryRun?, ids?, type? }`, `ids` max 40 and
   the selection is capped at 40 rows either way. Re-fetches provider metadata.
-  → `{ updated, skipped, failed }`. `title`, `creator` and `year` are curated
-  fields (`curatedSyncFields` in `src/lib/sync-fields.ts`): a sync fills one
-  only while it is blank (`""`, a provider placeholder such as
-  `"Unknown author"`, or year `0`) and never overwrites a value already
-  there; the author/director join is rewritten only when `creator` itself is
-  being filled. Everything else the provider reports (genres, description,
-  cover-adjacent images, runtime, publisher, ISBN, page count, …) is still
-  refreshed on every sync. New items created from a provider set every field.
+  → `{ updated, skipped, failed }`. On an existing item a sync **fills blanks
+  and never overwrites a value already there** (`changedFields` in
+  `src/lib/sync-fields.ts`): title, creator, year, genres, description, cast,
+  backdrop, runtime, certification, subtitle, page count, publisher, ISBN,
+  tagline, logo and trailer are written only while blank (`null`, `""`, `0`,
+  `[]`, or a provider placeholder such as `"Unknown author"`). Only
+  `keywords` and the `collection`, which no form or endpoint edits, are
+  replaced on every sync. The author/director join is rewritten only when
+  `creator` itself is being filled and the actor join only when `cast` is.
+  To make a sync re-fetch a field, clear it first (PATCH accepts `null` for
+  the book edition fields). New items created from a provider set every
+  field.
 - `GET /api/export` — unlike the other endpoints above, this one also accepts
   a signed-in session cookie in place of the agent bearer token. Returns
   `{ version, exportedAt, items, lists, listItems, loans }` (version 2: items

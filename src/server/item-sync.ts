@@ -4,11 +4,9 @@ import { z } from "zod"
 import { db } from "./db"
 import { requireSignedIn } from "./auth"
 import {
-  itemCast,
   replaceItemCast,
   replaceItemCreators,
   replaceItemTags,
-  samePeople,
 } from "./item-joins"
 import {
   collectionPartIdsFor,
@@ -33,9 +31,10 @@ export type ProviderSyncResult = {
   changes?: SyncChanges
 }
 
-// Title, creator and year are curated (see `curatedSyncFields`): the sync
-// fills them only while blank, and the creator join follows the creator
-// field — it is rewritten only when the field itself is being filled, so a
+// On an existing item the sync fills blanks and never overwrites a value
+// already there (see `providerOwnedSyncFields` for the two exceptions). The
+// people joins follow their fields: authors/directors are rewritten only
+// when `creator` is being filled and actors only when `cast` is, so a
 // provider's co-author list never replaces the people a member chose.
 export async function syncItemFromProvider(
   item: Item | ItemRecord,
@@ -61,21 +60,12 @@ export async function syncItemFromProvider(
       : await getTmdbSyncMetadata(syncedItem.type, providerId)
 
   const changes = changedFields(syncedItem, metadata)
-  if (!Object.keys(changes).length) {
-    if (
-      !dryRun &&
-      syncedItem.type !== "book" &&
-      metadata.castPeople &&
-      !samePeople(await itemCast(syncedItem.id), metadata.castPeople)
-    )
-      // Nothing changed, so only rewrite a cast join whose people differ.
-      await replaceItemCast(syncedItem.id, metadata.castPeople)
+  if (!Object.keys(changes).length)
     return {
       itemId: syncedItem.id,
       slug: syncedItem.slug,
       skipped: "Already up to date.",
     }
-  }
   if (!dryRun) {
     const {
       genres: nextGenres,

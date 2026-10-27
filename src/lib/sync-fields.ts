@@ -39,16 +39,43 @@ export type SyncChange = {
 
 export type SyncChanges = Partial<Record<keyof SyncedFields, SyncChange>>
 
-// The fields a member curates by hand. A sync fills one that is still blank
-// and never replaces a value that is already there — providers lowercase
+export const syncedFieldNames = [
+  "title",
+  "creator",
+  "year",
+  "genres",
+  "description",
+  "keywords",
+  "cast",
+  "collection",
+  "certification",
+  "runtime",
+  "backdropImageUrl",
+  "subtitle",
+  "pageCount",
+  "publisher",
+  "isbn13",
+  "tagline",
+  "logoImageUrl",
+  "trailerKey",
+] as const
+
+export type SyncedFieldName = (typeof syncedFieldNames)[number]
+
+// Derived purely from the provider and editable nowhere in the app, so a
+// sync may replace them. Every other field is filled only while blank: a
+// member may have typed it (title, creator, year, description, genres,
+// cast), set it through the agent PATCH API (publisher, ISBN, subtitle,
+// page count), or simply prefer what is there, and providers lowercase
 // titles, list co-authors twice under case variants, pick a different
-// co-director, or report a re-release year.
-export const curatedSyncFields = ["title", "creator", "year"] as const
+// co-director or report a re-release year.
+export const providerOwnedSyncFields = new Set<SyncedFieldName>([
+  "keywords",
+  "collection",
+])
 
-export type CuratedSyncField = (typeof curatedSyncFields)[number]
-
-// Written by a provider lookup that had no real value. They read as blank so
-// a later sync can fill them.
+// Written by a provider lookup that had no real value; they read as blank
+// so a later sync can fill them.
 const placeholders = new Set([
   "untitled",
   "unknown author",
@@ -56,53 +83,32 @@ const placeholders = new Set([
   "creator unavailable",
 ])
 
-export function hasCuratedValue(
-  field: CuratedSyncField,
-  value: string | number | null | undefined
-) {
-  if (field === "year") return typeof value === "number" && value > 0
-  if (typeof value !== "string") return false
-  const trimmed = value.trim()
-  return trimmed !== "" && !placeholders.has(trimmed.toLocaleLowerCase())
+export function isBlankSyncValue(value: SyncChange["before"]) {
+  if (value === null || value === undefined) return true
+  if (typeof value === "number") return !(value > 0)
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    return trimmed === "" || placeholders.has(trimmed.toLocaleLowerCase())
+  }
+  if (Array.isArray(value)) return value.length === 0
+  return false
 }
+
+const screenOnlyFields = new Set<SyncedFieldName>([
+  "cast",
+  "certification",
+  "runtime",
+  "tagline",
+  "logoImageUrl",
+  "trailerKey",
+])
 
 export function changedFields(item: Item, metadata: SyncedFields): SyncChanges {
   const changes: SyncChanges = {}
-  for (const field of [
-    ...curatedSyncFields,
-    "genres",
-    "description",
-    "keywords",
-    "cast",
-    "collection",
-    "certification",
-    "runtime",
-    "backdropImageUrl",
-    "subtitle",
-    "pageCount",
-    "publisher",
-    "isbn13",
-    "tagline",
-    "logoImageUrl",
-    "trailerKey",
-  ] as const) {
+  for (const field of syncedFieldNames) {
     if (field === "collection" && item.type !== "movie" && item.type !== "book")
       continue
-    if (field === "cast" && item.type === "book") continue
-    if (
-      (field === "certification" ||
-        field === "runtime" ||
-        field === "tagline" ||
-        field === "logoImageUrl" ||
-        field === "trailerKey") &&
-      item.type === "book"
-    )
-      continue
-    if (
-      (field === "title" || field === "creator" || field === "year") &&
-      hasCuratedValue(field, item[field])
-    )
-      continue
+    if (screenOnlyFields.has(field) && item.type === "book") continue
     const next = metadata[field]
     if (next === undefined) continue
     const previous =
@@ -111,6 +117,9 @@ export function changedFields(item: Item, metadata: SyncedFields): SyncChanges {
         : field === "cast"
           ? item.actors
           : item[field]
+    const blank = isBlankSyncValue(previous)
+    if (!blank && !providerOwnedSyncFields.has(field)) continue
+    if (blank && isBlankSyncValue(next)) continue
     if (JSON.stringify(previous) !== JSON.stringify(next))
       changes[field] = { before: previous, after: next }
   }
