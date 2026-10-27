@@ -3,23 +3,13 @@ import { z } from "zod"
 import { isAgentRequest } from "@/server/auth"
 import { db } from "@/server/db"
 import { storeCover } from "@/server/covers"
-import { itemFormats } from "@/lib/catalog"
+import { hasBookEditionFields, itemPatchInput } from "@/lib/item-patch"
 import { itemExists, uniqueSlug } from "@/server/items"
 import { replaceItemCreators } from "@/server/item-joins"
-import { items, itemEditions } from "@/server/schema"
+import { items } from "@/server/schema"
 
 const unauthorized = () =>
   Response.json({ error: "Unauthorized" }, { status: 401 })
-const patch = z.object({
-  title: z.string().min(1).max(240).optional(),
-  creator: z.string().min(1).max(240).optional(),
-  year: z.number().int().min(0).max(3000).optional(),
-  format: z.enum(itemFormats).nullable().optional(),
-  edition: z.enum(itemEditions).nullable().optional(),
-  status: z.enum(["owned", "borrowed"]).optional(),
-  coverImageUrl: z.string().url().max(2000).nullable().optional(),
-  slug: z.string().min(1).max(120).optional(),
-})
 const idParam = z.coerce.number().int().positive()
 
 type ApiContext = { request: Request; params: Record<string, string> }
@@ -29,9 +19,18 @@ type ApiContext = { request: Request; params: Record<string, string> }
 export const handlers = {
   PATCH: async ({ request, params }: ApiContext) => {
     if (!isAgentRequest(request)) return unauthorized()
-    const data = patch.safeParse(await request.json())
+    const data = itemPatchInput.safeParse(await request.json())
     if (!data.success)
-      return Response.json({ error: "Invalid body" }, { status: 400 })
+      return Response.json(
+        {
+          error: "Invalid body",
+          issues: data.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      )
     if (data.data.status === "borrowed")
       return Response.json(
         { error: "Lending is managed through the app's loan actions" },
@@ -39,8 +38,8 @@ export const handlers = {
       )
     // Reading/watching are per-member state (src/server/user-items.ts), not a
     // property of the item — narrowing itemStatuses already makes them
-    // unrepresentable here, so `patch.safeParse` above rejects them with the
-    // generic "Invalid body" 400 before this line runs.
+    // unrepresentable here, so `itemPatchInput.safeParse` above rejects them
+    // with the generic "Invalid body" 400 before this line runs.
     const parsedId = idParam.safeParse(params.id)
     if (!parsedId.success)
       return Response.json({ error: "Invalid id" }, { status: 400 })
@@ -50,6 +49,14 @@ export const handlers = {
     if (current.type === "book" && data.data.edition)
       return Response.json(
         { error: "Only movies and TV shows can have an edition" },
+        { status: 400 }
+      )
+    if (current.type !== "book" && hasBookEditionFields(data.data))
+      return Response.json(
+        {
+          error:
+            "Only books can have a subtitle, page count, publisher or ISBN",
+        },
         { status: 400 }
       )
     if (
