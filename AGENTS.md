@@ -188,7 +188,9 @@ live in `src/server/api/{items,item,sync}.ts`.
 
 - `GET /api/items?type=book|movie|tv` → array of items, excluding wishlist
   (`status = "wanted"`) rows — this endpoint answers "what is on the shelf".
-  An unknown `type` is `400 { "error": "Invalid type" }`.
+  Each item carries its `genres` (array of names, possibly empty) so an agent
+  can audit tagging without the full export. An unknown `type` is
+  `400 { "error": "Invalid type" }`.
 - `POST /api/items` — body
   `{ dryRun?, items: [{ type? (default "movie"), query, format?, edition?, status?, year?, tmdbId?, openLibraryKey? }] }`,
   max 40 entries. `query` may carry a trailing year (`"Dune (1984)"`).
@@ -200,17 +202,29 @@ live in `src/server/api/{items,item,sync}.ts`.
   `{ added, skipped, failed, needsReview }`, where `needsReview` carries up to
   5 candidates for an ambiguous `query`.
 - `PATCH /api/items/:id` — partial
-  `{ title, creator, year, format, edition, status, coverImageUrl, slug }`
-  (`status` here also accepts `owned`; `borrowed` is rejected with
+  `{ title, creator, year, format, edition, status, coverImageUrl, slug, subtitle, pageCount, publisher, isbn13 }`
+  (schema: `src/lib/item-patch.ts`). The body is strict: an unknown key is
+  `400 { "error": "Invalid body", "issues": [{ "path", "message" }] }` rather
+  than a silent drop, so a misspelled field never reports success. `subtitle`,
+  `pageCount`, `publisher` and `isbn13` are book-only (`400` on a movie or TV
+  row); `isbn13` accepts hyphens or spaces and is stored as 13 digits; each
+  takes `null` to clear. `status` here also accepts `owned`; `borrowed` is
+  rejected with
   `400 { "error": "Lending is managed through the app's loan actions" }`, and
   `wanted`/`reading`/`watching` are rejected as `400 { "error": "Invalid body" }`
-  since they are not valid `status` values here) → the
-  updated row. `404` if the id is unknown, `409` if the edition already exists
-  on the shelf.
+  since they are not valid `status` values here → the updated row. `404` if
+  the id is unknown, `409` if the edition already exists on the shelf.
 - `DELETE /api/items/:id` → `{ "ok": true }`, or `404`.
 - `POST /api/items/sync` — body `{ dryRun?, ids?, type? }`, `ids` max 40 and
   the selection is capped at 40 rows either way. Re-fetches provider metadata.
-  → `{ updated, skipped, failed }`.
+  → `{ updated, skipped, failed }`. `title`, `creator` and `year` are curated
+  fields (`curatedSyncFields` in `src/lib/sync-fields.ts`): a sync fills one
+  only while it is blank (`""`, a provider placeholder such as
+  `"Unknown author"`, or year `0`) and never overwrites a value already
+  there; the author/director join is rewritten only when `creator` itself is
+  being filled. Everything else the provider reports (genres, description,
+  cover-adjacent images, runtime, publisher, ISBN, page count, …) is still
+  refreshed on every sync. New items created from a provider set every field.
 - `GET /api/export` — unlike the other endpoints above, this one also accepts
   a signed-in session cookie in place of the agent bearer token. Returns
   `{ version, exportedAt, items, lists, listItems, loans }` (version 2: items
