@@ -132,7 +132,7 @@ bundle and is being round-tripped over RPC.
 - `src/routes` — file-based routes and thin API route shells.
 - `src/server/*.ts` — server functions via `createServerFn`, with the auth
   check (`requireSignedIn()` / `requireAdmin()`) as the **first statement** of
-  the handler and a zod schema in `.inputValidator(...)`.
+  the handler and a zod schema in `.validator(...)`.
 - `src/lib` — pure shared logic. This is the tested layer.
 - `src/components` — UI, with shadcn primitives in `src/components/ui`.
 

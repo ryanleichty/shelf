@@ -161,7 +161,7 @@ export const getSidebarLists = createServerFn({ method: "GET" }).handler(
 )
 
 export const createList = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ name: listName, type: z.enum(itemTypes) }))
+  .validator(z.object({ name: listName, type: z.enum(itemTypes) }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const slug = await uniqueListSlug(data.name)
@@ -192,7 +192,7 @@ export const createList = createServerFn({ method: "POST" })
   })
 
 export const addCatalogPlacements = createServerFn({ method: "POST" })
-  .inputValidator(catalogPlacementInput)
+  .validator(catalogPlacementInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [{ position }] = await db
@@ -231,7 +231,7 @@ export const addCatalogPlacements = createServerFn({ method: "POST" })
   })
 
 export const renameList = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ listId: z.number().int(), name: listName }))
+  .validator(z.object({ listId: z.number().int(), name: listName }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [list] = await db
@@ -249,7 +249,7 @@ export const renameList = createServerFn({ method: "POST" })
   })
 
 export const deleteList = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ listId: z.number().int() }))
+  .validator(z.object({ listId: z.number().int() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [list] = await db
@@ -264,7 +264,7 @@ export const deleteList = createServerFn({ method: "POST" })
   })
 
 export const deleteCatalogPlacement = createServerFn({ method: "POST" })
-  .inputValidator(placementInput)
+  .validator(placementInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     await db
@@ -280,7 +280,7 @@ export const deleteCatalogPlacement = createServerFn({ method: "POST" })
   })
 
 export const setListPlacementVisible = createServerFn({ method: "POST" })
-  .inputValidator(placementInput.extend({ visible: z.boolean() }))
+  .validator(placementInput.extend({ visible: z.boolean() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     await db
@@ -296,7 +296,7 @@ export const setListPlacementVisible = createServerFn({ method: "POST" })
   })
 
 export const reorderListPlacements = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       type: z.enum(itemTypes),
       placementIds: z.array(z.number().int().positive()).max(1_000),
@@ -344,7 +344,7 @@ const listMembershipInput = z.object({
 })
 
 export const addItemToList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
+  .validator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [list] = await db
@@ -373,7 +373,7 @@ export const addItemToList = createServerFn({ method: "POST" })
   })
 
 export const removeItemFromList = createServerFn({ method: "POST" })
-  .inputValidator(listMembershipInput)
+  .validator(listMembershipInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     const [list] = await db

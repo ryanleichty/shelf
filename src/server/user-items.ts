@@ -6,7 +6,7 @@ import { db } from "./db"
 import { items, itemProgressStates, userItems } from "./schema"
 
 export const setItemState = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       itemId: z.number().int().positive(),
       state: z.enum(itemProgressStates),
@@ -47,7 +47,7 @@ export const setItemState = createServerFn({ method: "POST" })
   })
 
 export const clearItemState = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ itemId: z.number().int().positive() }))
+  .validator(z.object({ itemId: z.number().int().positive() }))
   .handler(async ({ data }) => {
     await requireSignedIn()
     // Imported here so node:crypto never reaches the client bundle.

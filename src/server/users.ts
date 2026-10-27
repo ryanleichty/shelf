@@ -46,7 +46,7 @@ export const getCurrentUserProfile = createServerFn({
 }).handler(async () => getCurrentUser())
 
 export const uploadProfilePhoto = createServerFn({ method: "POST" })
-  .inputValidator((data: FormData) => {
+  .validator((data: FormData) => {
     if (!(data instanceof FormData)) throw new Error("Expected form data.")
     return data
   })
@@ -151,7 +151,7 @@ export const getSettings = createServerFn({ method: "GET" }).handler(
 )
 
 export const saveProfile = createServerFn({ method: "POST" })
-  .inputValidator(profileInput)
+  .validator(profileInput)
   .handler(async ({ data }) => {
     await requireSignedIn()
     const currentUser = await getCurrentUser()
@@ -199,7 +199,7 @@ export const saveProfile = createServerFn({ method: "POST" })
   })
 
 export const saveUser = createServerFn({ method: "POST" })
-  .inputValidator(userInput)
+  .validator(userInput)
   .handler(async ({ data }) => {
     await requireAdmin()
     const email = data.email.toLowerCase()
@@ -250,7 +250,7 @@ export const saveUser = createServerFn({ method: "POST" })
   })
 
 export const deleteUser = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.number().int() }))
+  .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     await requireAdmin()
     const [user] = await db

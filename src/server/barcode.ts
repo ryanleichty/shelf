@@ -43,7 +43,7 @@ type Resolution =
     }
 
 export const checkBarcode = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ code: barcodeInput }))
+  .validator(z.object({ code: barcodeInput }))
   .handler(async ({ data }): Promise<Resolution> => {
     await requireAdmin()
     const resolution = await resolveCode(data.code)
@@ -54,7 +54,7 @@ export const checkBarcode = createServerFn({ method: "POST" })
   })
 
 export const resolveBarcode = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ code: barcodeInput, type: z.enum(itemTypes) }))
+  .validator(z.object({ code: barcodeInput, type: z.enum(itemTypes) }))
   .handler(
     async ({ data }): Promise<Exclude<Resolution, { status: "unmatched" }>> => {
       await requireSignedIn()

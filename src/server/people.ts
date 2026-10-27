@@ -75,7 +75,7 @@ export const getPeople = createServerFn({ method: "GET" }).handler(async () => {
 })
 
 export const savePerson = createServerFn({ method: "POST" })
-  .inputValidator(personInput)
+  .validator(personInput)
   .handler(async ({ data }) => {
     await requireAdmin()
     const table =
@@ -105,7 +105,7 @@ export const savePerson = createServerFn({ method: "POST" })
   })
 
 export const deletePerson = createServerFn({ method: "POST" })
-  .inputValidator(personIdInput)
+  .validator(personIdInput)
   .handler(async ({ data }) => {
     await requireAdmin()
     const people = await peopleFor(data.kind)
@@ -124,7 +124,7 @@ export const deletePerson = createServerFn({ method: "POST" })
   })
 
 export const mergePeople = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       kind: z.enum(personKinds),
       sourceId: z.number().int(),
